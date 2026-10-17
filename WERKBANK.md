@@ -20,7 +20,8 @@ Inhalt:
 7. [Updates](#updates)
 8. [Einen Release machen](#einen-release-machen)
 9. [Was im Gemini-Handoff nicht stimmte](#was-im-gemini-handoff-nicht-stimmte)
-10. [Noch offen](#noch-offen)
+10. [Etikettendrucker TYPONOS PM240](#etikettendrucker-typonos-pm240)
+11. [Noch offen](#noch-offen)
 
 ## Was der Fork kann
 
@@ -33,6 +34,7 @@ Inhalt:
 | Power-Button pro Drucker | AMS-Ansicht, links neben dem Titel | BamBuddy |
 | Abfrage nach dem Druck: erfolgreich? Spule leer? ausschalten? | automatisch; Schalter „Nach dem Druck fragen“ in den BamBuddy-Optionen | BamBuddy |
 | Spule aus AMS-Slot austragen | AMS-Ansicht → Slot antippen → „Austragen“ (zweimal tippen) | BamBuddy |
+| Etiketten auf dem TYPONOS PM240 (experimentell) | Einstellungen → Bluetooth → Drucker | alle |
 
 Alles bezieht sich auf den Drucker, der in der AMS-Ansicht gewählt ist (Chip „1/2 P1S“): der Power-Button, die Abfrage nach dem Druck und das Abschalten.
 
@@ -228,7 +230,35 @@ Web Flasher und Update-Prüfung laufen über GitHub Pages:
   - `POST /spoolman/inventory/spools` mit `cost_per_kg` (neue Spule mit Preis)
   - AMS: `/spoolman/inventory/slot-assignments` (war schon in der Firmware)
 
+## Etikettendrucker TYPONOS PM240
+
+Der PM240 spricht **TSPL**, die Befehlssprache vieler Etikettendrucker. Die Hersteller-App (Labelnize) schickt sie über klassisches Bluetooth. Der ESP32-S3 kann nur Bluetooth Low Energy, aber der PM240 bietet denselben Dienst auch per BLE an (`0xFF00`, geschrieben wird `0xFF02`, wie bei den Phomemo-Druckern). Das Protokoll stammt aus einem Mitschnitt der App. Ein Druckauftrag der Waage ist Byte für Byte derselbe wie der der App für das gleiche Bild:
+
+```
+SIZE 50.0 mm,30.0 mm
+GAP 6.0 mm,0 mm
+DIRECTION 0,0
+DENSITY 10
+CLS
+BITMAP 0,0,48,240,1,<48 Bytes x 240 Zeilen, Bit 0 = schwarz>
+PRINT 1
+```
+
+Der Kopf ist 48 mm breit (384 Punkte bei 203 dpi). Bei 50-mm-Etiketten druckt er die mittleren 48 mm, die Waage schneidet je 1 mm links und rechts ab. Dort liegt ohnehin ihr Rand.
+
+**Einrichten:**
+
+1. Die Drucker-App am Handy schließen bzw. die Verbindung trennen. Der PM240 nimmt nur eine BLE-Verbindung zur Zeit an.
+2. An der Waage: Einstellungen → **Bluetooth** einschalten. Die Waage startet dafür einmal neu.
+3. Bluetooth → Geräte suchen → **PM240** antippen → als Drucker verwenden.
+4. Bluetooth → **Drucker** → Modell antippen, bis **PM240** erscheint. Etikett **50 x 30 mm**. In der Weboberfläche heißt das Modell „TYPONOS PM240“.
+5. Testdruck.
+
+**Noch nicht am Gerät getestet.** Wenn etwas schiefgeht, bitte das Log schicken, die Zeilen beginnen mit `TSPL:` und `BLE:`:
+
+- „kein unterstützter Drucker“: Der PM240 hat unter `0xFF00` kein beschreibbares `0xFF02`. Dann in nRF Connect den Dienst `0xFF00` aufklappen und die Merkmale per Screenshot schicken.
+- Druck verschoben oder leer: Lücke (6 mm) und Dichte (10) sind die Werte der App für die 50 x 30-mm-Rolle. Andere Rollen brauchen eventuell andere Werte.
+
 ## Noch offen
 
-- **Etikettendruck TYPONOS PM240:** Das Bluetooth-Protokoll ist unbekannt. Gebraucht wird ein Mitschnitt vom Android-Handy, siehe die Anleitung im Chat bzw. im Issue.
 - **Hardware-Test:** Bisher ist alles nur kompiliert und mit den Prüfskripten getestet, noch nicht auf dem Gerät.

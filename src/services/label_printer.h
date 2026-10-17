@@ -21,7 +21,8 @@
 // ============================================================
 
 enum LabelPrinterModel : uint8_t {
-  LP_MODEL_NONE = 0, LP_MODEL_M220 = 1, LP_MODEL_M110 = 2, LP_MODEL_M100 = 3
+  LP_MODEL_NONE = 0, LP_MODEL_M220 = 1, LP_MODEL_M110 = 2, LP_MODEL_M100 = 3,
+  LP_MODEL_PM240 = 4
 };
 
 struct LabelPrinterProfile {
@@ -35,6 +36,7 @@ struct LabelPrinterProfile {
   // Prints by heat on heat-sensitive paper, no ribbon: the label turns black
   // wherever it gets hot enough, a spool in the dryer included.
   bool     direct_thermal;
+  const char* vendor;      // shown before the name where models are listed
 };
 
 struct LabelPrinterConfig {

@@ -2757,8 +2757,8 @@ const char* const STRINGS[][3] = {
   { "Der Drucker antwortet nicht. Ist er eingeschaltet und in Reichweite?",
     "The printer does not answer. Is it on and in range?",
     "L'imprimante ne répond pas. Allumée et à portée ?" },  // STR_PRN_ERR_CONNECT
-  { "Das Gerät ist kein Phomemo-Drucker.", "The device is not a Phomemo printer.",
-    "Pas une imprimante Phomemo." },  // STR_PRN_ERR_NOT_PRINTER
+  { "Das Gerät ist kein unterstützter Drucker.", "The device is not a supported printer.",
+    "Imprimante non prise en charge." },  // STR_PRN_ERR_NOT_PRINTER
   { "Die Verbindung ließ sich nicht trennen. Bitte neu starten.",
     "The link would not close. Please restart.",
     "Liaison impossible à fermer. Redémarrez." },  // STR_PRN_ERR_STUCK
@@ -2774,9 +2774,9 @@ const char* const STRINGS[][3] = {
     "Seulement au besoin : la radio tourne tant qu'un appareil l'utilise, puis est libérée. Après l'activation, la balance redémarre une fois." },  // STR_W_P_BLE_HINT
   { "Unterstützte Drucker", "Supported printers", "Imprimantes prises en charge" },  // STR_W_P_SUPPORTED
   { "getestet",             "tested",             "testée" },  // STR_W_P_TESTED
-  { "Thermodrucker der Phomemo-M-Serie über Bluetooth. Weitere Modelle kommen mit Rückmeldungen aus der Community.",
-    "Phomemo M-series thermal printers over Bluetooth. More models come with feedback from the community.",
-    "Imprimantes thermiques Phomemo série M en Bluetooth. D'autres modèles viendront avec les retours de la communauté." },  // STR_W_P_SUPPORTED_HINT
+  { "Thermodrucker der Phomemo-M-Serie und TYPONOS PM240 (experimentell) über Bluetooth. Weitere Modelle kommen mit Rückmeldungen aus der Community.",
+    "Phomemo M-series thermal printers and the TYPONOS PM240 (experimental) over Bluetooth. More models come with feedback from the community.",
+    "Imprimantes thermiques Phomemo série M et TYPONOS PM240 (expérimental) en Bluetooth. D'autres modèles viendront avec les retours de la communauté." },  // STR_W_P_SUPPORTED_HINT
   { "Geräte in Reichweite", "Devices in range", "Appareils à portée" },  // STR_W_P_DEVICES
   { "Geräte suchen",        "Scan for devices", "Rechercher" },  // STR_BT_SCAN_WEB
   { "Die Suche läuft auf der Waage und dauert etwa 5 Sekunden; solange steht sie.",

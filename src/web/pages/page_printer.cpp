@@ -159,14 +159,17 @@ static String body() {
   h += T(STR_PRN_MODEL);
   h += F("</label><select id='pm'>");
   {
-    const LabelPrinterModel models[] = { LP_MODEL_M220, LP_MODEL_M110, LP_MODEL_M100 };
+    const LabelPrinterModel models[] = { LP_MODEL_M220, LP_MODEL_M110, LP_MODEL_M100,
+                                         LP_MODEL_PM240 };
     for (const LabelPrinterModel m : models) {
       const LabelPrinterProfile& p = labelPrinterProfile(m);
       h += F("<option value='");
       h += String((int)m);
       h += F("'");
       if (c.model == m) h += F(" selected");
-      h += F(">Phomemo ");
+      h += '>';
+      h += p.vendor;
+      h += ' ';
       h += p.name;
       if (p.experimental) { h += ' '; h += T(STR_PRN_EXPERIMENTAL); }
       h += F("</option>");
@@ -465,7 +468,7 @@ static void routes(WebServer &srv) {
   srv.on("/api/printer/model", HTTP_POST, [&srv]() {
     if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_PRINTER))) return;
     const int m = srv.arg("plain").toInt();
-    if (m != LP_MODEL_M220 && m != LP_MODEL_M110 && m != LP_MODEL_M100) {
+    if (labelPrinterProfile((LabelPrinterModel)m).model == LP_MODEL_NONE) {
       srv.send(400, "text/plain", "unknown model");
       return;
     }
