@@ -44,6 +44,7 @@
 #include "services/backend.h"
 #include "services/breadcrumb.h"
 #include "services/tag_spool_match.h"
+#include "services/spool_extras.h"
 
 namespace {
 
@@ -2663,7 +2664,7 @@ static void showLinkConfirmPopup(int idx) {
 // template's stored weight says nothing about the spool on the scale.
 static float linkListGross() {
   if (copy_flow_via_list || !scale_ready) return -1.0f;
-  return scale_weight_g;
+  return spoolExtrasBareReading();
 }
 
 // The spool's stored remaining weight matches what is on the scale. Compared
@@ -3669,7 +3670,7 @@ void closeNewTagPopup() {
 
 // Net filament on the pad, measured against the assumed Bambu core.
 static float newTagNetto() {
-  float netto = scale_weight_g - (float)BAMBU_CORE_WEIGHT_G;
+  float netto = spoolExtrasBareReading() - (float)BAMBU_CORE_WEIGHT_G;
   return netto < 0 ? 0 : netto;
 }
 

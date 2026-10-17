@@ -35,6 +35,7 @@ Inhalt:
 | Abfrage nach dem Druck: erfolgreich? Spule leer? ausschalten? | automatisch; Schalter „Nach dem Druck fragen“ in den BamBuddy-Optionen | BamBuddy |
 | Spule aus AMS-Slot austragen | AMS-Ansicht → Slot antippen → „Austragen“ (zweimal tippen) | BamBuddy |
 | Etiketten auf dem TYPONOS PM240 (experimentell) | Einstellungen → Bluetooth → Drucker | alle |
+| Zubehör an der Spule (Clip, RFID-Halter) zusätzlich abziehen | Weboberfläche → Einstellungen → Zubehör an der Spule; je Spule im Wiegen-Dialog | alle |
 
 Alles bezieht sich auf den Drucker, der in der AMS-Ansicht gewählt ist (Chip „1/2 P1S“): der Power-Button, die Abfrage nach dem Druck und das Abschalten.
 
@@ -189,6 +190,18 @@ Fehler bitte mit dem Log melden: Weboberfläche → Log, oder die SD-Karte (fall
    - Spoolman-QR-Code einer Spule scannen: Die Spule wird geladen.
    - Box-EAN scannen: Die Waage findet die Spule oder bietet an, sie anzulegen.
    - Erscheint nichts, im Log nach `Scan:` suchen. Kommen dort unlesbare Zeichen an, stimmt die Baudrate nicht.
+
+## Zubehör an der Spule abziehen (Clip, RFID-Halter)
+
+Die Waage kennt das Leergewicht der Spule aus FilaMan, Spoolman oder BamBuddy. Ein Filament-Clip oder ein RFID-Halter an der Spule wiegt zusätzlich ein paar Gramm, und die zieht die Waage auf Wunsch ebenfalls ab.
+
+1. **Weboberfläche → Einstellungen → Zubehör an der Spule:** Bis zu 8 Teile mit Namen und Gewicht eintragen, z. B. „Clip 1“ = 2 g, „Clip 2“ = 5 g, „RFID-Halter 1“ = 3 g. Bis zu **3** davon als **Standard** ankreuzen, dann **Speichern**. Ein leerer Name gibt den Platz frei.
+2. **Der Standard** gilt für jede Spule, für die nichts anderes gewählt ist.
+3. **Je Spule:** Im Wiegen-Dialog steht oben rechts z. B. `✎ -5 g`. Antippen öffnet die Auswahl: bis zu 3 Teile antippen, dann **OK**. Die Waage merkt sich die Auswahl für diese Spule und zeigt den Dialog mit den neuen Zahlen wieder an.
+
+Abgezogen wird überall, wo aus der Anzeige ein Filamentgewicht wird: Netto auf dem Hauptbildschirm, die Knöpfe im Wiegen-Dialog, automatisches Wiegen, die AMS-Abfrage, die Spulenwahl nach Gewicht und **Leerspule wiegen**. Wird also eine leere Spule mit Clip gewogen, landet nur die Spule als Leergewicht im Backend. Die Brutto-Angabe an FilaMan ist das Gewicht ohne Zubehör, so wie beim Beutel.
+
+Der Abzug ist eine Einstellung der Waage. Er liegt nicht im Backend: Eine zweite Waage oder BamBuddy selbst wissen nichts davon.
 
 ## Updates
 
