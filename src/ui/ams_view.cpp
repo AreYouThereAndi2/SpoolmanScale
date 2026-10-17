@@ -9,6 +9,7 @@
 #include "app/deferred_actions.h"
 #include "hardware/sd_logger.h"
 #include "services/ams_weights.h"
+#include "services/backend.h"
 #include "services/backend_api.h"
 #include "services/http_progress.h"
 #include "services/server_reach.h"
@@ -16,6 +17,7 @@
 #include "ui/ams_detail_popup.h"
 #include "ui/loading_overlay.h"
 #include "ui/navigation.h"
+#include "ui/printer_popups.h"
 #include "ui/theme.h"
 #include "ui/ui_common.h"
 
@@ -53,6 +55,7 @@
 // with dots inside the chip rather than pushing the status off the row.
 #define AMSV_STATUS_MIN_W 120
 #define AMSV_RELOAD_W     88
+#define AMSV_POWER_W      72
 // The header's buttons are 44 px tall and 2 px down (addBackButton and
 // addCloseButton in ui_common.cpp), so their middle is at 24; the reload chip
 // sits on that line, centred between the title and the close button.
@@ -213,6 +216,7 @@ static void closeAmsView() {
   // would leave it standing over whatever comes next.
   closeAmsDetailPopup();
   releaseScreen(&s_scr);
+  printerPowerChipForget();
   s_body     = nullptr;
   s_status   = nullptr;
   s_info_btn = nullptr;
@@ -800,6 +804,17 @@ static void buildScreen() {
     }
   }
 
+  // The printer's power, in the gap left of the title, mirroring the reload
+  // chip on the right. BamBuddy only: it is the backend that knows the plug.
+  if (backendIsBamBuddy()) {
+    const lv_coord_t tw = lv_txt_get_width(title, (uint32_t)strlen(title),
+                                           UI_FONT_TITLE, 0, LV_TEXT_FLAG_NONE);
+    const int back_right = AMSV_HDR_BTN_IN + AMSV_HDR_BTN_W;
+    const int title_left = 240 - tw / 2;
+    const int x = (back_right + title_left) / 2 - AMSV_POWER_W / 2;
+    printerPowerChipCreate(s_scr, x, AMSV_HDR_MID - AMSV_CHIP_H / 2, AMSV_POWER_W, AMSV_CHIP_H);
+  }
+
   int top = AMSV_BODY_TOP;
 
   // The spool being placed, so the comparison with a bay is on one screen.
@@ -1231,10 +1246,13 @@ static void openDetail(int ams_id, int tray_id) {
   if (!s_scr) return;
   // Always set, so a unit from an earlier card cannot survive into this one.
   amsDetailSetUnit(us.count > 0 ? &us : nullptr);
+  amsDetailSetBay(s_printer_id, ams_id, tray_id);
   showAmsDetailPopup(det);
 }
 
 void handleAmsViewDeferredActions() {
+  // The card took a spool out of its bay: the grid has to show the gap.
+  if (amsDetailTakeUnloaded() && s_scr) s_fetch_pending = true;
   if (show_ams_view_pending) {
     show_ams_view_pending = false;
     requestAmsView(AMS_VIEW_BROWSE);

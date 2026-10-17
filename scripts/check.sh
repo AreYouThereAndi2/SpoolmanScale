@@ -177,7 +177,12 @@ fi
 #     device flashed before it keeps its 3 MB slot and esp_ota_begin() refuses
 #     anything larger. Only checkable once the firmware has been built.
 FW_BIN=.pio/build/wt32-sc01-plus/firmware.bin
-OTA_MAX_APP_BYTES=3145728
+#     This fork (scanner, printer control) no longer fits 3 MB. It is
+#     installed by USB or the web flasher with the 6 MB table of
+#     partitions.csv and updated from its own releases only, so the gate is
+#     the 6 MB slot. A device still on the old 3 MB table has to be flashed
+#     by USB once before it can take this firmware.
+OTA_MAX_APP_BYTES=6291456
 if [ ! -f "$FW_BIN" ]; then
   warnf "binary size skipped: $FW_BIN is missing, build the firmware once"
 else

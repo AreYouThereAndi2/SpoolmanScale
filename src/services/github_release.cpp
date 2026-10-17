@@ -13,7 +13,9 @@
 #include "hardware/sd_logger.h"
 #include "services/ota_state.h"
 
-#define GH_REPO "Niko11111/SpoolmanScale"
+// This fork updates from its own releases: an image from upstream would
+// replace the scanner and printer control with the original firmware.
+#define GH_REPO "AreYouThereAndi2/SpoolmanScale"
 // The release asset the device flashes, see githubFlashTag().
 #define GH_IMAGE_ASSET "SpoolmanScale.bin"
 

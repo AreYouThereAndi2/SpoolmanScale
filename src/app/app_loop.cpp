@@ -18,6 +18,9 @@
 #include "app/deferred_actions.h"
 #include "app/perf_monitor.h"
 #include "app/render_bench.h"
+#include "app/scan_action.h"
+#include "services/printer_watch.h"
+#include "ui/printer_popups.h"
 #include "hardware/lvgl_mem.h"
 #include "services/partition_layout.h"
 #include "ui/partition_popup.h"
@@ -466,6 +469,30 @@ static void amsMainAssignRun() {
   }
 }
 
+bool appAdoptSpoolForWeighing(int spool_id) {
+  querySpoolmanById(spool_id);
+  // A failed request leaves the last spool's values in place. Adopting then
+  // would weigh into that one, so nothing is taken on.
+  if (!sm_found || sm_id != spool_id) {
+    logSDf("Adopt: spool %d did not load, nothing taken on", spool_id);
+    return false;
+  }
+  // Weighable from here, by hand or on its own, until the pad is empty
+  // again. Starting a fresh cycle as well, so a spool weighed before this
+  // one does not leave its "already saved" behind.
+  aw_adopted      = true;
+  aw_adopted_seen = false;
+  aw_done         = false;
+  // Start the settling window here rather than inheriting one. A spool
+  // that had already been sitting still for three seconds when the
+  // trigger arrived would otherwise be written on the very first pass,
+  // with no countdown on the button and no moment to put a tag on after
+  // all. Now the same three seconds run visibly from the adoption.
+  auto_weight_stable_ms = millis();
+  auto_weight_last_val  = scale_weight_g;
+  return true;
+}
+
 void appLoop() {
   // Overwritten every pass, so a crumb from a marked section only stands while
   // that section runs. Three stores and a short copy into RTC memory.
@@ -619,6 +646,14 @@ void appLoop() {
   // worker, and reads the verdict out of it.
   perfSection("lookup");
   lookupScanTick();
+  // A code from the barcode scanner, if one is fitted and has read something.
+  perfSection("scan");
+  scanActionTick();
+  // BamBuddy: the finished print and the cooldown switch-off, then whatever
+  // the printer questions and the power chip have parked.
+  perfSection("printer");
+  printerWatchTick();
+  printerPopupsTick();
   perfSection("sdlog");
   sdLoggerTick();
   // Keeps a sector erased ahead of the ring in flash, so a log line never
@@ -1151,20 +1186,7 @@ void appLoop() {
       const int id = remoteLinkPendingSpoolId();
       logSDf("RemoteLink: no tag, adopting spool %d for weighing", id);
       remoteLinkReport(true, nullptr, nullptr);
-      querySpoolmanById(id);
-      // Weighable from here, by hand or on its own, until the pad is empty
-      // again. Starting a fresh cycle as well, so a spool weighed before this
-      // one does not leave its "already saved" behind.
-      aw_adopted      = true;
-      aw_adopted_seen = false;
-      aw_done         = false;
-      // Start the settling window here rather than inheriting one. A spool
-      // that had already been sitting still for three seconds when the
-      // trigger arrived would otherwise be written on the very first pass,
-      // with no countdown on the button and no moment to put a tag on after
-      // all. Now the same three seconds run visibly from the adoption.
-      auto_weight_stable_ms = millis();
-      auto_weight_last_val  = scale_weight_g;
+      appAdoptSpoolForWeighing(id);
       if (lbl_status) {
         char buf[48];
         copyT(buf, sizeof(buf), STR_REMOTE_LINK_WEIGH);
@@ -1458,6 +1480,14 @@ void appLoop() {
     } else if (aw_adopted_seen) {
       logSD("RemoteLink: adopted spool taken off, weighing ends");
       aw_adopted = false;
+      // The bay picker hangs off the removal for a tagged spool; a spool
+      // taken on by id (a scanned label) has no tag to be removed, so its
+      // lift is this moment. The weighing above noted it already.
+      if (amsPickActive() && wifi_ok && sm_found && !sm_archived && sm_id > 0 &&
+          amsPickHasPending() && amsPickPendingSpoolId() == sm_id) {
+        logSDf("AMSPICK: asking for adopted spool id=%d", sm_id);
+        amsPickShow();
+      }
     }
   }
 

@@ -10,6 +10,8 @@
 #include "app/deferred_actions.h"
 #include "ams_assign_popup.h"
 #include "ams_detail_popup.h"
+#include "ui/printer_popups.h"
+#include "app/scan_action.h"
 #include "confirm_popup.h"
 #include "info_popup.h"
 #include "second_tag_popup.h"
@@ -41,7 +43,9 @@ bool uiModalWaiting() {
       || isSecondTagPopupOpen()
       || isSpoolFlowTagMoveOpen()
       || isAmsAssignPopupOpen()
-      || isAmsDetailPopupOpen();
+      || isAmsDetailPopupOpen()
+      || isPrinterPopupOpen()
+      || scanQuestionOpen();
 }
 
 // The hue a swatch is drawn in: its own, or glass for a filament that names

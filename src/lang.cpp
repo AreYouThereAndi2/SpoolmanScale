@@ -3191,6 +3191,198 @@ const char* const STRINGS[][3] = {
   { "Noch nicht übernommen", "Not applied yet",
     "Pas encore appliqué" },  // STR_W_THEME_UNSAVED
   { "Ins AMS",                         "Into AMS",                            "Dans l'AMS" },  // STR_AMS_MAIN_ASSIGN
+  { "Scan: verknüpfe mit Spule #%d",
+    "Scan: linking to spool #%d",
+    "Scan : liaison bobine #%d" },  // STR_SCAN_LINKING
+  { "Tag liegt auf, Scan #%d ignoriert",
+    "Tag on reader, scan #%d ignored",
+    "Tag présent, scan #%d ignoré" },  // STR_SCAN_TAG_WINS
+  { "Spule #%d geladen, jetzt wiegen",
+    "Spool #%d loaded, weigh it now",
+    "Bobine #%d chargée, pesez-la" },  // STR_SCAN_SPOOL_LOADED
+  { "Spule #%d nicht gefunden",
+    "Spool #%d not found",
+    "Bobine #%d introuvable" },  // STR_SCAN_SPOOL_MISSING
+  { "%s: keine aktive Spule",
+    "%s: no active spool",
+    "%s : aucune bobine" },  // STR_SCAN_NO_ACTIVE
+  { "EAN %s unbekannt",
+    "EAN %s unknown",
+    "EAN %s inconnu" },  // STR_SCAN_UNKNOWN_ARTICLE
+  { "%d Spulen passen, bitte auflegen",
+    "%d spools match, put it down",
+    "%d bobines, posez-la" },  // STR_SCAN_MANY_PUT_DOWN
+  { "EAN-Suche braucht Spoolman",
+    "EAN lookup needs Spoolman",
+    "EAN : Spoolman requis" },  // STR_SCAN_NEEDS_SPOOLMAN
+  { "Scan-Suche fehlgeschlagen (%d)",
+    "Scan lookup failed (%d)",
+    "Échec recherche (%d)" },  // STR_SCAN_LOOKUP_FAILED
+  { "Scan: kein WLAN",
+    "Scan: no Wi-Fi",
+    "Scan : sans Wi-Fi" },  // STR_SCAN_NO_WIFI
+  { "Code nicht erkannt",
+    "Code not recognised",
+    "Code non reconnu" },  // STR_SCAN_UNKNOWN_CODE
+  { "Barcode-Scanner",
+    "Barcode scanner",
+    "Lecteur de codes-barres" },  // STR_W_C_SCANNER
+  { "Scanner angeschlossen",
+    "Scanner fitted",
+    "Lecteur installé" },  // STR_W_SCANNER_ON
+  { "Ein UART-Scanner wie der GM861 liest Spoolman-QR-Codes, Spulen-Links und den EAN-Code auf dem Karton. Standard: TX des Scanners an GPIO 13 (Pin 6, weiß), RX optional an GPIO 21 (Pin 8). Der Anschluss hat nur 5 V: den TX-Pegel des Scanners vorher messen, er muss bei 3,3 V liegen. GPIO 10 und 11 sind der I2C-Bus und stehen nicht zur Wahl.",
+    "A UART scanner such as the GM861 reads Spoolman QR codes, spool links and the EAN on the box. Default: the scanner's TX to GPIO 13 (pin 6, white), its RX optionally to GPIO 21 (pin 8). The connector only has 5 V: measure the scanner's TX level first, it must sit at 3.3 V. GPIO 10 and 11 are the I2C bus and cannot be chosen.",
+    "Un lecteur UART comme le GM861 lit les QR codes Spoolman, les liens de bobine et l'EAN de la boîte. Par défaut : TX du lecteur sur GPIO 13 (broche 6, blanc), RX en option sur GPIO 21 (broche 8). Le connecteur n'a que 5 V : mesurez d'abord le niveau TX du lecteur, il doit être à 3,3 V. GPIO 10 et 11 sont le bus I2C et ne peuvent pas être choisis." },  // STR_W_SCANNER_HINT
+  { "RX-Pin (an TX des Scanners)",
+    "RX pin (to the scanner's TX)",
+    "Broche RX (TX du lecteur)" },  // STR_W_SCANNER_RX
+  { "TX-Pin (an RX des Scanners)",
+    "TX pin (to the scanner's RX)",
+    "Broche TX (RX du lecteur)" },  // STR_W_SCANNER_TX
+  { "Baudrate",
+    "Baud rate",
+    "Débit en bauds" },  // STR_W_SCANNER_BAUD
+  { "nicht verbunden",
+    "not connected",
+    "non connecté" },  // STR_W_SCANNER_NONE
+  { "Letzter Code",
+    "Last code",
+    "Dernier code" },  // STR_W_SCANNER_LAST
+  { "Druck fertig",
+    "Print finished",
+    "Terminé" },  // STR_PD_TITLE
+  { "War der Druck erfolgreich?",
+    "Did the print come out well?",
+    "Impression réussie ?" },  // STR_PD_Q_OK
+  { "Erfolgreich",
+    "Good",
+    "Réussie" },  // STR_PD_GOOD
+  { "Fehlgeschlagen",
+    "Failed",
+    "Ratée" },  // STR_PD_BAD
+  { "Später",
+    "Later",
+    "Après" },  // STR_PD_LATER
+  { "Ist eine Spule leer?",
+    "Is a spool empty?",
+    "Bobine vide ?" },  // STR_PD_Q_SPOOL
+  { "Leer: archivieren",
+    "Empty: archive",
+    "Vide : archiver" },  // STR_PD_EMPTY
+  { "Rest nachwiegen",
+    "Weigh the rest",
+    "Peser le reste" },  // STR_PD_REWEIGH
+  { "Weiter",
+    "Next",
+    "Suite" },  // STR_PD_NEXT
+  { "Drucker ausschalten?",
+    "Switch the printer off?",
+    "Éteindre ?" },  // STR_PD_Q_POWER
+  { "Erst wenn Düse und Bett unter %d °C sind.",
+    "Only once nozzle and bed are below %d °C.",
+    "Dès que buse et plateau sont sous %d °C." },  // STR_PD_POWER_HINT
+  { "BamBuddy schaltet selbst ab (Auto Power Off).",
+    "BamBuddy switches it off itself (Auto Power Off).",
+    "BamBuddy l'éteint lui-même (Auto Power Off)." },  // STR_PD_POWER_BB
+  { "Nach Abkühlen aus",
+    "Off when cool",
+    "Éteindre à froid" },  // STR_PD_OFF_COOL
+  { "Anlassen",
+    "Leave on",
+    "Laisser" },  // STR_PD_LEAVE_ON
+  { "Leere Spule auflegen zum Archivieren",
+    "Put the empty spool down to archive",
+    "Posez la bobine vide à archiver" },  // STR_PD_PUT_EMPTY
+  { "Spule auflegen, sie wird gewogen",
+    "Put the spool down to weigh it",
+    "Posez la bobine pour la peser" },  // STR_PD_PUT_WEIGH
+  { "Aus unter %d °C, jetzt %d °C",
+    "Off below %d °C, now %d °C",
+    "Arrêt sous %d °C, %d °C" },  // STR_PD_COOLING
+  { "Drucker ausgeschaltet",
+    "Printer switched off",
+    "Imprimante éteinte" },  // STR_PD_OFF_DONE
+  { "Schalten fehlgeschlagen (%d)",
+    "Switching failed (%d)",
+    "Échec commande (%d)" },  // STR_PD_OFF_FAIL
+  { "Bewertung nicht gespeichert (%d)",
+    "Verdict not saved (%d)",
+    "Avis non enregistré (%d)" },  // STR_PD_VERDICT_FAIL
+  { "Steckdose",
+    "Smart plug",
+    "Prise" },  // STR_PWR_TITLE
+  { "Drucker einschalten?",
+    "Switch the printer on?",
+    "Allumer ?" },  // STR_PWR_Q_ON
+  { "Drucker ausschalten?",
+    "Switch the printer off?",
+    "Éteindre ?" },  // STR_PWR_Q_OFF
+  { "Einschalten",
+    "Switch on",
+    "Allumer" },  // STR_PWR_ON_NOW
+  { "Sofort aus",
+    "Off now",
+    "Éteindre" },  // STR_PWR_OFF_NOW
+  { "An",
+    "On",
+    "On" },  // STR_PWR_ON
+  { "Aus",
+    "Off",
+    "Off" },  // STR_PWR_OFF
+  { "kühlt",
+    "cooling",
+    "refroid." },  // STR_PWR_COOLING
+  { "Drucker eingeschaltet",
+    "Printer switched on",
+    "Imprimante allumée" },  // STR_PWR_SWITCHED_ON
+  { "Keine Steckdose in BamBuddy",
+    "No smart plug in BamBuddy",
+    "Pas de prise dans BamBuddy" },  // STR_PWR_NO_PLUG
+  { "Nach dem Druck fragen",
+    "Ask after a print",
+    "Avis après impression" },  // STR_BB_PRINTDONE
+  { "Erfolg, leere Spule, Ausschalten",
+    "Outcome, empty spool, power",
+    "Résultat, bobine, arrêt" },  // STR_BB_PRINTDONE_SUB
+  { "Wenn BamBuddy einen fertigen Druck ohne Bewertung archiviert hat, fragt die Waage nach: War er erfolgreich (wird in BamBuddy gespeichert), ist eine Spule leer (die nächste aufgelegte Spule wird zum Archivieren angeboten) oder soll sie nachgewogen werden, und soll der Drucker aus.\n\nGilt für den Drucker, der in der AMS-Ansicht gewählt ist. Ausschalten wartet, bis Düse und Bett abgekühlt sind, außer BamBuddy hat Auto Power Off für die Steckdose eingestellt.\n\nDer API-Schlüssel braucht dafür zusätzlich \"Manage Archives\" und \"Control Printer\".",
+    "When BamBuddy has archived a finished print that nobody has judged yet, the scale asks: did it come out well (saved in BamBuddy), is a spool empty (the next spool put down is offered for archiving) or does it need weighing, and should the printer go off.\n\nApplies to the printer picked in the AMS view. Switching off waits until nozzle and bed have cooled, unless BamBuddy has Auto Power Off set for the plug.\n\nThe API key also needs \"Manage Archives\" and \"Control Printer\" for this.",
+    "Quand BamBuddy a archivé une impression terminée sans avis, la balance demande : est-elle réussie (enregistré dans BamBuddy), une bobine est-elle vide (la prochaine bobine posée est proposée à l'archivage) ou faut-il la peser, et faut-il éteindre l'imprimante.\n\nConcerne l'imprimante choisie dans la vue AMS. L'arrêt attend que buse et plateau aient refroidi, sauf si BamBuddy a réglé Auto Power Off pour la prise.\n\nLa clé API doit aussi avoir « Manage Archives » et « Control Printer »." },  // STR_BB_PRINTDONE_INFO
+  { "Neue Spulen nur mit BamBuddy",
+    "New spools need BamBuddy",
+    "Nouvelles bobines : BamBuddy" },  // STR_NS_ONLY_BB
+  { "Suche %s ...",
+    "Looking up %s ...",
+    "Recherche %s ..." },  // STR_NS_LOOKING
+  { "%s unbekannt, am Handy anlegen",
+    "%s unknown, add it on the phone",
+    "%s inconnu, à créer au tél." },  // STR_NS_NOT_FOUND
+  { "Neue Spule: %s",
+    "New spool: %s",
+    "Nouvelle : %s" },  // STR_NS_TITLE
+  { "%d g, Quelle: %s",
+    "%d g, source: %s",
+    "%d g, src : %s" },  // STR_NS_HINT
+  { "Anlegen",
+    "Create",
+    "Créer" },  // STR_NS_CREATE
+  { "Anlegen fehlgeschlagen (%d)",
+    "Creating failed (%d)",
+    "Échec création (%d)" },  // STR_NS_FAILED
+  { "Spule #%d angelegt",
+    "Spool #%d created",
+    "Bobine #%d créée" },  // STR_NS_CREATED
+  { "filament_to_bambuddy-Adresse",
+    "filament_to_bambuddy address",
+    "Adresse filament_to_bambuddy" },  // STR_W_F2B_URL
+  { "Kennt keine Spule den gescannten Code (EAN, Hersteller- oder Amazon-Nummer), fragt die Waage hier nach dem Produkt und bietet an, die Spule anzulegen. Leer lassen schaltet das ab.",
+    "When no spool answers to a scanned code (EAN, maker or Amazon number), the scale asks this app about the product and offers to create the spool. Leave empty to switch this off.",
+    "Si aucune bobine ne correspond au code scanné (EAN, référence fabricant ou Amazon), la balance interroge cette appli et propose de créer la bobine. Vide = désactivé." },  // STR_W_F2B_HINT
+  { "Austragen",
+    "Take out",
+    "Retirer" },  // STR_AMSD_UNLOAD
+  { "Sicher?",
+    "Sure?",
+    "Sûr ?" },  // STR_AMSD_UNLOAD_SURE
 };
 
 StringID tagWriteResultString(uint8_t code) {

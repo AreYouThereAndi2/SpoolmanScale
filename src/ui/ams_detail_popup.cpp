@@ -38,6 +38,7 @@
 #define AMSD_HDR_H        52
 #define AMSD_PAD          10
 #define AMSD_CLOSE        44
+#define AMSD_UNLOAD_W     96
 
 // Two columns, as in more_info_screen.cpp.
 #define AMSD_CA           10
@@ -95,6 +96,17 @@ static AmsSpoolDetail s_det;
 // The unit the bay belongs to, when that unit is an AMS 2 Pro and the card
 // may offer to record the drying for all of it. count 0 otherwise.
 static AmsUnitSpools s_unit;
+
+// The bay the card is about, for taking the spool out of it. Set by the AMS
+// view right before the card, like the unit above.
+static int  s_bay_printer = 0, s_bay_ams = -1, s_bay_tray = -1;
+// Two taps: the first turns the button into its own question, the second
+// frees the bay. Freeing reconfigures nothing on the printer, but the slot
+// is BamBuddy's record of what is loaded, and a stray tap should not lose it.
+static bool      s_unload_armed   = false;
+static bool      s_unload_pending = false;
+static bool      s_unloaded       = false;   // the view reloads when set
+static lv_obj_t* s_unload_lbl     = nullptr;
 
 static bool s_dried_pending     = false;
 static bool s_dried_all_pending = false;
@@ -509,6 +521,22 @@ static void nozzleText(const AmsSpoolDetail& d, char* out, size_t n) {
   }
 }
 
+// Only BamBuddy keeps bay assignments the scale can release, and only a bay
+// with a spool on file has one to release.
+static bool canUnload(const AmsSpoolDetail& d) {
+  return backendCanAssignAmsSlot() && d.spool_id > 0 && s_bay_printer > 0 &&
+         s_bay_ams >= 0 && s_bay_tray >= 0;
+}
+
+static void unloadCb(lv_event_t* e) {
+  if (!s_unload_armed) {
+    s_unload_armed = true;
+    if (s_unload_lbl) lv_label_set_text(s_unload_lbl, T(STR_AMSD_UNLOAD_SURE));
+    return;
+  }
+  s_unload_pending = true;
+}
+
 // The header: the bay on the title line, the status where FilaMan has one,
 // and the way out on the right.
 static void buildHeader(lv_obj_t* box, const AmsSpoolDetail& d) {
@@ -533,6 +561,7 @@ static void buildHeader(lv_obj_t* box, const AmsSpoolDetail& d) {
     // the user's choosing can be longer than that room, and a label with
     // neither ran under the chip.
     const int left  = (d.status_id > 0) ? AMSD_PAD + STATUS_CHIP_W + AMSD_PAD
+                    : canUnload(d)      ? AMSD_PAD + AMSD_UNLOAD_W + AMSD_PAD
                                         : AMSD_PAD + AMSD_CLOSE + AMSD_PAD;
     const int right = AMSD_BOX_W - AMSD_PAD - AMSD_CLOSE - AMSD_PAD;
     oneLine(title, right - left, UI_FONT_BODY);
@@ -553,6 +582,32 @@ static void buildHeader(lv_obj_t* box, const AmsSpoolDetail& d) {
     // for one thing. A button only where it can be changed.
     buildStatusChip(hdr, AMSD_PAD, 4, d.status_id,
                     canEditStatus(d) ? statusChipCb : nullptr);
+  }
+
+  // Taking the spool out of the bay, where the status chip would be: the
+  // two never meet, the chip is FilaMan's and this is BamBuddy's.
+  s_unload_lbl = nullptr;
+  if (d.status_id == 0 && canUnload(d)) {
+    lv_obj_t* u = lv_btn_create(hdr);
+    if (u) {
+      lv_obj_set_size(u, AMSD_UNLOAD_W, AMSD_CLOSE);
+      lv_obj_align(u, LV_ALIGN_LEFT_MID, AMSD_PAD, 0);
+      lv_obj_set_style_bg_color(u, lv_color_hex(UI_COL_SURFACE), 0);
+      lv_obj_set_style_bg_color(u, lv_color_hex(UI_COL_PRESS_FILL), LV_STATE_PRESSED);
+      lv_obj_set_style_border_width(u, 1, 0);
+      lv_obj_set_style_border_color(u, lv_color_hex(UI_COL_LINE), 0);
+      lv_obj_set_style_radius(u, UI_RADIUS_BTN, 0);
+      lv_obj_set_style_shadow_width(u, 0, 0);
+      lv_obj_set_style_pad_all(u, 2, 0);
+      lv_obj_add_event_cb(u, unloadCb, LV_EVENT_CLICKED, nullptr);
+      s_unload_lbl = lv_label_create(u);
+      if (s_unload_lbl) {
+        lv_label_set_text(s_unload_lbl, T(s_unload_armed ? STR_AMSD_UNLOAD_SURE : STR_AMSD_UNLOAD));
+        lv_obj_set_style_text_color(s_unload_lbl, lv_color_hex(UI_COL_WARN), 0);
+        lv_obj_set_style_text_font(s_unload_lbl, UI_FONT_SMALL, 0);
+        lv_obj_center(s_unload_lbl);
+      }
+    }
   }
 
   lv_obj_t* x = lv_btn_create(hdr);
@@ -918,6 +973,20 @@ void amsDetailSetUnit(const AmsUnitSpools* unit) {
   s_unit = unit ? *unit : AmsUnitSpools{};
 }
 
+void amsDetailSetBay(int printer_id, int ams_id, int tray_id) {
+  s_bay_printer = printer_id;
+  s_bay_ams     = ams_id;
+  s_bay_tray    = tray_id;
+  s_unload_armed   = false;
+  s_unload_pending = false;
+}
+
+bool amsDetailTakeUnloaded() {
+  const bool u = s_unloaded;
+  s_unloaded = false;
+  return u;
+}
+
 void showAmsDetailPopup(const AmsSpoolDetail& d) {
   // Kept so a write can update one field and redraw from it. Guarded against
   // self-assignment, because the redraw after a write passes s_det back in.
@@ -1001,6 +1070,23 @@ void showAmsDetailPopup(const AmsSpoolDetail& d) {
 }
 
 void handleAmsDetailDeferredActions() {
+  if (s_unload_pending) {
+    s_unload_pending = false;
+    s_unload_armed   = false;
+    if (!s_pop) return;
+    const int code = serverReachNote(backendUnassignAmsSlot(s_det.spool_id, s_bay_printer,
+                                                            s_bay_ams, s_bay_tray, 8000), true);
+    logSDf("AMSD: spool %d out of bay %d/%d on printer %d, HTTP %d", s_det.spool_id,
+           s_bay_ams, s_bay_tray, s_bay_printer, code);
+    if (code == 200) {
+      closeAmsDetailPopup();
+      s_unloaded = true;
+    } else {
+      s_write_failed = true;
+      s_redraw_pending = true;
+    }
+    return;
+  }
   if (!s_dried_pending && !s_dried_all_pending && !s_status_pending) return;
   // The card has to be up: every write redraws it, and a card taken down
   // while the question stood means the user moved on.

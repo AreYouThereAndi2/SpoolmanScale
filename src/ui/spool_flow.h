@@ -81,6 +81,11 @@ void handleSpoolFlowDeferredActions();
 void setSpoolFlowIdInputOpen(bool open);
 bool isSpoolFlowIdInputOpen();
 bool isSpoolFlowLinkEntryOpen();
+// A spool id from the barcode scanner, offered to the link flow. Taken when
+// the keypad or the link entry is open, or when an unknown tag lies on the
+// reader: the id then goes the way a typed one goes, on the next pass of
+// handleSpoolFlowDeferredActions(). False when the flow has no use for it.
+bool spoolFlowTakeScannedId(int spool_id, bool unknown_tag_present);
 
 extern char link_tag_uid[24];
 extern bool link_popup_dismissed;

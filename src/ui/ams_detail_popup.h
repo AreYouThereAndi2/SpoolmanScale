@@ -48,6 +48,13 @@ void handleAmsDetailDeferredActions();
 // showAmsDetailPopup(), every time, so an earlier unit cannot linger.
 void amsDetailSetUnit(const AmsUnitSpools* unit);
 
+// The bay the next card shows, for its "take out" button (BamBuddy). Set by
+// the AMS view right before showAmsDetailPopup(), every time.
+void amsDetailSetBay(int printer_id, int ams_id, int tray_id);
+
+// True once after the card freed its bay; the view reloads the grid then.
+bool amsDetailTakeUnloaded();
+
 // Collects the result of a drying batch the card started, updates the card
 // and the spool on the pad, and redraws once nothing stands above the card.
 // From appLoop(), every pass: the batch keeps every drying button locked
