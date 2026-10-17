@@ -89,8 +89,15 @@ The PN532 and NAU7802 share the same I2C bus (SDA/SCL) and are wired in parallel
 | 3 | Yellow | GPIO10 (SDA) | PN532 SDA + NAU7802 SDA |
 | 4 | Green | GPIO11 (SCL) | PN532 SCL + NAU7802 SCL |
 | 5 | Blue | - | unused |
-| 6 | White | - | unused |
+| 6 | White | GPIO13 | Barcode scanner TX (optional, see below) |
 | 7 | Brown | GPIO12 (RST) | PN532 RST |
+| 8 | - | GPIO21 | Barcode scanner RX (optional, not on the 7-pin cable) |
+
+### Barcode scanner (optional, GM861 or any UART scanner)
+
+The scanner sends what it reads as a line of text. Only its TX is needed: connect it to **pin 6 (GPIO13)**, its GND to pin 2. Its RX on GPIO21 (pin 8) is only for sending commands and can stay unconnected. Switch it on under **Settings → Barcode scanner** in the web interface, where pins and baud rate (default 9600) can be changed.
+
+The connector has **5 V and no 3.3 V**. Feed the scanner from 5 V only if its manual allows it, and **measure its TX line while idle before connecting it**: it must sit at 3.3 V, because the ESP32-S3 is not 5 V tolerant. GPIO10 and 11 are the I2C bus of reader and scale and cannot carry the scanner.
 
 ### PN532 – Soldering & Assembly
 
