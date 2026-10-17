@@ -17,7 +17,8 @@
 //  way in for the ESP32-S3, which has no classic Bluetooth.
 // ============================================================
 
-// The service and characteristic the PM240 lists, the Phomemo pair.
+// The service and characteristic the PM240 lists, the Phomemo pair; ff02 is
+// write without response (nRF Connect, 17.10.2026).
 #define TSPL_SERVICE_UUID 0xff00
 #define TSPL_WRITE_UUID   0xff02
 

@@ -256,7 +256,7 @@ Der Kopf ist 48 mm breit (384 Punkte bei 203 dpi). Bei 50-mm-Etiketten druckt er
 
 **Noch nicht am Gerät getestet.** Wenn etwas schiefgeht, bitte das Log schicken, die Zeilen beginnen mit `TSPL:` und `BLE:`:
 
-- „kein unterstützter Drucker“: Der PM240 hat unter `0xFF00` kein beschreibbares `0xFF02`. Dann in nRF Connect den Dienst `0xFF00` aufklappen und die Merkmale per Screenshot schicken.
+- „kein unterstützter Drucker“: Die Waage hat unter `0xFF00` kein beschreibbares `0xFF02` gefunden. Laut nRF Connect hat der PM240 es (Write No Response). Die Meldung heißt dann eher, dass eine falsche Adresse gewählt ist.
 - Druck verschoben oder leer: Lücke (6 mm) und Dichte (10) sind die Werte der App für die 50 x 30-mm-Rolle. Andere Rollen brauchen eventuell andere Werte.
 
 ## Noch offen
