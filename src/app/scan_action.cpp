@@ -19,6 +19,7 @@
 #include "services/server_reach.h"
 #include "services/spool_cache.h"
 #include "services/spoolman_api.h"
+#include "services/spool_extras.h"
 #include "ui/main_screen_helpers.h"
 #include "ui/spool_flow.h"
 #include "ui/question_box.h"
@@ -100,7 +101,7 @@ static int pickByWeight(JsonArrayConst spools, float* out_diff) {
   for (JsonObjectConst s : spools) {
     const int id = s["id"] | 0;
     if (id <= 0) continue;
-    const float net = scale_weight_g - candidateTare(s);
+    const float net = spoolExtrasBareReading() - candidateTare(s);
     const float diff = fabsf(net - (float)(s["remaining_weight"] | 0.0f));
     if (diff < best_diff) { best_diff = diff; best = id; }
   }
