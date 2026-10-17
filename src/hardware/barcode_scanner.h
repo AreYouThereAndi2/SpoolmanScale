@@ -7,11 +7,10 @@
 //  BARCODE SCANNER (GM861 and anything else that types a line)
 //
 //  A UART scanner on the extension header. It sends every code it reads as
-//  plain text, terminated by CR, LF or both, and that is all this module
-//  knows about it: no command set, no trigger. A GM861 left in its default
+//  plain text, terminated by CR, LF or both. A GM861 left in its default
 //  sense mode reads on its own when something is held in front of it, and
-//  the few settings worth changing are made by scanning the setup codes in
-//  its manual, so the TX line is optional.
+//  most settings are made by scanning the setup codes in its manual, so the
+//  TX line is optional. With it, the scale sets the scanner's lights.
 //
 //  Pins: the I/O connector brings out 5 V, GND and GPIO 10, 11, 12, 13, 14
 //  and 21 on pins 1 to 8. 10 and 11 (pins 3, 4) are the I2C bus of the
@@ -43,6 +42,26 @@ extern int8_t   g_scanner_rx_pin;    // NVS "scan_rx",   default 13
 extern int8_t   g_scanner_tx_pin;    // NVS "scan_tx",   default 21, -1 = none
 extern uint32_t g_scanner_baud;      // NVS "scan_baud", default 9600
 
+// The GM861's lights, sent to it over our TX each time the UART opens. Not
+// saved in the scanner: it forgets them at power off and gets them again at
+// the next boot, which spares its flash and keeps NVS the one place they
+// live. "Keep" sends nothing, so setup codes scanned from the manual stay.
+enum ScannerLamp : uint8_t {          // illumination and aimer together
+  SCAN_LAMP_KEEP = 0, SCAN_LAMP_STANDARD, SCAN_LAMP_ALWAYS, SCAN_LAMP_OFF
+};
+enum ScannerLed : uint8_t {           // the green LED on a good read
+  SCAN_LED_KEEP = 0, SCAN_LED_ON, SCAN_LED_OFF
+};
+enum ScannerLightResult : uint8_t {
+  SCAN_LIGHT_NOT_SENT = 0,            // both on keep, or the scanner is off
+  SCAN_LIGHT_OK,                      // the scanner confirmed the write
+  SCAN_LIGHT_NO_ANSWER,               // no reply: TX not wired, or not a GM861
+  SCAN_LIGHT_NO_TX,                   // no TX pin set, nothing can be sent
+};
+extern uint8_t g_scanner_lamp;       // NVS "scan_lamp", ScannerLamp
+extern uint8_t g_scanner_led;        // NVS "scan_led",  ScannerLed
+ScannerLightResult scannerLightResult();
+
 // Reads the settings and opens the UART when the scanner is switched on.
 // Called once at boot after the NFC reader, and again by scannerApplyPending()
 // after a change from the browser.
@@ -54,7 +73,8 @@ bool scannerPinAllowed(int pin, bool is_tx);
 
 // Stores new settings and asks the loop to reopen the UART with them. Safe
 // from a web handler: nothing but NVS and a flag.
-void scannerConfigure(bool enabled, int rx, int tx, uint32_t baud);
+void scannerConfigure(bool enabled, int rx, int tx, uint32_t baud,
+                       uint8_t lamp = SCAN_LAMP_KEEP, uint8_t led = SCAN_LED_KEEP);
 void scannerApplyPending();
 
 // True while the UART is open.

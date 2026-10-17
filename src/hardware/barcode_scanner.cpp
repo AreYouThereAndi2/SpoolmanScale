@@ -10,6 +10,9 @@ bool     g_scanner_enabled = false;
 int8_t   g_scanner_rx_pin  = SCANNER_DEFAULT_RX;
 int8_t   g_scanner_tx_pin  = SCANNER_DEFAULT_TX;
 uint32_t g_scanner_baud    = SCANNER_DEFAULT_BAUD;
+uint8_t  g_scanner_lamp    = SCAN_LAMP_KEEP;
+uint8_t  g_scanner_led     = SCAN_LED_KEEP;
+static ScannerLightResult s_light_result = SCAN_LIGHT_NOT_SENT;
 
 // A scanner set to send no terminator still finishes a code within a few
 // milliseconds at 9600 baud: one byte is about 1 ms. A pause this long means
@@ -48,6 +51,83 @@ static uint32_t sanitizeBaud(uint32_t baud) {
   }
 }
 
+// ---- GM861 zone bits ------------------------------------------------------
+// Grow GM861 manual V1.2.4, 10.2 to 10.6. A command is 7E 00, a type (07
+// read, 08 write), a length, a two-byte address and the data, then a
+// CRC-CCITT the scanner also accepts as AB CD. It answers 02 00 00, a length
+// and the data. Zone bit 0x0000:
+//   bit 7    green LED on a good read
+//   bit 6    1 = sound on
+//   bit 5-4, bit 3-2  the two lights, each 00 off, 01 while reading, 1x
+//            always on (the manual lists both alike, without saying which)
+//   bit 1-0  read mode (10 continuous, the default; 11 sense)
+// Its default is D6. The two light fields are set together: the manual names
+// them only by position, and one switch for "the light" is what a person
+// at the bench means anyway.
+static constexpr uint32_t GM_REPLY_MS = 300;
+static constexpr uint8_t  GM_DEFAULT_0000 = 0xD6;
+
+// Sends one command and waits for the 02 00 00 reply; true with its first
+// data byte. Whatever else the line carries meanwhile is dropped, a code read
+// in these few hundred milliseconds included.
+static bool gmTransact(const uint8_t* cmd, size_t n, uint8_t* value) {
+  while (s_uart.available() > 0) s_uart.read();
+  s_uart.write(cmd, n);
+  s_uart.flush();
+  uint8_t win[5] = {0};
+  size_t got = 0;
+  const uint32_t from = millis();
+  while (millis() - from < GM_REPLY_MS) {
+    if (s_uart.available() <= 0) { delay(2); continue; }
+    memmove(win, win + 1, sizeof(win) - 1);
+    win[sizeof(win) - 1] = (uint8_t)s_uart.read();
+    if (++got >= sizeof(win) && win[0] == 0x02 && win[1] == 0x00 && win[2] == 0x00 &&
+        win[3] >= 1) {
+      if (value) *value = win[4];
+      return true;
+    }
+  }
+  return false;
+}
+
+static uint8_t lampBits(uint8_t lamp) {
+  switch (lamp) {
+    case SCAN_LAMP_STANDARD: return 0x01;
+    case SCAN_LAMP_ALWAYS:   return 0x02;
+    default:                 return 0x00;   // off
+  }
+}
+
+// Reads zone bit 0x0000, changes the light fields and writes it back, so the
+// read mode and the sound stay as the setup codes left them.
+static void applyLights() {
+  s_light_result = SCAN_LIGHT_NOT_SENT;
+  if (g_scanner_lamp == SCAN_LAMP_KEEP && g_scanner_led == SCAN_LED_KEEP) return;
+  if (g_scanner_tx_pin < 0) {
+    s_light_result = SCAN_LIGHT_NO_TX;
+    logSD("Scanner: lights not sent, no TX pin");
+    return;
+  }
+  static const uint8_t READ_0000[] = {0x7E, 0x00, 0x07, 0x01, 0x00, 0x00, 0x01, 0xAB, 0xCD};
+  uint8_t cur = 0;
+  const bool read_ok = gmTransact(READ_0000, sizeof(READ_0000), &cur);
+  if (!read_ok) cur = GM_DEFAULT_0000;
+  uint8_t want = cur;
+  if (g_scanner_lamp != SCAN_LAMP_KEEP) {
+    const uint8_t b = lampBits(g_scanner_lamp);
+    want = (want & 0xC3) | (b << 4) | (b << 2);
+  }
+  if (g_scanner_led == SCAN_LED_ON)  want |= 0x80;
+  if (g_scanner_led == SCAN_LED_OFF) want &= 0x7F;
+  const uint8_t write_0000[] = {0x7E, 0x00, 0x08, 0x01, 0x00, 0x00, want, 0xAB, 0xCD};
+  const bool write_ok = gmTransact(write_0000, sizeof(write_0000), nullptr);
+  s_light_result = write_ok ? SCAN_LIGHT_OK : SCAN_LIGHT_NO_ANSWER;
+  logSDf("Scanner: zone 0x0000 %02X%s -> %02X, %s", cur, read_ok ? "" : " (assumed)", want,
+         write_ok ? "confirmed" : "no answer");
+}
+
+ScannerLightResult scannerLightResult() { return s_light_result; }
+
 static void scannerClose() {
   if (!s_open) return;
   s_uart.end();
@@ -63,11 +143,16 @@ void scannerBegin() {
   g_scanner_rx_pin = (int8_t)rx;
   g_scanner_tx_pin = (int8_t)tx;
   g_scanner_baud   = sanitizeBaud(prefsGetUInt("scan_baud", SCANNER_DEFAULT_BAUD));
+  g_scanner_lamp   = (uint8_t)prefsGetInt("scan_lamp", SCAN_LAMP_KEEP);
+  g_scanner_led    = (uint8_t)prefsGetInt("scan_led", SCAN_LED_KEEP);
+  if (g_scanner_lamp > SCAN_LAMP_OFF) g_scanner_lamp = SCAN_LAMP_KEEP;
+  if (g_scanner_led > SCAN_LED_OFF)   g_scanner_led  = SCAN_LED_KEEP;
 
   scannerClose();
   s_len = 0;
   s_overflow = false;
   if (!g_scanner_enabled) {
+    s_light_result = SCAN_LIGHT_NOT_SENT;
     logSD("Scanner: switched off");
     return;
   }
@@ -77,10 +162,13 @@ void scannerBegin() {
   logSDf("Scanner: UART open, RX=GPIO%d TX=%s%d %lu baud", (int)g_scanner_rx_pin,
          g_scanner_tx_pin < 0 ? "none/" : "GPIO", (int)g_scanner_tx_pin,
          (unsigned long)g_scanner_baud);
+  applyLights();
 }
 
-void scannerConfigure(bool enabled, int rx, int tx, uint32_t baud) {
+void scannerConfigure(bool enabled, int rx, int tx, uint32_t baud, uint8_t lamp, uint8_t led) {
   prefsPutBool("scan_on", enabled);
+  if (lamp <= SCAN_LAMP_OFF) prefsPutInt("scan_lamp", lamp);
+  if (led <= SCAN_LED_OFF)   prefsPutInt("scan_led", led);
   if (scannerPinAllowed(rx, false)) prefsPutInt("scan_rx", rx);
   if (scannerPinAllowed(tx, true) && tx != rx) prefsPutInt("scan_tx", tx);
   prefsPutUInt("scan_baud", sanitizeBaud(baud));
