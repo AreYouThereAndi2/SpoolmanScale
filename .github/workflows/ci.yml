@@ -57,11 +57,13 @@ jobs:
         # the partition table: every scale first flashed before that still
         # has 3 MB slots. A larger binary would be refused by esp_ota_begin()
         # on all of them, so the build fails here first.
+        # This fork outgrew 3 MB: it is flashed by USB with the 6 MB table and
+        # updated from its own releases, so the gate is the 6 MB slot.
         run: |
           SIZE=$(stat -c %s .pio/build/${{ matrix.env }}/firmware.bin)
-          echo "firmware.bin: $SIZE bytes of 3145728"
-          if [ "$SIZE" -gt 3145728 ]; then
-            echo "::error::firmware.bin is $SIZE bytes, more than the 3 MB app slot of installed devices"
+          echo "firmware.bin: $SIZE bytes of 6291456"
+          if [ "$SIZE" -gt 6291456 ]; then
+            echo "::error::firmware.bin is $SIZE bytes, more than the 6 MB app slot of partitions.csv"
             exit 1
           fi
       # Here rather than in the house-rules job: both tools measure icons from
