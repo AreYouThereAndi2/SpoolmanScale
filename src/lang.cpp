@@ -3371,6 +3371,15 @@ const char* const STRINGS[][3] = {
   { "Spule #%d angelegt",
     "Spool #%d created",
     "Bobine #%d créée" },  // STR_NS_CREATED
+  { "Preis ca. %.2f %s pro Rolle",
+    "Price about %.2f %s a spool",
+    "Prix env. %.2f %s la bobine" },  // STR_NS_PRICE
+  { "Mit Preis",
+    "With price",
+    "Avec prix" },  // STR_NS_WITH_PRICE
+  { "Ohne Preis",
+    "No price",
+    "Sans prix" },  // STR_NS_NO_PRICE
   { "filament_to_bambuddy-Adresse",
     "filament_to_bambuddy address",
     "Adresse filament_to_bambuddy" },  // STR_W_F2B_URL
