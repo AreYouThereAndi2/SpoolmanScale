@@ -28,7 +28,7 @@ namespace {
 // for the release list is over a hundred kilobytes. This file is a few hundred
 // bytes and has no rate limit.
 constexpr const char* VERSION_URL =
-  "https://niko11111.github.io/SpoolmanScale/version.json";
+  "https://areyouthereandi2.github.io/SpoolmanScale/version.json";
 
 // The first check waits until the boot is long over. Display, NFC, scale and
 // the backend are all up well before this, and the heap has settled.
