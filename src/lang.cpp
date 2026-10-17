@@ -3347,6 +3347,36 @@ const char* const STRINGS[][3] = {
   { "Wenn BamBuddy einen fertigen Druck ohne Bewertung archiviert hat, fragt die Waage nach: War er erfolgreich (wird in BamBuddy gespeichert), ist eine Spule leer (die nächste aufgelegte Spule wird zum Archivieren angeboten) oder soll sie nachgewogen werden, und soll der Drucker aus.\n\nGilt für den Drucker, der in der AMS-Ansicht gewählt ist. Ausschalten wartet, bis Düse und Bett abgekühlt sind, außer BamBuddy hat Auto Power Off für die Steckdose eingestellt.\n\nDer API-Schlüssel braucht dafür zusätzlich \"Manage Archives\" und \"Control Printer\".",
     "When BamBuddy has archived a finished print that nobody has judged yet, the scale asks: did it come out well (saved in BamBuddy), is a spool empty (the next spool put down is offered for archiving) or does it need weighing, and should the printer go off.\n\nApplies to the printer picked in the AMS view. Switching off waits until nozzle and bed have cooled, unless BamBuddy has Auto Power Off set for the plug.\n\nThe API key also needs \"Manage Archives\" and \"Control Printer\" for this.",
     "Quand BamBuddy a archivé une impression terminée sans avis, la balance demande : est-elle réussie (enregistré dans BamBuddy), une bobine est-elle vide (la prochaine bobine posée est proposée à l'archivage) ou faut-il la peser, et faut-il éteindre l'imprimante.\n\nConcerne l'imprimante choisie dans la vue AMS. L'arrêt attend que buse et plateau aient refroidi, sauf si BamBuddy a réglé Auto Power Off pour la prise.\n\nLa clé API doit aussi avoir « Manage Archives » et « Control Printer »." },  // STR_BB_PRINTDONE_INFO
+  { "Neue Spulen nur mit BamBuddy",
+    "New spools need BamBuddy",
+    "Nouvelles bobines : BamBuddy" },  // STR_NS_ONLY_BB
+  { "Suche %s ...",
+    "Looking up %s ...",
+    "Recherche %s ..." },  // STR_NS_LOOKING
+  { "%s unbekannt, am Handy anlegen",
+    "%s unknown, add it on the phone",
+    "%s inconnu, à créer au tél." },  // STR_NS_NOT_FOUND
+  { "Neue Spule: %s",
+    "New spool: %s",
+    "Nouvelle : %s" },  // STR_NS_TITLE
+  { "%d g, Quelle: %s",
+    "%d g, source: %s",
+    "%d g, src : %s" },  // STR_NS_HINT
+  { "Anlegen",
+    "Create",
+    "Créer" },  // STR_NS_CREATE
+  { "Anlegen fehlgeschlagen (%d)",
+    "Creating failed (%d)",
+    "Échec création (%d)" },  // STR_NS_FAILED
+  { "Spule #%d angelegt",
+    "Spool #%d created",
+    "Bobine #%d créée" },  // STR_NS_CREATED
+  { "filament_to_bambuddy-Adresse",
+    "filament_to_bambuddy address",
+    "Adresse filament_to_bambuddy" },  // STR_W_F2B_URL
+  { "Kennt keine Spule den gescannten Code (EAN, Hersteller- oder Amazon-Nummer), fragt die Waage hier nach dem Produkt und bietet an, die Spule anzulegen. Leer lassen schaltet das ab.",
+    "When no spool answers to a scanned code (EAN, maker or Amazon number), the scale asks this app about the product and offers to create the spool. Leave empty to switch this off.",
+    "Si aucune bobine ne correspond au code scanné (EAN, référence fabricant ou Amazon), la balance interroge cette appli et propose de créer la bobine. Vide = désactivé." },  // STR_W_F2B_HINT
 };
 
 StringID tagWriteResultString(uint8_t code) {

@@ -23,8 +23,17 @@
 //    told apart by the weight on the pad when there is one; without a load
 //    the status line asks for the spool to be put down first.
 //
+//  A box code no filament carries, or a manufacturer or Amazon number, is
+//  looked up in filament_to_bambuddy (services/f2b_api.h). When that knows
+//  the product, the scale offers to create the spool, creates it through
+//  BamBuddy, writes the code into the Spoolman filament's article_number so
+//  the next scan finds it, and goes on with it like a scanned spool id.
+//
 //  Everything here runs on the loop and may block for a request or two,
 //  like every other lookup that follows a user action.
 // ============================================================
 
 void scanActionTick();
+
+// The new-spool question for an unknown box code is on screen.
+bool scanQuestionOpen();

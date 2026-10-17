@@ -10,6 +10,7 @@
 #include "app/setup_flow.h"
 #include "hardware/display.h"
 #include "hardware/barcode_scanner.h"
+#include "services/f2b_api.h"
 #include "hardware/display_power.h"
 #include "hardware/i2c_scan.h"
 #include "hardware/nfc.h"
@@ -208,6 +209,7 @@ void appSetup() {
   // placeholder pin, which is the scanner's default TX, and the UART has to
   // be the last to configure it.
   scannerBegin();
+  f2bLoadSettings();
 
   // A device built without a load cell is not a device with a broken one. The
   // probe is skipped entirely rather than allowed to fail: scaleHardwareBegin()

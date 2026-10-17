@@ -17,6 +17,7 @@
 #include "hardware/display.h"
 #include "hardware/sd_logger.h"
 #include "services/device_name.h"
+#include "services/f2b_api.h"
 #include "services/list_limits.h"
 #include "services/mdns_service.h"
 #include "services/prefs_store.h"
@@ -285,7 +286,19 @@ static String body() {
   }
   h += F("<button id='sc-b' class='quiet block'>");
   h += T(STR_W_SAVE);
-  h += F("</button><span class='msg' id='sc-s'></span></div>");
+  h += F("</button><span class='msg' id='sc-s'></span>");
+  // Where an unknown box code is looked up. Its own save: it has nothing to
+  // do with the UART and needs no reopening.
+  h += F("<div class='field'><label>");
+  h += T(STR_W_F2B_URL);
+  h += F("</label><div class='inrow'><input id='f2' type='text' maxlength='95' "
+         "placeholder='http://zimaboard:8088' value='");
+  h += htmlEsc(g_f2b_url);
+  h += F("'><button id='f2-b' class='quiet'>");
+  h += T(STR_W_SAVE);
+  h += F("</button></div><span class='hint'>");
+  h += T(STR_W_F2B_HINT);
+  h += F("</span><span class='msg' id='f2-s'></span></div></div>");
 
   // ---- how the panel behaves --------------------------------------------
   // Waking on load had been documented in user_options.h since it was written
@@ -422,6 +435,8 @@ static String body() {
          "$('sc-b').addEventListener('click',()=>{"
          "postFlash('/api/scanner',($('sc').checked?'1':'0')+','+$('sc-rx').value+','"
          "+$('sc-tx').value+','+$('sc-bd').value,'sc-s',4000);});"
+         "$('f2-b').addEventListener('click',()=>{"
+         "postFlash('/api/f2b',$('f2').value.trim(),'f2-s',4000);});"
          "$('sf-rb').addEventListener('click',doRestart);"
          "$('ll-b').addEventListener('click',setLimits);"
          "$('gn-b').addEventListener('click',setGain);"
@@ -579,6 +594,19 @@ static void routes(WebServer &srv) {
     }
     scannerConfigure(on != 0, rx, tx, (uint32_t)baud);
     logSDf("Web: scanner -> %s RX=%d TX=%d %lu", on ? "ON" : "OFF", rx, tx, baud);
+    srv.send(200, "application/json", "{\"ok\":true}");
+  });
+
+  srv.on("/api/f2b", HTTP_POST, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_SETTINGS))) return;
+    const String url = srv.arg("plain");
+    if (url.length() >= sizeof(g_f2b_url) ||
+        (url.length() && !url.startsWith("http://") && !url.startsWith("https://"))) {
+      srv.send(400, "application/json", "{\"ok\":false}");
+      return;
+    }
+    f2bSetUrl(url.c_str());
+    logSDf("Web: filament_to_bambuddy -> %s", g_f2b_url[0] ? g_f2b_url : "(none)");
     srv.send(200, "application/json", "{\"ok\":true}");
   });
 

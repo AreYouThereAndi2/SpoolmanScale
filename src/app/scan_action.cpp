@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <ctype.h>
 #include <math.h>
 #include <stdarg.h>
 
@@ -11,18 +12,31 @@
 #include "hardware/sd_logger.h"
 #include "lang.h"
 #include "services/backend.h"
+#include "services/backend_api.h"
 #include "services/bambuddy_api.h"
+#include "services/f2b_api.h"
 #include "services/scan_code.h"
 #include "services/server_reach.h"
+#include "services/spool_cache.h"
 #include "services/spoolman_api.h"
 #include "ui/main_screen_helpers.h"
 #include "ui/spool_flow.h"
+#include "ui/question_box.h"
 #include "ui/spoolman_lookup.h"
+#include "ui/ui_common.h"
 #include "ui/theme.h"
 
 // Below this the pad counts as empty: the same floor the location question
 // uses, and well under the lightest spool core anyone weighs.
 static constexpr float SCAN_LOAD_MIN_G = 50.0f;
+
+// A code no spool answers to, offered as a new spool from what
+// filament_to_bambuddy knows about it. One question at a time.
+static lv_obj_t*        s_ns_scr = nullptr;
+static volatile uint8_t s_ns_answer = QB_NONE;
+static F2bProduct       s_ns;
+
+static void handleSpoolId(int spool_id);
 
 // The Spoolman server an article number can be asked of: the backend itself,
 // or the one BamBuddy keeps its inventory in. Empty when there is none -
@@ -94,11 +108,90 @@ static int pickByWeight(JsonArrayConst spools, float* out_diff) {
   return best;
 }
 
+// Looks the code up in filament_to_bambuddy and, when it knows the product,
+// asks whether to create the spool. Without an address, or for a product
+// nobody knows, the status line says what to do instead.
+static void offerNewSpool(const char* code) {
+  if (!g_f2b_url[0]) {
+    scanStatus(UI_COL_WARN, STR_SCAN_UNKNOWN_ARTICLE, code);
+    return;
+  }
+  if (!backendCanCreateFromTag()) {
+    scanStatus(UI_COL_WARN, STR_NS_ONLY_BB, 0);
+    return;
+  }
+  scanStatus(UI_COL_GOOD, STR_NS_LOOKING, code);
+  lv_timer_handler();   // the lookup can take seconds on a cold cache
+  const int code_http = f2bLookup(code, s_ns);
+  if (code_http != 200) {
+    scanStatus(UI_COL_BAD_TEXT, STR_SCAN_LOOKUP_FAILED, code_http);
+    return;
+  }
+  if (!s_ns.found) {
+    scanStatus(UI_COL_WARN, STR_NS_NOT_FOUND, code);
+    return;
+  }
+  if (s_ns.label_weight <= 0) s_ns.label_weight = 1000;
+
+  char title[48], q[112], hint[64];
+  snprintf(title, sizeof(title), T(STR_NS_TITLE), s_ns.barcode);
+  snprintf(q, sizeof(q), "%s %s%s%s%s%s", s_ns.brand, s_ns.material,
+           s_ns.subtype[0] ? " " : "", s_ns.subtype,
+           s_ns.color_name[0] ? " - " : "", s_ns.color_name);
+  snprintf(hint, sizeof(hint), T(STR_NS_HINT), s_ns.label_weight, s_ns.source);
+  releaseScreen(&s_ns_scr);
+  s_ns_scr = questionBoxCreate(title, q, hint, STR_NS_CREATE, 0, STR_CANCEL, &s_ns_answer);
+}
+
+// The answer, one pass after the tap.
+static void newSpoolAnswerTick() {
+  if (!s_ns_scr || s_ns_answer == QB_NONE) return;
+  const uint8_t a = s_ns_answer;
+  releaseScreen(&s_ns_scr);
+  s_ns_answer = QB_NONE;
+  if (a != QB_LEFT) return;
+
+  int new_id = 0;
+  // An unopened spool from the box: all of it is still there.
+  const int code = serverReachNote(backendCreateSpoolFromTag(
+      s_ns.material, s_ns.subtype, s_ns.brand, s_ns.rgba, s_ns.color_name,
+      s_ns.label_weight, s_ns.core_weight, (float)s_ns.label_weight,
+      s_ns.temp_min, s_ns.temp_max, &new_id, 8000), true);
+  if ((code != 200 && code != 201) || new_id <= 0) {
+    logSDf("Scan: creating from %s failed, HTTP %d", s_ns.barcode, code);
+    scanStatus(UI_COL_BAD_TEXT, STR_NS_FAILED, code);
+    return;
+  }
+  logSDf("Scan: spool %d created from %s (%s)", new_id, s_ns.barcode, s_ns.source);
+  spoolCacheForget("spool created from a barcode");
+  // The next scan of the same box should find the filament directly.
+  const char* base = scanSpoolmanBase();
+  if (base && base[0]) {
+    const int ac = spoolmanSetFilamentArticleIfEmpty(base, new_id, s_ns.barcode);
+    logSDf("Scan: article number %s on spool %d's filament, HTTP %d", s_ns.barcode, new_id, ac);
+  }
+  scanStatus(UI_COL_GOOD, STR_NS_CREATED, new_id);
+  handleSpoolId(new_id);
+}
+
+// Codes that are not ours but may be a manufacturer SKU or an Amazon number
+// on the box: letters and digits, at least one digit, no spaces or slashes.
+static bool looksLikeSku(const char* code) {
+  size_t n = 0;
+  bool digit = false;
+  for (const char* p = code; *p; p++, n++) {
+    const char c = *p;
+    if (isdigit((unsigned char)c)) digit = true;
+    else if (!isalpha((unsigned char)c) && c != '-' && c != '_' && c != '.') return false;
+  }
+  return digit && n >= 5 && n <= 32;
+}
+
 static void handleSpoolList(JsonArrayConst spools, const char* what, int filaments) {
   const int n = (int)spools.size();
   if (n == 0) {
     if (filaments > 0) scanStatus(UI_COL_WARN, STR_SCAN_NO_ACTIVE, what);
-    else               scanStatus(UI_COL_WARN, STR_SCAN_UNKNOWN_ARTICLE, what);
+    else               offerNewSpool(what);
     return;
   }
   if (n == 1) {
@@ -118,7 +211,10 @@ static void handleSpoolList(JsonArrayConst spools, const char* what, int filamen
 static void handleArticle(const ScanCode& sc) {
   const char* base = scanSpoolmanBase();
   if (!base || !base[0]) {
-    scanStatus(UI_COL_WARN, STR_SCAN_NEEDS_SPOOLMAN, sc.article);
+    // Nothing to search existing spools in. A box code can still become a
+    // new spool; a filament label cannot be anything without Spoolman.
+    if (sc.kind == SCAN_ARTICLE && g_f2b_url[0]) offerNewSpool(sc.article);
+    else scanStatus(UI_COL_WARN, STR_SCAN_NEEDS_SPOOLMAN, sc.article);
     return;
   }
   JsonDocument doc;
@@ -144,8 +240,13 @@ static void handleArticle(const ScanCode& sc) {
   handleSpoolList(doc.as<JsonArrayConst>(), what, filaments);
 }
 
+bool scanQuestionOpen() { return s_ns_scr != nullptr; }
+
 void scanActionTick() {
   scannerApplyPending();
+  newSpoolAnswerTick();
+  // A question about a new spool is open: further codes wait for it.
+  if (s_ns_scr) return;
   char code[SCANNER_CODE_MAX];
   if (!scannerPoll(code, sizeof(code))) return;
 
@@ -164,7 +265,8 @@ void scanActionTick() {
       handleArticle(sc);
       break;
     default:
-      scanStatus(UI_COL_WARN, STR_SCAN_UNKNOWN_CODE, 0);
+      if (looksLikeSku(code) && g_f2b_url[0]) offerNewSpool(code);
+      else scanStatus(UI_COL_WARN, STR_SCAN_UNKNOWN_CODE, 0);
       break;
   }
 }

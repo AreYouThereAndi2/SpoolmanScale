@@ -674,3 +674,26 @@ int spoolmanFindSpoolsByArticle(const char* base_url, const char* article, JsonD
   String path = String("/api/v1/spool?allow_archived=false&filament.id=") + ids;
   return spoolmanGetJson(base_url, path.c_str(), doc, timeout_ms, &filter);
 }
+
+int spoolmanSetFilamentArticleIfEmpty(const char* base_url, int spool_id, const char* article,
+                                      uint32_t timeout_ms) {
+  if (!hasBaseUrl(base_url) || spool_id <= 0 || !article || !article[0]) return -1;
+  JsonDocument filter;
+  filter["filament"]["id"] = true;
+  filter["filament"]["article_number"] = true;
+  JsonDocument doc;
+  int code = spoolmanGetJson(base_url, (String("/api/v1/spool/") + spool_id).c_str(), doc,
+                             timeout_ms, &filter);
+  if (code != 200) return code;
+  const int fid = doc["filament"]["id"] | 0;
+  if (fid <= 0) return -2;
+  // A number already on the filament is somebody's decision; a second code
+  // for the same product (another package size) does not replace it.
+  const char* have = doc["filament"]["article_number"] | "";
+  if (have[0]) return 200;
+  JsonDocument body;
+  body["article_number"] = article;
+  String payload;
+  serializeJson(body, payload);
+  return patchJson(String(base_url) + "/api/v1/filament/" + fid, payload, timeout_ms);
+}

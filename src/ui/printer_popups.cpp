@@ -14,6 +14,7 @@
 #include "ui/confirm_popup.h"
 #include "ui/ams_view.h"
 #include "ui/main_screen_helpers.h"
+#include "ui/question_box.h"
 #include "ui/theme.h"
 #include "ui_common.h"
 
@@ -28,20 +29,12 @@ enum PpStep : uint8_t {
   PP_POWER_OFF       // the chip, plug on: off now, or once cool?
 };
 
-// What a button chose, carried to the next loop pass.
-enum PpAnswer : uint8_t { PA_NONE = 0, PA_LEFT, PA_MID, PA_RIGHT };
-
-#define PP_BTN_W      118
-#define PP_BTN_MID_W  124
-#define PP_BTN_H      56
-#define PP_BTN_Y      156
-
 // How long "put the empty spool down" stays armed after the question.
 #define PP_ARCHIVE_ARM_MS  (5UL * 60UL * 1000UL)
 
 static lv_obj_t* s_scr      = nullptr;
 static PpStep    s_step     = PP_NONE;
-static PpAnswer  s_answer   = PA_NONE;
+static volatile uint8_t s_answer = QB_NONE;   // QbAnswer, written by the box
 static BbJob     s_job;
 
 static lv_obj_t* s_chip     = nullptr;
@@ -61,97 +54,18 @@ static int           s_cool_shown  = -2;
 bool isPrinterPopupOpen() { return s_scr != nullptr; }
 
 void closePrinterPopup() {
-  if (s_scr) { lv_obj_del(s_scr); s_scr = nullptr; }
+  releaseScreen(&s_scr);
   s_step = PP_NONE;
-  s_answer = PA_NONE;
+  s_answer = QB_NONE;
 }
 
 // ---- the box ---------------------------------------------------------------
 
-static void answerCb(lv_event_t* e) {
-  s_answer = (PpAnswer)(intptr_t)lv_event_get_user_data(e);
-}
-
-static void addLabel(lv_obj_t* box, const char* text, uint32_t color,
-                     const lv_font_t* font, lv_coord_t y, bool wrap) {
-  lv_obj_t* l = lv_label_create(box);
-  lv_label_set_text(l, text);
-  lv_obj_set_style_text_color(l, lv_color_hex(color), 0);
-  lv_obj_set_style_text_font(l, font, 0);
-  lv_obj_set_width(l, 360);
-  lv_label_set_long_mode(l, wrap ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT);
-  lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(l, LV_ALIGN_TOP_MID, 0, y);
-}
-
-// kind: 0 good (green), 1 neutral, 2 bad (red)
-static void addButton(lv_obj_t* box, int str, PpAnswer a, lv_coord_t x, lv_coord_t w, int kind) {
-  if (str <= 0) return;
-  lv_obj_t* b = lv_btn_create(box);
-  lv_obj_set_size(b, w, PP_BTN_H);
-  lv_obj_set_pos(b, x, PP_BTN_Y);
-  lv_obj_set_style_radius(b, UI_RADIUS_BTN, 0);
-  lv_obj_set_style_shadow_width(b, 0, 0);
-  lv_obj_set_style_pad_all(b, 4, 0);
-  uint32_t text = UI_COL_ACCENT;
-  if (kind == 0) {
-    lv_obj_set_style_bg_color(b, lv_color_hex(UI_COL_OK_BG), 0);
-    lv_obj_set_style_bg_color(b, lv_color_hex(UI_COL_OK_BG_PRESSED), LV_STATE_PRESSED);
-    text = UI_COL_AMS_YES_TEXT;
-  } else if (kind == 2) {
-    lv_obj_set_style_bg_color(b, lv_color_hex(UI_COL_BAD_BG), 0);
-    lv_obj_set_style_bg_color(b, lv_color_hex(UI_COL_AMS_NO_PRESSED), LV_STATE_PRESSED);
-    text = UI_COL_AMS_NO_TEXT;
-  } else {
-    lv_obj_set_style_bg_color(b, lv_color_hex(UI_COL_SURFACE), 0);
-    lv_obj_set_style_bg_color(b, lv_color_hex(UI_COL_PRESS_FILL), LV_STATE_PRESSED);
-    lv_obj_set_style_border_width(b, 1, 0);
-    lv_obj_set_style_border_color(b, lv_color_hex(UI_COL_LINE), 0);
-  }
-  lv_obj_add_event_cb(b, answerCb, LV_EVENT_CLICKED, (void*)(intptr_t)a);
-  lv_obj_t* l = lv_label_create(b);
-  lv_label_set_text(l, T(str));
-  lv_obj_set_width(l, w - 8);
-  lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-  lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_color(l, lv_color_hex(text), 0);
-  lv_obj_set_style_text_font(l, UI_FONT_SMALL, 0);
-  lv_obj_center(l);
-}
-
-// Builds the box for a step. The texts are formatted by the caller, the
-// buttons are table strings; 0 leaves a slot empty.
 static void showBox(PpStep step, const char* title, const char* question, const char* hint,
                     int left, int mid, int right) {
   closePrinterPopup();
   s_step = step;
-  s_scr = lv_obj_create(lv_scr_act());
-  lv_obj_set_size(s_scr, 480, 320);
-  lv_obj_set_pos(s_scr, 0, 0);
-  lv_obj_set_style_bg_color(s_scr, lv_color_hex(UI_COL_SCRIM), 0);
-  lv_obj_set_style_bg_opa(s_scr, LV_OPA_70, 0);
-  lv_obj_set_style_border_width(s_scr, 0, 0);
-  lv_obj_set_style_radius(s_scr, 0, 0);
-  lv_obj_set_style_pad_all(s_scr, 0, 0);
-  lv_obj_clear_flag(s_scr, LV_OBJ_FLAG_SCROLLABLE);
-
-  lv_obj_t* box = lv_obj_create(s_scr);
-  lv_obj_set_size(box, 400, 236);
-  lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
-  lv_obj_set_style_bg_color(box, lv_color_hex(UI_COL_SURFACE), 0);
-  lv_obj_set_style_border_color(box, lv_color_hex(UI_COL_POPUP_BORDER), 0);
-  lv_obj_set_style_border_width(box, 2, 0);
-  lv_obj_set_style_radius(box, 12, 0);
-  lv_obj_set_style_pad_all(box, 0, 0);
-  lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
-
-  addLabel(box, title, UI_COL_ACCENT, &lv_font_montserrat_ext_14, 16, false);
-  addLabel(box, question, UI_COL_INK, &lv_font_montserrat_ext_18, 44, true);
-  if (hint && hint[0]) addLabel(box, hint, UI_COL_CAPTION, &lv_font_montserrat_ext_14, 96, true);
-
-  addButton(box, left,  PA_LEFT,  12,  PP_BTN_W,     0);
-  addButton(box, mid,   PA_MID,   138, PP_BTN_MID_W, 1);
-  addButton(box, right, PA_RIGHT, 270, PP_BTN_W,     2);
+  s_scr = questionBoxCreate(title, question, hint, left, mid, right, &s_answer);
 }
 
 static void titleForJob(char* out, size_t n) {
@@ -294,22 +208,22 @@ static void offWhenCool() {
 
 static void handleAnswer() {
   const PpStep step = s_step;
-  const PpAnswer a = s_answer;
-  s_answer = PA_NONE;
+  const uint8_t a = s_answer;
+  s_answer = QB_NONE;
   closePrinterPopup();
 
   switch (step) {
     case PP_VERDICT:
-      if (a == PA_MID) {
+      if (a == QB_MID) {
         // Later: asked about once, so the job is not asked about again.
         printerWatchTakeJob();
         return;
       }
       {
         const int code = bbSetJobVerdict(backendBaseUrl(), bambuddyApiKey(), s_job.id,
-                                         a == PA_LEFT);
+                                         a == QB_LEFT);
         logSDf("PrintDone: job %d verdict %s, HTTP %d", s_job.id,
-               a == PA_LEFT ? "good" : "reject", code);
+               a == QB_LEFT ? "good" : "reject", code);
         printerWatchTakeJob();
         if (code != 200) {
           char buf[64];
@@ -320,26 +234,26 @@ static void handleAnswer() {
       askSpool();
       return;
     case PP_SPOOL:
-      if (a == PA_RIGHT) {
+      if (a == QB_RIGHT) {
         s_archive_armed_ms = millis();
         if (!s_archive_armed_ms) s_archive_armed_ms = 1;
         s_archive_pad_cleared = false;
         statusMessageShow(T(STR_PD_PUT_EMPTY), UI_COL_WARN);
-      } else if (a == PA_LEFT) {
+      } else if (a == QB_LEFT) {
         statusMessageShow(T(STR_PD_PUT_WEIGH), UI_COL_GOOD);
       }
       askPowerAfter();
       return;
     case PP_POWER_AFTER:
-      if (a == PA_LEFT) offWhenCool();
+      if (a == QB_LEFT) offWhenCool();
       return;
     case PP_POWER_ON:
-      if (a == PA_LEFT) reportSwitch(printerWatchSwitch(true), true);
+      if (a == QB_LEFT) reportSwitch(printerWatchSwitch(true), true);
       paintChip();
       return;
     case PP_POWER_OFF:
-      if (a == PA_LEFT) offWhenCool();
-      else if (a == PA_RIGHT) reportSwitch(printerWatchSwitch(false), false);
+      if (a == QB_LEFT) offWhenCool();
+      else if (a == QB_RIGHT) reportSwitch(printerWatchSwitch(false), false);
       paintChip();
       return;
     default:
@@ -392,7 +306,7 @@ static void coolingTick() {
 }
 
 void printerPopupsTick() {
-  if (s_answer != PA_NONE && s_scr) {
+  if (s_answer != QB_NONE && s_scr) {
     handleAnswer();
     return;
   }

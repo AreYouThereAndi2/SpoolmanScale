@@ -153,3 +153,8 @@ int spoolmanFindSpoolsByFilament(const char* base_url, int filament_id, JsonDocu
 // told from "never heard of it".
 int spoolmanFindSpoolsByArticle(const char* base_url, const char* article, JsonDocument& doc,
                                 int* out_filaments = nullptr, uint32_t timeout_ms = 6000);
+// Writes the barcode a spool was created from into its filament's
+// article_number, so the next scan of the same box finds the filament.
+// Leaves a filament that already has a number alone.
+int spoolmanSetFilamentArticleIfEmpty(const char* base_url, int spool_id, const char* article,
+                                      uint32_t timeout_ms = 6000);
