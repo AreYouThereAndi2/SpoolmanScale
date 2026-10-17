@@ -1246,10 +1246,13 @@ static void openDetail(int ams_id, int tray_id) {
   if (!s_scr) return;
   // Always set, so a unit from an earlier card cannot survive into this one.
   amsDetailSetUnit(us.count > 0 ? &us : nullptr);
+  amsDetailSetBay(s_printer_id, ams_id, tray_id);
   showAmsDetailPopup(det);
 }
 
 void handleAmsViewDeferredActions() {
+  // The card took a spool out of its bay: the grid has to show the gap.
+  if (amsDetailTakeUnloaded() && s_scr) s_fetch_pending = true;
   if (show_ams_view_pending) {
     show_ams_view_pending = false;
     requestAmsView(AMS_VIEW_BROWSE);

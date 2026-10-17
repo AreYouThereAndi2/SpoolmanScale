@@ -3377,6 +3377,12 @@ const char* const STRINGS[][3] = {
   { "Kennt keine Spule den gescannten Code (EAN, Hersteller- oder Amazon-Nummer), fragt die Waage hier nach dem Produkt und bietet an, die Spule anzulegen. Leer lassen schaltet das ab.",
     "When no spool answers to a scanned code (EAN, maker or Amazon number), the scale asks this app about the product and offers to create the spool. Leave empty to switch this off.",
     "Si aucune bobine ne correspond au code scanné (EAN, référence fabricant ou Amazon), la balance interroge cette appli et propose de créer la bobine. Vide = désactivé." },  // STR_W_F2B_HINT
+  { "Austragen",
+    "Take out",
+    "Retirer" },  // STR_AMSD_UNLOAD
+  { "Sicher?",
+    "Sure?",
+    "Sûr ?" },  // STR_AMSD_UNLOAD_SURE
 };
 
 StringID tagWriteResultString(uint8_t code) {
