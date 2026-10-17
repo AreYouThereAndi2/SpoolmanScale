@@ -753,7 +753,8 @@ int backendCreateSpoolFromTag(const char* material, const char* subtype,
                               const char* color_name,
                               int label_weight, int core_weight, float remaining_weight,
                               int nozzle_temp_min, int nozzle_temp_max,
-                              int* out_spool_id, uint32_t timeout_ms) {
+                              int* out_spool_id, uint32_t timeout_ms,
+                              float cost_per_kg) {
   HttpStallTime stall(__func__);   // the loop stands still for this call
   if (out_spool_id) *out_spool_id = 0;
   if (backendMode() != BACKEND_BAMBUDDY) return notSupported("CreateSpoolFromTag");
@@ -768,6 +769,7 @@ int backendCreateSpoolFromTag(const char* material, const char* subtype,
   ns.core_weight     = core_weight;
   ns.nozzle_temp_min = nozzle_temp_min;
   ns.nozzle_temp_max = nozzle_temp_max;
+  ns.cost_per_kg     = cost_per_kg;
   ns.weight_used = (float)label_weight - remaining_weight;
   if (ns.weight_used < 0.0f) ns.weight_used = 0.0f;
 

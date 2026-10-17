@@ -8,6 +8,9 @@
 
 # SpoolmanScale
 
+> [!NOTE]
+> **Fork AreYouThereAndi2/SpoolmanScale:** Werkbank-Terminal mit Barcode-Scanner, Drucker-Steckdosen, Abfrage nach dem Druck und neuen Spulen über filament_to_bambuddy. Installation, Verkabelung und Updates auf Deutsch: **[WERKBANK.md](WERKBANK.md)**. Web Flasher dieses Forks: [areyouthereandi2.github.io/SpoolmanScale](https://areyouthereandi2.github.io/SpoolmanScale/). Die Links weiter unten führen zum Original-Projekt.
+
 ### *One Scale to rule them all.*
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/xadskCrPFu)

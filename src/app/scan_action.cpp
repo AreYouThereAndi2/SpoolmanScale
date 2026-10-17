@@ -133,14 +133,23 @@ static void offerNewSpool(const char* code) {
   }
   if (s_ns.label_weight <= 0) s_ns.label_weight = 1000;
 
-  char title[48], q[112], hint[64];
+  char title[48], q[112], hint[128];
   snprintf(title, sizeof(title), T(STR_NS_TITLE), s_ns.barcode);
   snprintf(q, sizeof(q), "%s %s%s%s%s%s", s_ns.brand, s_ns.material,
            s_ns.subtype[0] ? " " : "", s_ns.subtype,
            s_ns.color_name[0] ? " - " : "", s_ns.color_name);
-  snprintf(hint, sizeof(hint), T(STR_NS_HINT), s_ns.label_weight, s_ns.source);
+  int n = snprintf(hint, sizeof(hint), T(STR_NS_HINT), s_ns.label_weight, s_ns.source);
   releaseScreen(&s_ns_scr);
-  s_ns_scr = questionBoxCreate(title, q, hint, STR_NS_CREATE, 0, STR_CANCEL, &s_ns_answer);
+  // A shop price is only a suggestion: it goes onto the spool when the
+  // green answer is tapped, the middle one creates the spool without it.
+  if (s_ns.price_avg > 0.0f && n > 0 && n < (int)sizeof(hint)) {
+    hint[n++] = '\n';
+    snprintf(hint + n, sizeof(hint) - n, T(STR_NS_PRICE), s_ns.price_avg, s_ns.price_cur);
+    s_ns_scr = questionBoxCreate(title, q, hint, STR_NS_WITH_PRICE, STR_NS_NO_PRICE, STR_CANCEL,
+                                 &s_ns_answer);
+  } else {
+    s_ns_scr = questionBoxCreate(title, q, hint, STR_NS_CREATE, 0, STR_CANCEL, &s_ns_answer);
+  }
 }
 
 // The answer, one pass after the tap.
@@ -149,20 +158,24 @@ static void newSpoolAnswerTick() {
   const uint8_t a = s_ns_answer;
   releaseScreen(&s_ns_scr);
   s_ns_answer = QB_NONE;
-  if (a != QB_LEFT) return;
+  if (a != QB_LEFT && a != QB_MID) return;
 
+  // The price is for the whole spool, BamBuddy wants it per kilogram.
+  const float cost_per_kg = (a == QB_LEFT && s_ns.price_avg > 0.0f)
+      ? s_ns.price_avg * 1000.0f / (float)s_ns.label_weight : 0.0f;
   int new_id = 0;
   // An unopened spool from the box: all of it is still there.
   const int code = serverReachNote(backendCreateSpoolFromTag(
       s_ns.material, s_ns.subtype, s_ns.brand, s_ns.rgba, s_ns.color_name,
       s_ns.label_weight, s_ns.core_weight, (float)s_ns.label_weight,
-      s_ns.temp_min, s_ns.temp_max, &new_id, 8000), true);
+      s_ns.temp_min, s_ns.temp_max, &new_id, 8000, cost_per_kg), true);
   if ((code != 200 && code != 201) || new_id <= 0) {
     logSDf("Scan: creating from %s failed, HTTP %d", s_ns.barcode, code);
     scanStatus(UI_COL_BAD_TEXT, STR_NS_FAILED, code);
     return;
   }
-  logSDf("Scan: spool %d created from %s (%s)", new_id, s_ns.barcode, s_ns.source);
+  logSDf("Scan: spool %d created from %s (%s), %.2f per kg", new_id, s_ns.barcode, s_ns.source,
+         cost_per_kg);
   spoolCacheForget("spool created from a barcode");
   // The next scan of the same box should find the filament directly.
   const char* base = scanSpoolmanBase();

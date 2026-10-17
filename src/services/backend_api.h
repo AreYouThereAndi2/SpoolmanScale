@@ -263,11 +263,13 @@ int  backendCreateSpool(const char* base_url, int template_spool_id, int filamen
 // Creates a spool from what a Bambu tag carries, for the case where no
 // template fits. BamBuddy only - Spoolman and FilaMan want a filament_id, and
 // a tag cannot supply one. remaining_weight is the net reading of the scale.
+// cost_per_kg 0 leaves the price unset.
 int  backendCreateSpoolFromTag(const char* material, const char* subtype,
        const char* brand, const char* rgba, const char* color_name,
        int label_weight, int core_weight,
        float remaining_weight, int nozzle_temp_min, int nozzle_temp_max,
-       int* out_spool_id = nullptr, uint32_t timeout_ms = 8000);
+       int* out_spool_id = nullptr, uint32_t timeout_ms = 8000,
+       float cost_per_kg = 0.0f);
 
 // Turns the colour value on a tag into a name the backend knows. Empty output
 // means "no name for this colour", which is not an error.

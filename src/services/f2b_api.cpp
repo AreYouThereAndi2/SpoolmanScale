@@ -60,6 +60,7 @@ int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
   filter["barcode"] = true;
   filter["source"]  = true;
   filter["fields"]  = true;
+  filter["price"]   = true;
   JsonDocument doc;
   const DeserializationError err =
       deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
@@ -81,9 +82,17 @@ int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
   out.core_weight  = f["core_weight"] | 0;
   out.temp_min     = f["nozzle_temp_min"] | 0;
   out.temp_max     = f["nozzle_temp_max"] | 0;
+  // Only a UPCitemdb answer carries one: the mean of the shop offers it found
+  // for the code, in the currency most of them use.
+  JsonObjectConst pr = doc["price"];
+  out.price_avg    = pr["avg"] | 0.0f;
+  out.price_offers = pr["count"] | 0;
+  copyStr(out.price_cur, sizeof(out.price_cur), pr["currency"] | "");
+  if (out.price_avg < 0.0f) out.price_avg = 0.0f;
   out.found = out.material[0] != '\0' && strcmp(out.source, "none") != 0 &&
               strcmp(out.source, "amazon") != 0;
-  logSDf("f2b: %s -> %s, %s %s %s %s, %d g", code, out.source, out.brand, out.material,
-         out.subtype, out.color_name, out.label_weight);
+  logSDf("f2b: %s -> %s, %s %s %s %s, %d g, %.2f %s", code, out.source, out.brand,
+         out.material, out.subtype, out.color_name, out.label_weight, out.price_avg,
+         out.price_cur);
   return 200;
 }

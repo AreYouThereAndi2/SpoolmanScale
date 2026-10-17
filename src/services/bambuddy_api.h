@@ -204,6 +204,7 @@ struct BbNewSpool {
   float       weight_used     = 0.0f;     // consumption, not remaining
   int         nozzle_temp_min = 0;
   int         nozzle_temp_max = 0;
+  float       cost_per_kg     = 0.0f;     // 0 leaves the price unset
 };
 
 // Creates a spool in whichever inventory is active.

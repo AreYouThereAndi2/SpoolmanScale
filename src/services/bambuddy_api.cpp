@@ -975,6 +975,10 @@ int bbCreateSpool(const char* base_url, const char* api_key,
   // not part of the schema and are dropped server side without complaint.
   if (spool.nozzle_temp_min > 0) body["nozzle_temp_min"] = spool.nozzle_temp_min;
   if (spool.nozzle_temp_max > 0) body["nozzle_temp_max"] = spool.nozzle_temp_max;
+  // Both modes take it: the built-in inventory stores it as is, the Spoolman
+  // proxy turns it into the spool's price and answers 207 when Spoolman
+  // refuses that, with the spool created all the same.
+  if (spool.cost_per_kg > 0.0f) body["cost_per_kg"] = roundf(spool.cost_per_kg * 100.0f) / 100.0f;
 
   char url[192];
   snprintf(url, sizeof(url), "%s%s/spools", base_url, bbInventoryBase());
