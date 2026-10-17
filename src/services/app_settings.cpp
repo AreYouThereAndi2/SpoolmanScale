@@ -16,6 +16,7 @@
 #include "ota_state.h"
 #include "prefs_store.h"
 #include "settings_registry.h"
+#include "spool_extras.h"
 #include "tag_field.h"
 #include "tag_write.h"
 #include "time_service.h"
@@ -50,6 +51,7 @@ void loadPrefs() {
   }
   zero_offset = prefsGetInt("zero_offset", 0);
   bag_weight_g = prefsGetFloat("bag_weight", 50.0f);
+  spoolExtrasLoad();
 
   spool_list_limit = (int)prefsGetUChar("list_limit", 30);
   if (spool_list_limit < 5) spool_list_limit = 5;

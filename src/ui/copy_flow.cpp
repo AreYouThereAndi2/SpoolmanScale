@@ -30,6 +30,7 @@
 #include "ui/navigation.h"
 #include "ui/spoolman_lookup.h"
 #include "services/spool_tare.h"
+#include "services/spool_extras.h"
 #include "ui/theme.h"
 
 // From ui/spool_flow.cpp, see the same line in spoolman_lookup.cpp: what counts
@@ -125,7 +126,7 @@ bool finishCopyFlow(int new_spool_id, const char* tray_uuid_override) {
 void doCopySpoolCreate(int template_spool_id, int template_filament_id,
                        float template_initial, float template_spool_w) {
   if (!wifi_ok) return;
-  float netto = scale_weight_g - template_spool_w;
+  float netto = spoolExtrasBareReading() - template_spool_w;
   if (netto < 0) netto = 0;
 
   int new_id = 0;
