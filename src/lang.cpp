@@ -3248,6 +3248,105 @@ const char* const STRINGS[][3] = {
   { "Letzter Code",
     "Last code",
     "Dernier code" },  // STR_W_SCANNER_LAST
+  { "Druck fertig",
+    "Print finished",
+    "Terminé" },  // STR_PD_TITLE
+  { "War der Druck erfolgreich?",
+    "Did the print come out well?",
+    "Impression réussie ?" },  // STR_PD_Q_OK
+  { "Erfolgreich",
+    "Good",
+    "Réussie" },  // STR_PD_GOOD
+  { "Fehlgeschlagen",
+    "Failed",
+    "Ratée" },  // STR_PD_BAD
+  { "Später",
+    "Later",
+    "Après" },  // STR_PD_LATER
+  { "Ist eine Spule leer?",
+    "Is a spool empty?",
+    "Bobine vide ?" },  // STR_PD_Q_SPOOL
+  { "Leer: archivieren",
+    "Empty: archive",
+    "Vide : archiver" },  // STR_PD_EMPTY
+  { "Rest nachwiegen",
+    "Weigh the rest",
+    "Peser le reste" },  // STR_PD_REWEIGH
+  { "Weiter",
+    "Next",
+    "Suite" },  // STR_PD_NEXT
+  { "Drucker ausschalten?",
+    "Switch the printer off?",
+    "Éteindre ?" },  // STR_PD_Q_POWER
+  { "Erst wenn Düse und Bett unter %d °C sind.",
+    "Only once nozzle and bed are below %d °C.",
+    "Dès que buse et plateau sont sous %d °C." },  // STR_PD_POWER_HINT
+  { "BamBuddy schaltet selbst ab (Auto Power Off).",
+    "BamBuddy switches it off itself (Auto Power Off).",
+    "BamBuddy l'éteint lui-même (Auto Power Off)." },  // STR_PD_POWER_BB
+  { "Nach Abkühlen aus",
+    "Off when cool",
+    "Éteindre à froid" },  // STR_PD_OFF_COOL
+  { "Anlassen",
+    "Leave on",
+    "Laisser" },  // STR_PD_LEAVE_ON
+  { "Leere Spule auflegen zum Archivieren",
+    "Put the empty spool down to archive",
+    "Posez la bobine vide à archiver" },  // STR_PD_PUT_EMPTY
+  { "Spule auflegen, sie wird gewogen",
+    "Put the spool down to weigh it",
+    "Posez la bobine pour la peser" },  // STR_PD_PUT_WEIGH
+  { "Aus unter %d °C, jetzt %d °C",
+    "Off below %d °C, now %d °C",
+    "Arrêt sous %d °C, %d °C" },  // STR_PD_COOLING
+  { "Drucker ausgeschaltet",
+    "Printer switched off",
+    "Imprimante éteinte" },  // STR_PD_OFF_DONE
+  { "Schalten fehlgeschlagen (%d)",
+    "Switching failed (%d)",
+    "Échec commande (%d)" },  // STR_PD_OFF_FAIL
+  { "Bewertung nicht gespeichert (%d)",
+    "Verdict not saved (%d)",
+    "Avis non enregistré (%d)" },  // STR_PD_VERDICT_FAIL
+  { "Steckdose",
+    "Smart plug",
+    "Prise" },  // STR_PWR_TITLE
+  { "Drucker einschalten?",
+    "Switch the printer on?",
+    "Allumer ?" },  // STR_PWR_Q_ON
+  { "Drucker ausschalten?",
+    "Switch the printer off?",
+    "Éteindre ?" },  // STR_PWR_Q_OFF
+  { "Einschalten",
+    "Switch on",
+    "Allumer" },  // STR_PWR_ON_NOW
+  { "Sofort aus",
+    "Off now",
+    "Éteindre" },  // STR_PWR_OFF_NOW
+  { "An",
+    "On",
+    "On" },  // STR_PWR_ON
+  { "Aus",
+    "Off",
+    "Off" },  // STR_PWR_OFF
+  { "kühlt",
+    "cooling",
+    "refroid." },  // STR_PWR_COOLING
+  { "Drucker eingeschaltet",
+    "Printer switched on",
+    "Imprimante allumée" },  // STR_PWR_SWITCHED_ON
+  { "Keine Steckdose in BamBuddy",
+    "No smart plug in BamBuddy",
+    "Pas de prise dans BamBuddy" },  // STR_PWR_NO_PLUG
+  { "Nach dem Druck fragen",
+    "Ask after a print",
+    "Avis après impression" },  // STR_BB_PRINTDONE
+  { "Erfolg, leere Spule, Ausschalten",
+    "Outcome, empty spool, power",
+    "Résultat, bobine, arrêt" },  // STR_BB_PRINTDONE_SUB
+  { "Wenn BamBuddy einen fertigen Druck ohne Bewertung archiviert hat, fragt die Waage nach: War er erfolgreich (wird in BamBuddy gespeichert), ist eine Spule leer (die nächste aufgelegte Spule wird zum Archivieren angeboten) oder soll sie nachgewogen werden, und soll der Drucker aus.\n\nGilt für den Drucker, der in der AMS-Ansicht gewählt ist. Ausschalten wartet, bis Düse und Bett abgekühlt sind, außer BamBuddy hat Auto Power Off für die Steckdose eingestellt.\n\nDer API-Schlüssel braucht dafür zusätzlich \"Manage Archives\" und \"Control Printer\".",
+    "When BamBuddy has archived a finished print that nobody has judged yet, the scale asks: did it come out well (saved in BamBuddy), is a spool empty (the next spool put down is offered for archiving) or does it need weighing, and should the printer go off.\n\nApplies to the printer picked in the AMS view. Switching off waits until nozzle and bed have cooled, unless BamBuddy has Auto Power Off set for the plug.\n\nThe API key also needs \"Manage Archives\" and \"Control Printer\" for this.",
+    "Quand BamBuddy a archivé une impression terminée sans avis, la balance demande : est-elle réussie (enregistré dans BamBuddy), une bobine est-elle vide (la prochaine bobine posée est proposée à l'archivage) ou faut-il la peser, et faut-il éteindre l'imprimante.\n\nConcerne l'imprimante choisie dans la vue AMS. L'arrêt attend que buse et plateau aient refroidi, sauf si BamBuddy a réglé Auto Power Off pour la prise.\n\nLa clé API doit aussi avoir « Manage Archives » et « Control Printer »." },  // STR_BB_PRINTDONE_INFO
 };
 
 StringID tagWriteResultString(uint8_t code) {

@@ -340,3 +340,58 @@ int  bbDiagnosticResult(const char* base_url, const char* api_key,
 int  bbWriteTagResult(const char* base_url, const char* api_key, int spool_id,
        const char* tag_uid, bool success, const char* message,
        uint32_t timeout_ms = 5000);
+
+// --- printer control ----------------------------------------
+// The printer's main smart plug, the way BamBuddy's printer card picks it,
+// and what Auto Power Off is set to on it. API key: "Read Status" to read,
+// "Control Printer" to switch.
+
+struct BbPlug {
+  int  id;
+  bool found;            // the printer has a plug at all
+  bool controllable;     // not an MQTT plug, which only reports
+  bool state_known;
+  bool on;
+  bool reachable;
+  bool auto_off;         // BamBuddy switches it off after a print itself
+  bool off_by_temp;      // ... once the bed is below off_temp_c
+  int  off_temp_c;
+  char name[32];
+};
+
+// 200 with found false for a printer that has no plug.
+int bbGetPrinterPlug(const char* base_url, const char* api_key, int printer_id,
+                     BbPlug& out, uint32_t timeout_ms = 6000);
+// Switches at once. BamBuddy has no cooldown on a manual off; waiting for it
+// is the caller's business (services/printer_watch.h).
+int bbSwitchPlug(const char* base_url, const char* api_key, int plug_id, bool on,
+                 uint32_t timeout_ms = 8000);
+
+struct BbPrinterLive {
+  bool  valid;
+  bool  connected;
+  bool  awaiting_plate_clear;
+  char  state[16];       // Bambu's gcode_state: IDLE, RUNNING, FINISH, FAILED...
+  int   progress;        // percent, -1 unknown
+  float nozzle_c;        // -1 unknown
+  float bed_c;
+};
+int bbGetPrinterLive(const char* base_url, const char* api_key, int printer_id,
+                     BbPrinterLive& out, uint32_t timeout_ms = 6000);
+
+// The newest print archive of a printer: BamBuddy writes one per job, with
+// the outcome and, once someone gave it, the verdict.
+struct BbJob {
+  int   id;              // 0 = no job at all
+  bool  finished;        // completed_at is set
+  bool  has_verdict;
+  float grams;
+  char  status[16];      // printing, completed, failed, stopped, cancelled...
+  char  name[48];
+};
+int bbGetLastJob(const char* base_url, const char* api_key, int printer_id,
+                 BbJob& out, uint32_t timeout_ms = 6000);
+// The answer to "did it work": user_verdict good or reject. API key: "Manage
+// Archives".
+int bbSetJobVerdict(const char* base_url, const char* api_key, int job_id, bool good,
+                    uint32_t timeout_ms = 6000);

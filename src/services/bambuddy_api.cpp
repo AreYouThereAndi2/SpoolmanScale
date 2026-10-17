@@ -1719,3 +1719,136 @@ int bbWriteTagResult(const char* base_url, const char* api_key, int spool_id,
   serializeJson(body, out);
   return sendJson("POST", url, api_key, out, timeout_ms, nullptr);
 }
+
+// ------------------------------------------------------------
+//  PRINTER CONTROL: SMART PLUG, LIVE STATE, LAST JOB
+//  Verified against the BamBuddy 1.2.5.7 source on 17.10.2026:
+//  routes/smart_plugs.py, routes/printers.py, routes/archives.py.
+// ------------------------------------------------------------
+
+int bbGetPrinterPlug(const char* base_url, const char* api_key, int printer_id,
+                     BbPlug& out, uint32_t timeout_ms) {
+  out = BbPlug{};
+  if (!hasBaseUrl(base_url) || printer_id <= 0) return -1;
+
+  char url[192];
+  snprintf(url, sizeof(url), "%s/api/v1/smart-plugs/by-printer/%d", base_url, printer_id);
+  JsonDocument filter;
+  filter["id"]                 = true;
+  filter["name"]               = true;
+  filter["plug_type"]          = true;
+  filter["enabled"]            = true;
+  filter["auto_off"]           = true;
+  filter["off_delay_mode"]     = true;
+  filter["off_temp_threshold"] = true;
+  filter["last_state"]         = true;
+  JsonDocument doc;
+  int code = getJson(url, api_key, doc, timeout_ms, nullptr, &filter);
+  if (code != 200) return code;
+  // The route answers a bare null for a printer without a plug.
+  if (doc.isNull() || !(doc["id"].is<int>())) return 200;
+
+  out.id = doc["id"] | 0;
+  out.found = out.id > 0;
+  strncpy(out.name, doc["name"] | "", sizeof(out.name) - 1);
+  // MQTT plugs only report; the control route refuses them with 400.
+  const char* type = doc["plug_type"] | "";
+  out.controllable = strcmp(type, "mqtt") != 0;
+  out.auto_off = doc["auto_off"] | false;
+  const char* mode = doc["off_delay_mode"] | "";
+  out.off_by_temp = strcmp(mode, "temperature") == 0;
+  out.off_temp_c = doc["off_temp_threshold"] | 0;
+  const char* last = doc["last_state"] | "";
+  out.state_known = last[0] != '\0';
+  out.on = strcmp(last, "ON") == 0;
+
+  // The live answer, when the plug gives one. last_state is only what
+  // BamBuddy saw last, which is stale after a switch made at the plug itself.
+  snprintf(url, sizeof(url), "%s/api/v1/smart-plugs/%d/status", base_url, out.id);
+  JsonDocument sdoc;
+  if (getJson(url, api_key, sdoc, timeout_ms, nullptr, nullptr) == 200) {
+    const char* st = sdoc["state"] | "";
+    out.reachable = sdoc["reachable"] | true;
+    if (st[0]) {
+      out.state_known = true;
+      out.on = strcmp(st, "ON") == 0;
+    }
+  }
+  return 200;
+}
+
+int bbSwitchPlug(const char* base_url, const char* api_key, int plug_id, bool on,
+                 uint32_t timeout_ms) {
+  if (!hasBaseUrl(base_url) || plug_id <= 0) return -1;
+  char url[192];
+  snprintf(url, sizeof(url), "%s/api/v1/smart-plugs/%d/control", base_url, plug_id);
+  return sendJson("POST", url, api_key, on ? "{\"action\":\"on\"}" : "{\"action\":\"off\"}",
+                  timeout_ms, nullptr);
+}
+
+int bbGetPrinterLive(const char* base_url, const char* api_key, int printer_id,
+                     BbPrinterLive& out, uint32_t timeout_ms) {
+  out = BbPrinterLive{};
+  if (!hasBaseUrl(base_url) || printer_id <= 0) return -1;
+  char url[192];
+  snprintf(url, sizeof(url), "%s/api/v1/printers/%d/status", base_url, printer_id);
+  JsonDocument filter;
+  filter["connected"]            = true;
+  filter["state"]                = true;
+  filter["progress"]             = true;
+  filter["awaiting_plate_clear"] = true;
+  filter["temperatures"]["nozzle"] = true;
+  filter["temperatures"]["bed"]    = true;
+  JsonDocument doc;
+  int code = getJson(url, api_key, doc, timeout_ms, nullptr, &filter);
+  if (code != 200) return code;
+  out.valid     = true;
+  out.connected = doc["connected"] | false;
+  strncpy(out.state, doc["state"] | "", sizeof(out.state) - 1);
+  out.progress  = (int)(doc["progress"] | -1.0f);
+  out.awaiting_plate_clear = doc["awaiting_plate_clear"] | false;
+  out.nozzle_c  = doc["temperatures"]["nozzle"] | -1.0f;
+  out.bed_c     = doc["temperatures"]["bed"] | -1.0f;
+  return 200;
+}
+
+int bbGetLastJob(const char* base_url, const char* api_key, int printer_id,
+                 BbJob& out, uint32_t timeout_ms) {
+  out = BbJob{};
+  if (!hasBaseUrl(base_url) || printer_id <= 0) return -1;
+  char url[192];
+  snprintf(url, sizeof(url), "%s/api/v1/archives/?printer_id=%d&limit=1", base_url, printer_id);
+  JsonDocument filter;
+  JsonObject f = filter.to<JsonArray>().add<JsonObject>();
+  f["id"]                  = true;
+  f["status"]              = true;
+  f["print_name"]          = true;
+  f["user_verdict"]        = true;
+  f["completed_at"]        = true;
+  f["filament_used_grams"] = true;
+  JsonDocument doc;
+  int code = getJson(url, api_key, doc, timeout_ms, nullptr, &filter);
+  if (code != 200) return code;
+  JsonObjectConst j = doc[0];
+  if (j.isNull()) return 200;
+  out.id = j["id"] | 0;
+  strncpy(out.status, j["status"] | "", sizeof(out.status) - 1);
+  strncpy(out.name, j["print_name"] | "", sizeof(out.name) - 1);
+  out.has_verdict = !j["user_verdict"].isNull();
+  out.finished = !j["completed_at"].isNull();
+  out.grams = j["filament_used_grams"] | 0.0f;
+  return 200;
+}
+
+int bbSetJobVerdict(const char* base_url, const char* api_key, int job_id, bool good,
+                    uint32_t timeout_ms) {
+  if (!hasBaseUrl(base_url) || job_id <= 0) return -1;
+  char url[192];
+  snprintf(url, sizeof(url), "%s/api/v1/archives/%d", base_url, job_id);
+  // "dialog" is the source a client may claim for an answer given in its own
+  // question; BamBuddy stamps the others itself.
+  return sendJson("PATCH", url, api_key,
+                  good ? "{\"user_verdict\":\"good\",\"user_verdict_source\":\"dialog\"}"
+                       : "{\"user_verdict\":\"reject\",\"user_verdict_source\":\"dialog\"}",
+                  timeout_ms, nullptr);
+}

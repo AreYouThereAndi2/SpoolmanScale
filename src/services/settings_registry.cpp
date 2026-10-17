@@ -10,6 +10,7 @@
 #include "services/bambuddy_api.h"
 
 #include "services/ams_assign.h"
+#include "services/printer_watch.h"
 #include "services/backend.h"
 #include "services/prefs_store.h"
 #include "services/tag_field.h"
@@ -193,6 +194,13 @@ const SettingDesc SETTINGS[] = {
   { "bb_ams_ask", SET_BOOL, SC_BAMBUDDY, &g_ams_pick_ask,
     STR_BBAMS_ASK, STR_BBAMS_ASK_SUB, STR_BBAMS_ASK_INFO, LV_SYMBOL_SHUFFLE,
     0, 0, nullptr,
+    nullptr, nullptr, nullptr, OPEN_NONE, nullptr, false },
+
+  // The question after a print: verdict, empty spool, power. Read off the
+  // archive of the printer picked in the AMS view.
+  { "bb_printdone", SET_BOOL, SC_BAMBUDDY, &g_print_watch,
+    STR_BB_PRINTDONE, STR_BB_PRINTDONE_SUB, STR_BB_PRINTDONE_INFO, LV_SYMBOL_OK,
+    1, 0, nullptr,
     nullptr, nullptr, nullptr, OPEN_NONE, nullptr, false },
 };
 

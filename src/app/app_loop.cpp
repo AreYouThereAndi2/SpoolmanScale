@@ -19,6 +19,8 @@
 #include "app/perf_monitor.h"
 #include "app/render_bench.h"
 #include "app/scan_action.h"
+#include "services/printer_watch.h"
+#include "ui/printer_popups.h"
 #include "hardware/lvgl_mem.h"
 #include "services/partition_layout.h"
 #include "ui/partition_popup.h"
@@ -647,6 +649,11 @@ void appLoop() {
   // A code from the barcode scanner, if one is fitted and has read something.
   perfSection("scan");
   scanActionTick();
+  // BamBuddy: the finished print and the cooldown switch-off, then whatever
+  // the printer questions and the power chip have parked.
+  perfSection("printer");
+  printerWatchTick();
+  printerPopupsTick();
   perfSection("sdlog");
   sdLoggerTick();
   // Keeps a sector erased ahead of the ring in flash, so a log line never
@@ -1473,6 +1480,14 @@ void appLoop() {
     } else if (aw_adopted_seen) {
       logSD("RemoteLink: adopted spool taken off, weighing ends");
       aw_adopted = false;
+      // The bay picker hangs off the removal for a tagged spool; a spool
+      // taken on by id (a scanned label) has no tag to be removed, so its
+      // lift is this moment. The weighing above noted it already.
+      if (amsPickActive() && wifi_ok && sm_found && !sm_archived && sm_id > 0 &&
+          amsPickHasPending() && amsPickPendingSpoolId() == sm_id) {
+        logSDf("AMSPICK: asking for adopted spool id=%d", sm_id);
+        amsPickShow();
+      }
     }
   }
 
