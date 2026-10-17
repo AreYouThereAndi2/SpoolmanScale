@@ -8,6 +8,7 @@
 #include "lang.h"
 #include "services/phomemo_m_series.h"
 #include "services/prefs_store.h"
+#include "services/tspl_printer.h"
 
 // 203 dpi: dots per millimetre, as a ratio so the rounding stays exact.
 #define LP_DOTS_PER_254MM 2030
@@ -28,16 +29,24 @@ static const LabelPrinterProfile PROFILE_NONE = {};
 // M220: 2 inch head, 576 dots, takes stock from 20 to 75 mm wide; the vendor
 // app pads narrower rows to 576 and wider ones to 648. Hardware proven.
 static const LabelPrinterProfile PROFILE_M220 = {
-  LP_MODEL_M220, "M220", 40, 30, 20, 75, 10, 150, 576, 648, false, true
+  LP_MODEL_M220, "M220", 40, 30, 20, 75, 10, 150, 576, 648, false, true, "Phomemo"
 };
 // M110: 48 mm head, 384 dots. Same transport, own preamble. A user printed
 // with this profile on an M100 (09.2026), which proves the M110 bytes.
 static const LabelPrinterProfile PROFILE_M110 = {
-  LP_MODEL_M110, "M110", 40, 30, 20, 48, 10, 150, 384, 384, false, true
+  LP_MODEL_M110, "M110", 40, 30, 20, 48, 10, 150, 384, 384, false, true, "Phomemo"
 };
 // M100: the M110's head and bytes under its own name, so a user finds it.
 static const LabelPrinterProfile PROFILE_M100 = {
-  LP_MODEL_M100, "M100", 40, 30, 20, 48, 10, 150, 384, 384, false, true
+  LP_MODEL_M100, "M100", 40, 30, 20, 48, 10, 150, 384, 384, false, true, "Phomemo"
+};
+
+// TYPONOS PM240: TSPL over the Phomemo GATT pair, 48 mm head, 384 dots. The
+// vendor app prints 50 mm labels on it, the head covering their middle 48 mm,
+// so the row may be 400 dots and the driver cuts it to the head. Read off a
+// capture of the app; not yet printed from the scale, hence experimental.
+static const LabelPrinterProfile PROFILE_PM240 = {
+  LP_MODEL_PM240, "PM240", 50, 30, 20, 50, 10, 150, 384, 400, true, true, "TYPONOS"
 };
 
 // The two sizes printed and checked on the M220 for 0.8.0 (Nikolai,
@@ -77,6 +86,7 @@ const LabelPrinterProfile& labelPrinterProfile(LabelPrinterModel model) {
     case LP_MODEL_M220: return PROFILE_M220;
     case LP_MODEL_M110: return PROFILE_M110;
     case LP_MODEL_M100: return PROFILE_M100;
+    case LP_MODEL_PM240: return PROFILE_PM240;
     default:            return PROFILE_NONE;
   }
 }
@@ -233,8 +243,14 @@ LabelPrintResult labelPrinterPrint(const LabelPrinterConfig& c, const LabelRaste
   if (image.width > p.max_raster_width) return LP_TOO_WIDE;
   if (!labelPrinterRasterFits(c.model, image, c.media_width_mm, c.media_length_mm))
     return LP_MEDIA_MISMATCH;
-  const PhomemoModel pm = c.model == LP_MODEL_M220 ? PHOMEMO_M220 : PHOMEMO_M110;
-  switch (phomemoMSeriesPrint(pm, c.address, image, progress)) {
+  BleWriteResult sent;
+  if (c.model == LP_MODEL_PM240) {
+    sent = tsplPrint(c.address, image, c.media_width_mm, c.media_length_mm, progress);
+  } else {
+    const PhomemoModel pm = c.model == LP_MODEL_M220 ? PHOMEMO_M220 : PHOMEMO_M110;
+    sent = phomemoMSeriesPrint(pm, c.address, image, progress);
+  }
+  switch (sent) {
     case BLE_WRITE_OK:                return LP_OK;
     case BLE_WRITE_OFF:               return LP_BLE_OFF;
     case BLE_WRITE_INIT_FAILED:       return LP_BLE_INIT;

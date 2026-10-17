@@ -76,6 +76,7 @@ static LabelPrinterModel nextModel(LabelPrinterModel m) {
   switch (m) {
     case LP_MODEL_M220: return LP_MODEL_M110;
     case LP_MODEL_M110: return LP_MODEL_M100;
+    case LP_MODEL_M100: return LP_MODEL_PM240;
     default:            return LP_MODEL_M220;
   }
 }
