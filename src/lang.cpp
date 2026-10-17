@@ -3230,9 +3230,9 @@ const char* const STRINGS[][3] = {
   { "Scanner angeschlossen",
     "Scanner fitted",
     "Lecteur installé" },  // STR_W_SCANNER_ON
-  { "Ein UART-Scanner wie der GM861 liest Spoolman-QR-Codes, Spulen-Links und den EAN-Code auf dem Karton. Versorgung mit 3,3 V, nicht 5 V. Standard: TX des Scanners an GPIO 21, RX an GPIO 13. GPIO 10 und 11 sind der I2C-Bus und stehen nicht zur Wahl.",
-    "A UART scanner such as the GM861 reads Spoolman QR codes, spool links and the EAN on the box. Supply it with 3.3 V, not 5 V. Default: the scanner's TX to GPIO 21, its RX to GPIO 13. GPIO 10 and 11 are the I2C bus and cannot be chosen.",
-    "Un lecteur UART comme le GM861 lit les QR codes Spoolman, les liens de bobine et l'EAN de la boîte. Alimentation 3,3 V, pas 5 V. Par défaut : TX du lecteur sur GPIO 21, RX sur GPIO 13. GPIO 10 et 11 sont le bus I2C et ne peuvent pas être choisis." },  // STR_W_SCANNER_HINT
+  { "Ein UART-Scanner wie der GM861 liest Spoolman-QR-Codes, Spulen-Links und den EAN-Code auf dem Karton. Standard: TX des Scanners an GPIO 13 (Pin 6, weiß), RX optional an GPIO 21 (Pin 8). Der Anschluss hat nur 5 V: den TX-Pegel des Scanners vorher messen, er muss bei 3,3 V liegen. GPIO 10 und 11 sind der I2C-Bus und stehen nicht zur Wahl.",
+    "A UART scanner such as the GM861 reads Spoolman QR codes, spool links and the EAN on the box. Default: the scanner's TX to GPIO 13 (pin 6, white), its RX optionally to GPIO 21 (pin 8). The connector only has 5 V: measure the scanner's TX level first, it must sit at 3.3 V. GPIO 10 and 11 are the I2C bus and cannot be chosen.",
+    "Un lecteur UART comme le GM861 lit les QR codes Spoolman, les liens de bobine et l'EAN de la boîte. Par défaut : TX du lecteur sur GPIO 13 (broche 6, blanc), RX en option sur GPIO 21 (broche 8). Le connecteur n'a que 5 V : mesurez d'abord le niveau TX du lecteur, il doit être à 3,3 V. GPIO 10 et 11 sont le bus I2C et ne peuvent pas être choisis." },  // STR_W_SCANNER_HINT
   { "RX-Pin (an TX des Scanners)",
     "RX pin (to the scanner's TX)",
     "Broche RX (TX du lecteur)" },  // STR_W_SCANNER_RX

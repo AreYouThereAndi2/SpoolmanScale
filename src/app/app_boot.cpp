@@ -206,7 +206,7 @@ void appSetup() {
     logSDf("NFC init FAILED (bus: %s)", i2cScanLast());
   }
   // After the reader: the PN532 constructor leaves an input mode on its IRQ
-  // placeholder pin, which is the scanner's default TX, and the UART has to
+  // placeholder pin, which is the scanner's default RX, and the UART has to
   // be the last to configure it.
   scannerBegin();
   f2bLoadSettings();

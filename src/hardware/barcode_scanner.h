@@ -13,17 +13,20 @@
 //  the few settings worth changing are made by scanning the setup codes in
 //  its manual, so the TX line is optional.
 //
-//  Pins: the extension header brings out GPIO 10 to 14 and 21. 10 and 11
-//  are the I2C bus of the reader and the ADC, 12 is the PN532 reset this
-//  firmware hands the library on every device whose wire was not moved, and
-//  14 is that wire when it was. That leaves 21 for the scanner's TX (our RX)
-//  and 13 for our TX: 13 is only the PN532 IRQ placeholder, set to an input
-//  once in the constructor and never read in I2C mode. The scanner is
-//  started after the reader for exactly that reason - the UART takes the
-//  pin over from whatever the constructor left on it.
+//  Pins: the I/O connector brings out 5 V, GND and GPIO 10, 11, 12, 13, 14
+//  and 21 on pins 1 to 8. 10 and 11 (pins 3, 4) are the I2C bus of the
+//  reader and the ADC, 12 (pin 5) is the PN532 reset this firmware hands the
+//  library on every device whose wire was not moved, and 14 (pin 7) is that
+//  wire when it was. That leaves 13 on pin 6 - white, unused on the 7-pin
+//  cable - for the scanner's TX (our RX). 13 is only the PN532 IRQ
+//  placeholder, set to an input once in the constructor and never read in
+//  I2C mode; the scanner is started after the reader so the UART takes the
+//  pin over from it. Our TX goes to 21 on pin 8, which the 7-pin cable does
+//  not reach: it is optional, a GM861 reads without ever being spoken to.
 //
-//  Supply: the GM861 is a 3.3 V part with 3.3 V TTL levels. Feed it from
-//  the 3.3 V pin; the ESP32-S3 is not 5 V tolerant.
+//  Supply: the connector has 5 V and no 3.3 V. Feed the scanner from 5 V
+//  only if its manual allows it, and measure its TX line idling before it
+//  goes to GPIO 13: it must sit at 3.3 V, the ESP32-S3 is not 5 V tolerant.
 //
 //  Reading runs on the loop: the UART driver buffers in its own interrupt,
 //  a code is 8 to 100 bytes, and the loop comes round every few ms. A task
@@ -31,13 +34,13 @@
 // ============================================================
 
 #define SCANNER_CODE_MAX      128
-#define SCANNER_DEFAULT_RX    21     // EXT_IO6, the scanner's TX goes here
-#define SCANNER_DEFAULT_TX    13     // EXT_IO4, the scanner's RX, optional
+#define SCANNER_DEFAULT_RX    13     // EXT_IO4, pin 6: the scanner's TX goes here
+#define SCANNER_DEFAULT_TX    21     // EXT_IO6, pin 8: the scanner's RX, optional
 #define SCANNER_DEFAULT_BAUD  9600
 
 extern bool     g_scanner_enabled;   // NVS "scan_on",   default off
-extern int8_t   g_scanner_rx_pin;    // NVS "scan_rx",   default 21
-extern int8_t   g_scanner_tx_pin;    // NVS "scan_tx",   default 13, -1 = none
+extern int8_t   g_scanner_rx_pin;    // NVS "scan_rx",   default 13
+extern int8_t   g_scanner_tx_pin;    // NVS "scan_tx",   default 21, -1 = none
 extern uint32_t g_scanner_baud;      // NVS "scan_baud", default 9600
 
 // Reads the settings and opens the UART when the scanner is switched on.

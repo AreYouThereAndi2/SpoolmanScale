@@ -237,7 +237,7 @@ static String body() {
   h += T(STR_W_SCANNER_HINT);
   h += F("</span></div>");
   {
-    static const int8_t kPins[] = {21, 13, 12, 14};
+    static const int8_t kPins[] = {13, 21, 12, 14};
     for (int which = 0; which < 2; which++) {
       const bool tx = (which == 1);
       const int cur = tx ? g_scanner_tx_pin : g_scanner_rx_pin;
