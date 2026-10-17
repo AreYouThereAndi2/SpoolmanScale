@@ -231,11 +231,19 @@ jobs:
 
           git diff --cached --quiet || git commit -m "CI: publish $VERSION"
           git push origin ci-main:main
+      - name: Find the release notes
+        id: notes
+        run: |
+          # Written by hand before tagging. Without a file the release gets
+          # no body rather than failing.
+          NOTES=".github/release-notes/${{ steps.version.outputs.version }}.md"
+          if [ -f "$NOTES" ]; then echo "path=$NOTES" >> $GITHUB_OUTPUT; else echo "::warning::no $NOTES"; fi
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: SpoolmanScale ${{ steps.version.outputs.version }}
+          body_path: ${{ steps.notes.outputs.path }}
           # Only internal builds carrying a beta counter are pre-releases.
           # A public tag has to become the real "latest", because the update
           # button downloads from releases/latest/download/ and that path skips
