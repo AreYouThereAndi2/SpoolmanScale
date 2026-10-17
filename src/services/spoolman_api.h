@@ -140,3 +140,16 @@ int spoolmanPatchFilamentSpoolWeight(const char* base_url, int filament_id, floa
 int spoolmanPatchVendorEmptySpoolWeight(const char* base_url, int vendor_id, float spool_weight, uint32_t timeout_ms = 5000);
 int spoolmanPatchSpoolLocation(const char* base_url, int spool_id, const char* location_name = nullptr, uint32_t timeout_ms = 8000);
 int spoolmanPatchSpoolLastDried(const char* base_url, int spool_id, const char* iso_datetime, uint32_t timeout_ms = 5000);
+
+// --- barcode lookups -----------------------------------------
+// The active spools of one filament, as a Spoolman spool array cut down to
+// id, weights, location and the filament's name, material and vendor.
+int spoolmanFindSpoolsByFilament(const char* base_url, int filament_id, JsonDocument& doc,
+                                 uint32_t timeout_ms = 6000);
+// The active spools of every filament whose article_number is exactly
+// `article`, the EAN on the box. Two requests: the filaments, then their
+// spools. 200 with an empty array when no filament carries the number;
+// out_filaments says how many did, so "known filament, no spool left" can be
+// told from "never heard of it".
+int spoolmanFindSpoolsByArticle(const char* base_url, const char* article, JsonDocument& doc,
+                                int* out_filaments = nullptr, uint32_t timeout_ms = 6000);

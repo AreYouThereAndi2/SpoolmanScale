@@ -4253,3 +4253,36 @@ bool isSpoolFlowIdInputOpen() {
 bool isSpoolFlowLinkEntryOpen() {
   return scr_link_entry != nullptr;
 }
+
+bool spoolFlowTakeScannedId(int spool_id, bool unknown_tag_present) {
+  if (spool_id <= 0) return false;
+  // A warning about the last id is open: that question comes first.
+  if (scr_link_warn_a || scr_link_warn_b) return false;
+  if (id_input_open) {
+    // The keypad is open: the scan is the id that would have been typed,
+    // for the copy flow as much as for the link.
+    if (id_popup_is_copy) {
+      copy_id_lookup_pending = spool_id;
+    } else {
+      link_id_lookup_pending  = spool_id;
+      link_id_lookup_is_bambu = id_popup_is_bambu;
+    }
+    logSDf("Scan: spool %d taken as the keypad id", spool_id);
+    return true;
+  }
+  if (scr_link_entry) {
+    const bool is_bambu = link_flow_is_bambu;
+    closeLinkEntryPopup();
+    link_id_lookup_pending  = spool_id;
+    link_id_lookup_is_bambu = is_bambu;
+    logSDf("Scan: spool %d answers the open link entry", spool_id);
+    return true;
+  }
+  if (unknown_tag_present) {
+    link_id_lookup_pending  = spool_id;
+    link_id_lookup_is_bambu = strlen(g_tag.material) > 0;
+    logSDf("Scan: spool %d links the unknown tag on the reader", spool_id);
+    return true;
+  }
+  return false;
+}

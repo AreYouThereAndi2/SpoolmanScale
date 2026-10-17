@@ -3191,6 +3191,63 @@ const char* const STRINGS[][3] = {
   { "Noch nicht übernommen", "Not applied yet",
     "Pas encore appliqué" },  // STR_W_THEME_UNSAVED
   { "Ins AMS",                         "Into AMS",                            "Dans l'AMS" },  // STR_AMS_MAIN_ASSIGN
+  { "Scan: verknüpfe mit Spule #%d",
+    "Scan: linking to spool #%d",
+    "Scan : liaison bobine #%d" },  // STR_SCAN_LINKING
+  { "Tag liegt auf, Scan #%d ignoriert",
+    "Tag on reader, scan #%d ignored",
+    "Tag présent, scan #%d ignoré" },  // STR_SCAN_TAG_WINS
+  { "Spule #%d geladen, jetzt wiegen",
+    "Spool #%d loaded, weigh it now",
+    "Bobine #%d chargée, pesez-la" },  // STR_SCAN_SPOOL_LOADED
+  { "Spule #%d nicht gefunden",
+    "Spool #%d not found",
+    "Bobine #%d introuvable" },  // STR_SCAN_SPOOL_MISSING
+  { "%s: keine aktive Spule",
+    "%s: no active spool",
+    "%s : aucune bobine" },  // STR_SCAN_NO_ACTIVE
+  { "EAN %s unbekannt",
+    "EAN %s unknown",
+    "EAN %s inconnu" },  // STR_SCAN_UNKNOWN_ARTICLE
+  { "%d Spulen passen, bitte auflegen",
+    "%d spools match, put it down",
+    "%d bobines, posez-la" },  // STR_SCAN_MANY_PUT_DOWN
+  { "EAN-Suche braucht Spoolman",
+    "EAN lookup needs Spoolman",
+    "EAN : Spoolman requis" },  // STR_SCAN_NEEDS_SPOOLMAN
+  { "Scan-Suche fehlgeschlagen (%d)",
+    "Scan lookup failed (%d)",
+    "Échec recherche (%d)" },  // STR_SCAN_LOOKUP_FAILED
+  { "Scan: kein WLAN",
+    "Scan: no Wi-Fi",
+    "Scan : sans Wi-Fi" },  // STR_SCAN_NO_WIFI
+  { "Code nicht erkannt",
+    "Code not recognised",
+    "Code non reconnu" },  // STR_SCAN_UNKNOWN_CODE
+  { "Barcode-Scanner",
+    "Barcode scanner",
+    "Lecteur de codes-barres" },  // STR_W_C_SCANNER
+  { "Scanner angeschlossen",
+    "Scanner fitted",
+    "Lecteur installé" },  // STR_W_SCANNER_ON
+  { "Ein UART-Scanner wie der GM861 liest Spoolman-QR-Codes, Spulen-Links und den EAN-Code auf dem Karton. Versorgung mit 3,3 V, nicht 5 V. Standard: TX des Scanners an GPIO 21, RX an GPIO 13. GPIO 10 und 11 sind der I2C-Bus und stehen nicht zur Wahl.",
+    "A UART scanner such as the GM861 reads Spoolman QR codes, spool links and the EAN on the box. Supply it with 3.3 V, not 5 V. Default: the scanner's TX to GPIO 21, its RX to GPIO 13. GPIO 10 and 11 are the I2C bus and cannot be chosen.",
+    "Un lecteur UART comme le GM861 lit les QR codes Spoolman, les liens de bobine et l'EAN de la boîte. Alimentation 3,3 V, pas 5 V. Par défaut : TX du lecteur sur GPIO 21, RX sur GPIO 13. GPIO 10 et 11 sont le bus I2C et ne peuvent pas être choisis." },  // STR_W_SCANNER_HINT
+  { "RX-Pin (an TX des Scanners)",
+    "RX pin (to the scanner's TX)",
+    "Broche RX (TX du lecteur)" },  // STR_W_SCANNER_RX
+  { "TX-Pin (an RX des Scanners)",
+    "TX pin (to the scanner's RX)",
+    "Broche TX (RX du lecteur)" },  // STR_W_SCANNER_TX
+  { "Baudrate",
+    "Baud rate",
+    "Débit en bauds" },  // STR_W_SCANNER_BAUD
+  { "nicht verbunden",
+    "not connected",
+    "non connecté" },  // STR_W_SCANNER_NONE
+  { "Letzter Code",
+    "Last code",
+    "Dernier code" },  // STR_W_SCANNER_LAST
 };
 
 StringID tagWriteResultString(uint8_t code) {

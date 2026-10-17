@@ -13,6 +13,7 @@
 #include <WebServer.h>
 
 #include "app/app_state.h"
+#include "hardware/barcode_scanner.h"
 #include "hardware/display.h"
 #include "hardware/sd_logger.h"
 #include "services/device_name.h"
@@ -220,6 +221,72 @@ static String body() {
   h += T(STR_W_TZ_NOTE);
   h += F("</span></div><span class='msg' id='tz-s'></span></div>");
 
+  // ---- barcode scanner ---------------------------------------------------
+  // Pins and speed only. What a code does is decided on the device, where
+  // the pad and the screen say what it is for.
+  h += F("<div class='card'><h2>");
+  h += T(STR_W_C_SCANNER);
+  h += F("</h2><div class='field'>"
+         "<label class='check'><span class='switch'>"
+         "<input id='sc' type='checkbox'");
+  if (g_scanner_enabled) h += F(" checked");
+  h += F("><i></i></span>");
+  h += T(STR_W_SCANNER_ON);
+  h += F("</label><span class='hint'>");
+  h += T(STR_W_SCANNER_HINT);
+  h += F("</span></div>");
+  {
+    static const int8_t kPins[] = {21, 13, 12, 14};
+    for (int which = 0; which < 2; which++) {
+      const bool tx = (which == 1);
+      const int cur = tx ? g_scanner_tx_pin : g_scanner_rx_pin;
+      h += F("<div class='field'><label>");
+      h += T(tx ? STR_W_SCANNER_TX : STR_W_SCANNER_RX);
+      h += tx ? F("</label><select id='sc-tx'>") : F("</label><select id='sc-rx'>");
+      if (tx) {
+        h += F("<option value='-1'");
+        if (cur < 0) h += F(" selected");
+        h += F(">");
+        h += T(STR_W_SCANNER_NONE);
+        h += F("</option>");
+      }
+      for (int8_t pin : kPins) {
+        h += F("<option value='");
+        h += String((int)pin);
+        h += F("'");
+        if (cur == pin) h += F(" selected");
+        h += F(">GPIO ");
+        h += String((int)pin);
+        h += F("</option>");
+      }
+      h += F("</select></div>");
+    }
+    static const uint32_t kBauds[] = {9600, 19200, 38400, 57600, 115200};
+    h += F("<div class='field'><label>");
+    h += T(STR_W_SCANNER_BAUD);
+    h += F("</label><select id='sc-bd'>");
+    for (uint32_t b : kBauds) {
+      h += F("<option value='");
+      h += String(b);
+      h += F("'");
+      if (g_scanner_baud == b) h += F(" selected");
+      h += F(">");
+      h += String(b);
+      h += F("</option>");
+    }
+    h += F("</select></div>");
+  }
+  if (scannerLastCode()[0]) {
+    h += F("<div class='field'><label>");
+    h += T(STR_W_SCANNER_LAST);
+    h += F("</label><code>");
+    h += htmlEsc(scannerLastCode());
+    h += F("</code></div>");
+  }
+  h += F("<button id='sc-b' class='quiet block'>");
+  h += T(STR_W_SAVE);
+  h += F("</button><span class='msg' id='sc-s'></span></div>");
+
   // ---- how the panel behaves --------------------------------------------
   // Waking on load had been documented in user_options.h since it was written
   // and was never switchable: loadPrefs() read it, display_power.cpp acted on
@@ -350,6 +417,11 @@ static String body() {
          "post('/api/snapmaker',want?'1':'0').then(r=>{"
          "if(!r.ok)$('sn').checked=!want;"
          "flash('sn-s',r.ok?WS.ok:WS.err,!r.ok,4000);});});"
+         // One line for the whole scanner: the UART is reopened with all four
+         // values at once, so they go out together.
+         "$('sc-b').addEventListener('click',()=>{"
+         "postFlash('/api/scanner',($('sc').checked?'1':'0')+','+$('sc-rx').value+','"
+         "+$('sc-tx').value+','+$('sc-bd').value,'sc-s',4000);});"
          "$('sf-rb').addEventListener('click',doRestart);"
          "$('ll-b').addEventListener('click',setLimits);"
          "$('gn-b').addEventListener('click',setGain);"
@@ -491,6 +563,23 @@ static void routes(WebServer &srv) {
     logSDf("Web: Snapmaker tags -> %s", on ? "ON" : "OFF");
     srv.send(200, "application/json", on ? "{\"ok\":true,\"v\":1}"
                                          : "{\"ok\":true,\"v\":0}");
+  });
+
+  // "on,rx,tx,baud". Validated by scannerConfigure(), which keeps the stored
+  // value for a pin it does not accept; the loop reopens the UART.
+  srv.on("/api/scanner", HTTP_POST, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_SETTINGS))) return;
+    int on = 0, rx = SCANNER_DEFAULT_RX, tx = SCANNER_DEFAULT_TX;
+    unsigned long baud = SCANNER_DEFAULT_BAUD;
+    const String body = srv.arg("plain");
+    if (sscanf(body.c_str(), "%d,%d,%d,%lu", &on, &rx, &tx, &baud) != 4 ||
+        !scannerPinAllowed(rx, false) || !scannerPinAllowed(tx, true) || rx == tx) {
+      srv.send(400, "application/json", "{\"ok\":false}");
+      return;
+    }
+    scannerConfigure(on != 0, rx, tx, (uint32_t)baud);
+    logSDf("Web: scanner -> %s RX=%d TX=%d %lu", on ? "ON" : "OFF", rx, tx, baud);
+    srv.send(200, "application/json", "{\"ok\":true}");
   });
 
   srv.on("/api/gain", HTTP_POST, [&srv]() {

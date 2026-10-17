@@ -606,3 +606,71 @@ int spoolmanPatchSpoolLastDried(const char* base_url, int spool_id, const char* 
   serializeJson(body, payload);
   return patchJson(String(base_url) + "/api/v1/spool/" + spool_id, payload, timeout_ms);
 }
+
+// --- barcode lookups -----------------------------------------
+
+// What a candidate list needs and nothing more: a spool record is 1.5 kB with
+// its filament and vendor, and a popular filament may have a dozen spools.
+static void scanSpoolFilter(JsonDocument& f) {
+  JsonObject e = f.add<JsonObject>();
+  e["id"] = true;
+  e["remaining_weight"] = true;
+  e["spool_weight"] = true;
+  e["location"] = true;
+  e["filament"]["id"] = true;
+  e["filament"]["name"] = true;
+  e["filament"]["material"] = true;
+  e["filament"]["spool_weight"] = true;
+  e["filament"]["vendor"]["name"] = true;
+  e["filament"]["vendor"]["empty_spool_weight"] = true;
+}
+
+int spoolmanFindSpoolsByFilament(const char* base_url, int filament_id, JsonDocument& doc,
+                                 uint32_t timeout_ms) {
+  if (!hasBaseUrl(base_url) || filament_id <= 0) return -1;
+  JsonDocument filter;
+  scanSpoolFilter(filter);
+  String path = String("/api/v1/spool?allow_archived=false&filament.id=") + filament_id;
+  return spoolmanGetJson(base_url, path.c_str(), doc, timeout_ms, &filter);
+}
+
+int spoolmanFindSpoolsByArticle(const char* base_url, const char* article, JsonDocument& doc,
+                                int* out_filaments, uint32_t timeout_ms) {
+  if (out_filaments) *out_filaments = 0;
+  if (!hasBaseUrl(base_url) || !article || !article[0]) return -1;
+
+  // Spoolman matches this filter as a partial, case insensitive search, so
+  // every filament that comes back is checked for the exact number.
+  JsonDocument ffilter;
+  JsonObject fe = ffilter.add<JsonObject>();
+  fe["id"] = true;
+  fe["article_number"] = true;
+  JsonDocument fdoc;
+  String fpath = String("/api/v1/filament?article_number=") + urlEncode(article);
+  int code = spoolmanGetJson(base_url, fpath.c_str(), fdoc, timeout_ms, &ffilter);
+  if (code != 200) return code;
+
+  String ids;
+  int count = 0;
+  for (JsonObjectConst f : fdoc.as<JsonArrayConst>()) {
+    String nr = f["article_number"] | "";
+    nr.trim();
+    if (nr != article) continue;
+    const int id = f["id"] | 0;
+    if (id <= 0) continue;
+    if (ids.length()) ids += ',';
+    ids += id;
+    count++;
+  }
+  if (out_filaments) *out_filaments = count;
+  if (count == 0) {
+    doc.clear();
+    doc.to<JsonArray>();
+    return 200;
+  }
+
+  JsonDocument filter;
+  scanSpoolFilter(filter);
+  String path = String("/api/v1/spool?allow_archived=false&filament.id=") + ids;
+  return spoolmanGetJson(base_url, path.c_str(), doc, timeout_ms, &filter);
+}
