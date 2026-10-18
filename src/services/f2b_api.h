@@ -10,7 +10,7 @@
 //  own cache of confirmed codes first, then the Open Filament Database and
 //  SpoolmanDB-Community cross-referenced. The scale only asks it
 //
-//    GET <f2b>/api/lookup?barcode=<code>
+//    GET <f2b>/api/lookup?barcode=<code>&quick=1
 //
 //  and creates the spool itself through the backend, which knows whether
 //  BamBuddy keeps its own inventory or a Spoolman server behind it. A code
@@ -41,8 +41,12 @@ struct F2bProduct {
   char  price_cur[8];      // its currency, e.g. EUR; may be empty
   int   price_offers;      // offers averaged, 0 for the recorded price range
   int   spoolman_filament_id;  // the user's own Spoolman filament it matched, 0 for none
+  bool  core_from_filament;    // core_weight is that filament's own (or its maker's)
+  char  slicer_filament[16];       // the slicer profile BamBuddy has imported, "" for none
+  char  slicer_filament_name[96];
 };
 
 // HTTP code; 200 with found false for a code nobody knows. -1 when no
-// address is set.
-int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms = 15000);
+// address is set. Half a minute: the app may be rebuilding a filament
+// database, and the lookup is all the scale waits for.
+int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms = 30000);

@@ -55,8 +55,9 @@ BbInventoryMode bbInventoryMode();
 // Which inventory is used: asked of BamBuddy (the default), or set by hand.
 // The question needs the API key's "Read Status"; a key without it is
 // refused with 403 and the guess is local, which is wrong behind Spoolman.
-// A hand-set choice takes effect at once and the question then only fetches
-// the Spoolman url. NVS "bb_inv".
+// A hand-set choice counts only while BamBuddy refuses the question: when it
+// answers, its inventory is used (the device calls follow it anyway), and
+// bbChoiceOverruled() says so. NVS "bb_inv".
 enum BbInventoryChoice : uint8_t {
   BB_CHOICE_AUTO     = 0,
   BB_CHOICE_LOCAL    = 1,
@@ -75,6 +76,15 @@ const char* bbInventoryBase();
 // drying date side channel, which writes extra.last_dried straight to
 // Spoolman because BamBuddy has no field for it.
 const char* bbSpoolmanUrl();
+
+// The Spoolman address set on the scale for BamBuddy's Spoolman mode, ""
+// for BamBuddy's own. Needed when BamBuddy reaches its Spoolman under a name
+// the scale cannot (a Docker service name). NVS "bb_sm_url".
+const char* bbSpoolmanUrlOverride();
+void bbSetSpoolmanUrlOverride(const char* url);
+// True when BamBuddy answered with the other inventory than the one set by
+// hand here: BamBuddy's is used, and the settings page says so.
+bool bbChoiceOverruled();
 
 // Stable device id derived from the MAC, "ssc-<12 hex>", mirroring the
 // "sb-<mac>" of BamBuddy's own daemon. Needs no NVS entry.
@@ -223,6 +233,10 @@ struct BbNewSpool {
   // A filament in the user's Spoolman the spool is made on, with all it
   // carries. Spoolman mode only; 0 lets BamBuddy find or make one.
   int         spoolman_filament_id = 0;
+  // The slicer profile: a local preset's id ("50") and its name. Both
+  // inventories take them; nullptr leaves the spool without one.
+  const char* slicer_filament      = nullptr;
+  const char* slicer_filament_name = nullptr;
 };
 
 // Creates a spool in whichever inventory is active.
