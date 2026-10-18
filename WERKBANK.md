@@ -191,6 +191,18 @@ Fehler bitte mit dem Log melden: Weboberfläche → Log, oder die SD-Karte (fall
    - Box-EAN scannen: Die Waage findet die Spule oder bietet an, sie anzulegen.
    - Erscheint nichts, im Log nach `Scan:` suchen. Kommen dort unlesbare Zeichen an, stimmt die Baudrate nicht.
 
+## BamBuddy mit Spoolman: welches Inventar?
+
+BamBuddy antwortet unter zwei Adressen: mit seinem eigenen Inventar (`/api/v1/inventory`) oder, wenn in BamBuddy Spoolman eingeschaltet ist, mit Spoolman dahinter (`/api/v1/spoolman/inventory`). Die Waage fragt BamBuddy, welches gilt (`/api/v1/settings/spoolman`). Das beantwortet BamBuddy aber nur einem API-Schlüssel mit **„Read Status“**. Ohne diese Berechtigung nahm die Waage stillschweigend das eigene Inventar, was hinter Spoolman falsch ist.
+
+**Weboberfläche → Backend → BamBuddy-Inventar:**
+
+- **Automatisch (BamBuddy fragen):** wie bisher. Darunter steht, was gerade gilt, oder in Rot „BamBuddy verweigert die Abfrage (HTTP 403)“.
+- **Spoolman (über BamBuddy):** fest, ohne zu fragen.
+- **BamBuddys eigenes Inventar:** fest.
+
+filament_to_bambuddy hat denselben Schalter, unten auf seiner Seite. Mit BamBuddy + Spoolman bei beiden **Spoolman** wählen oder dem Schlüssel „Read Status“ geben.
+
 ## Zubehör an der Spule abziehen (Clip, RFID-Halter)
 
 Die Waage kennt das Leergewicht der Spule aus FilaMan, Spoolman oder BamBuddy. Ein Filament-Clip oder ein RFID-Halter an der Spule wiegt zusätzlich ein paar Gramm, und die zieht die Waage auf Wunsch ebenfalls ab.

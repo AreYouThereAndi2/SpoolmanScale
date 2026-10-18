@@ -10,6 +10,7 @@
 
 #include "hardware/sd_logger.h"
 #include "services/device_name.h"
+#include "services/prefs_store.h"
 #include "services/http_progress.h"
 #include "services/spool_cache.h"
 #include "services/spool_color.h"
@@ -44,6 +45,45 @@ struct SpiRamAllocator : ArduinoJson::Allocator {
 
 static BbInventoryMode s_mode = BB_INV_LOCAL;
 static char s_spoolman_url[96] = "";
+static int  s_choice = -1;        // BbInventoryChoice, -1 until read from NVS
+static int  s_last_probe = 0;
+
+BbInventoryChoice bbInventoryChoice() {
+  if (s_choice < 0) {
+    const uint8_t v = prefsGetUChar("bb_inv", BB_CHOICE_AUTO);
+    s_choice = v <= BB_CHOICE_SPOOLMAN ? v : BB_CHOICE_AUTO;
+  }
+  return (BbInventoryChoice)s_choice;
+}
+
+int bbLastModeProbe() { return s_last_probe; }
+
+// The mode a hand-set choice stands for, or the asked one under auto.
+static BbInventoryMode chosenMode(BbInventoryMode asked) {
+  switch (bbInventoryChoice()) {
+    case BB_CHOICE_LOCAL:    return BB_INV_LOCAL;
+    case BB_CHOICE_SPOOLMAN: return BB_INV_SPOOLMAN;
+    default:                 return asked;
+  }
+}
+
+void bbSetInventoryChoice(BbInventoryChoice choice) {
+  if (choice > BB_CHOICE_SPOOLMAN) choice = BB_CHOICE_AUTO;
+  s_choice = choice;
+  prefsPutUChar("bb_inv", (uint8_t)choice);
+  // A hand-set mode holds from now on; auto waits for the next question,
+  // which the health check asks every 30 s.
+  if (choice != BB_CHOICE_AUTO) {
+    const BbInventoryMode mode = chosenMode(s_mode);
+    if (mode != s_mode) {
+      if (mode == BB_INV_LOCAL) s_spoolman_url[0] = '\0';
+      s_mode = mode;
+      spoolCacheForget("BamBuddy inventory set by hand");
+    }
+  }
+  logSDf("BamBuddy: inventory choice %s",
+         choice == BB_CHOICE_LOCAL ? "local" : choice == BB_CHOICE_SPOOLMAN ? "Spoolman" : "auto");
+}
 
 static bool hasBaseUrl(const char* base_url) {
   return base_url && strlen(base_url) > 7;   // longer than "http://"
@@ -182,7 +222,7 @@ int bbDetectInventoryMode(const char* base_url, const char* api_key,
   BbInventoryMode mode = BB_INV_LOCAL;
   char spoolman_url[sizeof(s_spoolman_url)] = "";
   if (!hasBaseUrl(base_url)) {
-    s_mode = mode;
+    s_mode = chosenMode(mode);
     s_spoolman_url[0] = '\0';
     return -1;
   }
@@ -192,11 +232,15 @@ int bbDetectInventoryMode(const char* base_url, const char* api_key,
 
   JsonDocument doc;
   int code = getJson(url, api_key, doc, timeout_ms, nullptr, nullptr);
+  s_last_probe = code;
   if (code != 200) {
     // 403 means the key was created without "Read Status". Local mode is the
     // right guess then: it is what a fresh install runs, and a wrong guess
-    // surfaces as a 404 on the first spool read rather than silently.
-    logSDf("BamBuddy: inventory mode unknown (HTTP %d), assuming local", code);
+    // surfaces as a 404 on the first spool read rather than silently. A mode
+    // set by hand stands, without the Spoolman url the answer would carry.
+    mode = chosenMode(mode);
+    logSDf("BamBuddy: inventory mode unknown (HTTP %d), %s", code,
+           mode == BB_INV_SPOOLMAN ? "Spoolman as set" : "assuming local");
     s_mode = mode;
     s_spoolman_url[0] = '\0';
     return code;
@@ -212,6 +256,10 @@ int bbDetectInventoryMode(const char* base_url, const char* api_key,
     size_t n = strlen(spoolman_url);
     while (n > 0 && spoolman_url[n - 1] == '/') spoolman_url[--n] = '\0';
   }
+  // A hand-set mode wins over the answer; the url comes along when Spoolman
+  // is what BamBuddy runs.
+  mode = chosenMode(mode);
+  if (mode == BB_INV_LOCAL) spoolman_url[0] = '\0';
   // The url first: a reader that sees the new mode then also sees its url.
   memcpy(s_spoolman_url, spoolman_url, sizeof(s_spoolman_url));
   s_mode = mode;
@@ -259,7 +307,8 @@ const char* bbSpoolmanUrl() { return s_spoolman_url; }
 // Only this direction is loud. Switched the other way, the local routes keep
 // answering and the next regular check moves the scale over.
 static bool bbModeMovedAway(int code, const char* base_url, const char* api_key) {
-  if (code != 400 || s_mode != BB_INV_SPOOLMAN) return false;
+  // A mode set by hand does not move on its own.
+  if (code != 400 || s_mode != BB_INV_SPOOLMAN || bbInventoryChoice() != BB_CHOICE_AUTO) return false;
   bbDetectInventoryMode(base_url, api_key, BB_MODE_RECHECK_MS);
   if (s_mode == BB_INV_SPOOLMAN) return false;
   logSD("BamBuddy: the Spoolman proxy refused a read, the inventory is local now - asking again");

@@ -3410,6 +3410,21 @@ const char* const STRINGS[][3] = {
   { "Standard",
     "Default",
     "Par défaut" },  // STR_W_EXTRAS_DEFAULT
+  { "BamBuddy-Inventar",
+    "BamBuddy inventory",
+    "Inventaire BamBuddy" },  // STR_W_BB_INV
+  { "Automatisch (BamBuddy fragen)",
+    "Automatic (ask BamBuddy)",
+    "Automatique (demander à BamBuddy)" },  // STR_W_BB_INV_AUTO
+  { "Spoolman (über BamBuddy)",
+    "Spoolman (through BamBuddy)",
+    "Spoolman (via BamBuddy)" },  // STR_W_BB_INV_SM
+  { "BamBuddys eigenes Inventar",
+    "BamBuddy's own inventory",
+    "Inventaire propre de BamBuddy" },  // STR_W_BB_INV_LOCAL
+  { "BamBuddy verweigert die Abfrage (HTTP %d): dem API-Schlüssel fehlt „Read Status“. Inventar hier fest wählen.",
+    "BamBuddy refused the question (HTTP %d): the API key lacks “Read Status”. Set the inventory here.",
+    "BamBuddy refuse la requête (HTTP %d) : la clé API n’a pas « Read Status ». Choisissez l’inventaire ici." },  // STR_W_BB_INV_DENIED
 };
 
 StringID tagWriteResultString(uint8_t code) {
