@@ -754,7 +754,7 @@ int backendCreateSpoolFromTag(const char* material, const char* subtype,
                               int label_weight, int core_weight, float remaining_weight,
                               int nozzle_temp_min, int nozzle_temp_max,
                               int* out_spool_id, uint32_t timeout_ms,
-                              float cost_per_kg) {
+                              float cost_per_kg, int spoolman_filament_id) {
   HttpStallTime stall(__func__);   // the loop stands still for this call
   if (out_spool_id) *out_spool_id = 0;
   if (backendMode() != BACKEND_BAMBUDDY) return notSupported("CreateSpoolFromTag");
@@ -770,10 +770,19 @@ int backendCreateSpoolFromTag(const char* material, const char* subtype,
   ns.nozzle_temp_min = nozzle_temp_min;
   ns.nozzle_temp_max = nozzle_temp_max;
   ns.cost_per_kg     = cost_per_kg;
+  ns.spoolman_filament_id = spoolman_filament_id;
   ns.weight_used = (float)label_weight - remaining_weight;
   if (ns.weight_used < 0.0f) ns.weight_used = 0.0f;
 
-  return bbCreateSpool(backendBaseUrl(), bambuddyApiKey(), ns, out_spool_id, timeout_ms);
+  int code = bbCreateSpool(backendBaseUrl(), bambuddyApiKey(), ns, out_spool_id, timeout_ms);
+  if (code == 404 && spoolman_filament_id > 0) {
+    // The filament was deleted in Spoolman since the lookup: BamBuddy finds
+    // or makes one by the fields instead.
+    logSDf("BamBuddy: Spoolman filament %d gone, creating without it", spoolman_filament_id);
+    ns.spoolman_filament_id = 0;
+    code = bbCreateSpool(backendBaseUrl(), bambuddyApiKey(), ns, out_spool_id, timeout_ms);
+  }
+  return code;
 }
 
 int backendCreateSpoolField(const char* base_url, const char* field_name,

@@ -82,6 +82,9 @@ int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
   out.core_weight  = f["core_weight"] | 0;
   out.temp_min     = f["nozzle_temp_min"] | 0;
   out.temp_max     = f["nozzle_temp_max"] | 0;
+  // In Spoolman mode the app looks in the user's own filaments first; the
+  // spool is then made on the one it found.
+  out.spoolman_filament_id = f["spoolman_filament_id"] | 0;
   // Only a UPCitemdb answer carries one: the mean of the shop offers it found
   // for the code, in the currency most of them use.
   JsonObjectConst pr = doc["price"];
