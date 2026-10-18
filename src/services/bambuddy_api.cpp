@@ -1028,6 +1028,8 @@ int bbCreateSpool(const char* base_url, const char* api_key,
   // proxy turns it into the spool's price and answers 207 when Spoolman
   // refuses that, with the spool created all the same.
   if (spool.cost_per_kg > 0.0f) body["cost_per_kg"] = roundf(spool.cost_per_kg * 100.0f) / 100.0f;
+  if (spool.spoolman_filament_id > 0 && s_mode == BB_INV_SPOOLMAN)
+    body["spoolman_filament_id"] = spool.spoolman_filament_id;
 
   char url[192];
   snprintf(url, sizeof(url), "%s%s/spools", base_url, bbInventoryBase());

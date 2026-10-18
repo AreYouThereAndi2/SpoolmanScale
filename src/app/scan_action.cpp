@@ -169,7 +169,7 @@ static void newSpoolAnswerTick() {
   const int code = serverReachNote(backendCreateSpoolFromTag(
       s_ns.material, s_ns.subtype, s_ns.brand, s_ns.rgba, s_ns.color_name,
       s_ns.label_weight, s_ns.core_weight, (float)s_ns.label_weight,
-      s_ns.temp_min, s_ns.temp_max, &new_id, 8000, cost_per_kg), true);
+      s_ns.temp_min, s_ns.temp_max, &new_id, 8000, cost_per_kg, s_ns.spoolman_filament_id), true);
   if ((code != 200 && code != 201) || new_id <= 0) {
     logSDf("Scan: creating from %s failed, HTTP %d", s_ns.barcode, code);
     scanStatus(UI_COL_BAD_TEXT, STR_NS_FAILED, code);

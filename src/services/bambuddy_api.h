@@ -220,6 +220,9 @@ struct BbNewSpool {
   int         nozzle_temp_min = 0;
   int         nozzle_temp_max = 0;
   float       cost_per_kg     = 0.0f;     // 0 leaves the price unset
+  // A filament in the user's Spoolman the spool is made on, with all it
+  // carries. Spoolman mode only; 0 lets BamBuddy find or make one.
+  int         spoolman_filament_id = 0;
 };
 
 // Creates a spool in whichever inventory is active.

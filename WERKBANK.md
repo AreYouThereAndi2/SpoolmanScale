@@ -203,6 +203,8 @@ BamBuddy antwortet unter zwei Adressen: mit seinem eigenen Inventar (`/api/v1/in
 
 filament_to_bambuddy hat denselben Schalter, unten auf seiner Seite. Mit BamBuddy + Spoolman bei beiden **Spoolman** wählen oder dem Schlüssel „Read Status“ geben.
 
+**Deine Spoolman-Filamente:** Im Spoolman-Modus sucht filament_to_bambuddy zu einem gescannten Code zuerst in deinen eigenen Spoolman-Filamenten (Artikelnummer, sonst Marke, Material und Farbe). Findet es eines, legt die Waage die neue Spule genau auf diesem Filament an, mit seinen Temperaturen, seinem Leergewicht und seinem Preis, statt BamBuddy ein neues, fast leeres Filament machen zu lassen. Ist das Filament inzwischen gelöscht, legt sie die Spule wie bisher an.
+
 ## Zubehör an der Spule abziehen (Clip, RFID-Halter)
 
 Die Waage kennt das Leergewicht der Spule aus FilaMan, Spoolman oder BamBuddy. Ein Filament-Clip oder ein RFID-Halter an der Spule wiegt zusätzlich ein paar Gramm, und die zieht die Waage auf Wunsch ebenfalls ab.

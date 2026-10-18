@@ -26,7 +26,7 @@ void f2bSetUrl(const char* url);
 
 struct F2bProduct {
   bool found;              // the app knew the code and has a material
-  char source[24];         // cache, ofd, spoolmandb-community, upcitemdb, none, amazon
+  char source[24];         // cache, spoolman, tigertag, ofd, spoolmandb-community, upcitemdb, none, amazon
   char barcode[24];        // the code as the app canonicalised it
   char brand[32];
   char material[16];
@@ -40,6 +40,7 @@ struct F2bProduct {
   float price_avg;         // mean shop price of one spool, 0 when none known
   char  price_cur[8];      // its currency, e.g. EUR; may be empty
   int   price_offers;      // offers averaged, 0 for the recorded price range
+  int   spoolman_filament_id;  // the user's own Spoolman filament it matched, 0 for none
 };
 
 // HTTP code; 200 with found false for a code nobody knows. -1 when no
