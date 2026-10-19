@@ -44,58 +44,67 @@ Alles bezieht sich auf den Drucker, der in der AMS-Ansicht gewählt ist (Chip �
 
 ## Teile und Werkzeug
 
-Die vollständige Teileliste mit Links steht in [BUILDING.md](BUILDING.md#parts-list).
+Die vollständige Teileliste mit Links steht in [BUILDING.md](BUILDING.md#parts-list). Diese Anleitung geht von den Teilen in der Tabelle aus. Für die Waage gibt es zwei Wege: **HX711** (günstig, im Set mit der Wägezelle) oder **NAU7802** (Adafruit). Die Firmware erkennt beide von selbst.
 
 | Teil | Modell | Für Stufe |
 |---|---|---|
 | Display + Rechner | WT32-SC01 Plus (ESP32-S3, 3,5 Zoll, mit 7-poligem I/O-Kabel) | 0 |
 | USB-C-Kabel | ein **Datenkabel**, kein reines Ladekabel | 0 |
-| Waagen-ADC | NAU7802 (Adafruit oder Nachbau) | 1 |
-| Wägezelle | YZC-133, 2 kg oder 5 kg | 1 |
-| NFC-Leser | PN532 (rote Platine, mit DIP-Schaltern) | 2 |
-| Gehäuse, Schrauben, USB-C-Einbaubuchse | siehe BUILDING.md | 3 |
-| Barcode-Scanner (optional) | GM861 mit 6-poligem SH-1,0-Kabel | 4 |
-| 3,3-V-Spannungsregler (nur für den Scanner) | kleines AMS1117-3.3- oder AP2112-3.3-Modul | 4 |
+| 3,3-V-Spannungsregler | kleines AMS1117-3.3- oder AP2112-3.3-Modul | 1 (HX711), 4 |
+| Waagen-ADC | **HX711**-Platine (im Set mit der Wägezelle) *oder* NAU7802 | 1 |
+| Wägezelle | Biegebalken 5 oder 10 kg (10 kg reicht bis zu sehr schweren Spulen) | 1 |
+| NFC-Leser | PN532 „NFC Module V3“ (rote Platine mit zwei DIP-Schaltern) | 2 |
+| Gehäuse, Schrauben | siehe BUILDING.md | 3 |
+| USB-C-Einbaukabel | USB-C Stecker auf Einbaubuchse, ca. 30 cm | 3 |
+| Barcode-Scanner (optional) | GM861, auch im Edelstahlgehäuse mit UART/USB-Kabel | 4 |
 | Etikettendrucker (optional) | TYPONOS PM240, Bluetooth, **ohne Kabel** | 5 |
+| NFC-Aufkleber | NTAG215, 25 mm (NTAG213 geht auch, hat aber weniger Platz) | ab 2 |
 
-**Werkzeug:** Lötkolben mit feiner Spitze, Lötzinn, Abisolierzange, Seitenschneider, **Multimeter**, Schrumpfschlauch oder Kapton-Band. Dazu dünne Litze in fünf Farben (rot, schwarz, gelb, grün, weiß, je 30 bis 40 cm).
+**Werkzeug:** Lötkolben mit feiner Spitze, Lötzinn, Abisolierzange, Seitenschneider, **Multimeter**, Schrumpfschlauch oder Kapton-Band. Dazu dünne Litze in mehreren Farben (je 30 bis 40 cm).
 
 ## So hängt alles zusammen
 
 Alles hängt an **einer Buchse**: dem **I/O-Stecker** auf der Rückseite des WT32-SC01 Plus. Dort steckt das mitgelieferte **7-polige Kabel**, **links bündig** in der 8-poligen Buchse. Der achte Kontakt (ganz rechts) bleibt frei, er wird nur für eine Option beim Scanner gebraucht.
 
-| Pin | Kabelfarbe | Signal | Stufe 1: Waage | Stufe 2: NFC | Stufe 4: Scanner |
+Die Buchse hat **nur 5 V**, keine 3,3 V. Was 3,3 V braucht (HX711, GM861), hängt an einem kleinen **3,3-V-Regler**, den du an Pin 1 und 2 anschließt.
+
+**Mit HX711** (deine Teile):
+
+| Pin | Kabelfarbe | Signal | Waage (HX711) | NFC (PN532) | Scanner (GM861) |
 |---|---|---|---|---|---|
-| 1 | rot | **5 V** | NAU7802 VIN | PN532 VCC | Eingang des 3,3-V-Reglers |
-| 2 | schwarz | **GND** | NAU7802 GND | PN532 GND | Regler GND + Scanner GND |
-| 3 | gelb | SDA (GPIO 10) | NAU7802 SDA | PN532 SDA | – |
-| 4 | grün | SCL (GPIO 11) | NAU7802 SCL | PN532 SCL | – |
-| 5 | blau | – | – | – | – |
-| 6 | weiß | GPIO 13 | – | – | **Scanner TXD** |
-| 7 | braun | GPIO 12 | – | PN532 RSTO/RST | – |
-| 8 | (nicht am Kabel) | GPIO 21 | – | – | Scanner RXD (optional) |
+| 1 | rot | **5 V** | über den 3,3-V-Regler | VCC | über den 3,3-V-Regler |
+| 2 | schwarz | **GND** | GND | GND | GND |
+| 3 | gelb | SDA (GPIO 10) | – | SDA | – |
+| 4 | grün | SCL (GPIO 11) | – | SCL | – |
+| 5 | blau | GPIO 12 | **SCK** | – | – |
+| 6 | weiß | GPIO 13 | – | – | **TXD** |
+| 7 | braun | GPIO 14 | **DT** (DOUT) | – (kein Reset-Draht) | – |
+| 8 | (nicht am Kabel) | GPIO 21 | – | – | RXD (optional) |
 
 ```
 WT32-SC01 Plus, I/O-Kabel
- rot    5V ──┬──────────── NAU7802 VIN
-             ├──────────── PN532 VCC
-             └── [3,3-V-Regler] ── GM861 VCC (Pin 1)
- schwarz GND ─┬─────────── NAU7802 GND
-              ├─────────── PN532 GND
-              └─────────── Regler GND, GM861 GND (Pin 4)
- gelb   SDA ──┬─────────── NAU7802 SDA
-              └─────────── PN532 SDA
- grün   SCL ──┬─────────── NAU7802 SCL
-              └─────────── PN532 SCL
- weiß   IO13 ───────────── GM861 TXD (Pin 2)
- braun  IO12 ───────────── PN532 RST
+ rot    5V ──┬──────────── PN532 VCC
+             └── [3,3-V-Regler IN]
+                  3,3-V-Regler OUT ──┬── HX711 VCC
+                                     └── GM861 VCC
+ schwarz GND ─┬─────────── PN532 GND
+              ├─────────── Regler GND
+              ├─────────── HX711 GND
+              └─────────── GM861 GND
+ gelb   SDA ────────────── PN532 SDA
+ grün   SCL ────────────── PN532 SCL
+ blau   IO12 ───────────── HX711 SCK
+ weiß   IO13 ───────────── GM861 TXD
+ braun  IO14 ───────────── HX711 DT
 ```
+
+**Mit NAU7802** statt HX711: Die NAU7802 hängt wie der PN532 an Pin 1 bis 4 (VIN an 5 V, GND, SDA, SCL), parallel zum PN532. Pin 5 und 7 bleiben frei, an Pin 7 darf dann wahlweise der Reset-Draht des PN532 (RSTPDN).
 
 Drei Regeln, die Schäden vermeiden:
 
 1. **Immer stromlos arbeiten.** USB abziehen, bevor du etwas an- oder absteckst.
-2. **Kein 5-V-Signal an einen Datenpin.** Der ESP32-S3 verträgt an GPIO 10 bis 13 und 21 nur 3,3 V. 5 V gehören nur an Pin 1.
-3. **NAU7802 und PN532 parallel anschließen**, beide direkt an Pin 1 bis 4. Den PN532 **nicht** über die STEMMA-QT-Buchse des NAU7802 anschließen: Die liefert nur 3,3 V, der PN532 braucht 5 V.
+2. **Kein 5-V-Signal an einen Datenpin.** Der ESP32-S3 verträgt an GPIO 10 bis 14 und 21 nur 3,3 V. Deshalb läuft der **HX711 an 3,3 V**: An 5 V würde sein DT-Ausgang 5 V an GPIO 14 legen.
+3. **Den PN532 direkt an Pin 1 bis 4** anschließen, nicht über die STEMMA-QT-Buchse einer NAU7802 (die liefert nur 3,3 V, der PN532 braucht 5 V).
 
 ## Aufbau in Stufen
 
@@ -115,34 +124,38 @@ Baue und teste eine Stufe nach der anderen. Funktioniert eine Stufe, kommt die n
 
 Oben erscheint jetzt **„Kein Modul am I2C-Bus“**. Das ist richtig, es ist ja noch nichts angeschlossen.
 
-### Stufe 1: Waage (NAU7802 + Wägezelle)
+### Stufe 1: Waage mit HX711 und Wägezelle
 
-1. **Wägezelle an den NAU7802** (an die Schraubklemmen oder Lötpads):
+1. **USB abziehen.**
+2. **3,3-V-Regler anschließen**, noch ohne etwas dahinter: **IN** an Pin 1 (rot, 5 V), **GND** an Pin 2 (schwarz). USB anstecken und am Ausgang messen (OUT gegen GND): **3,2 bis 3,4 V**? Wieder abziehen.
+3. **Wägezelle an den HX711.** Die Adern sind meist so belegt, die Beschriftung der Platine zählt:
 
-   | Ader der Wägezelle | NAU7802 |
+   | Ader der Wägezelle | HX711 |
    |---|---|
    | rot | E+ |
    | schwarz | E− |
-   | weiß | A+ |
-   | grün | A− |
+   | weiß | A− |
+   | grün | A+ |
 
-2. **NAU7802 an das I/O-Kabel**, am besten direkt an die beschrifteten Pads löten:
+   B+ und B− bleiben frei.
+4. **HX711 an Regler und I/O-Kabel:**
 
-   | NAU7802 | I/O-Kabel |
+   | HX711 | geht an |
    |---|---|
-   | VIN | Pin 1, rot (5 V) |
+   | VCC | **OUT des 3,3-V-Reglers** (nicht an 5 V!) |
    | GND | Pin 2, schwarz |
-   | SDA | Pin 3, gelb |
-   | SCL | Pin 4, grün |
+   | SCK | Pin 5, blau (GPIO 12) |
+   | DT (auch DOUT) | Pin 7, braun (GPIO 14) |
 
-   Fertige STEMMA-QT-Kabel anderer Hersteller haben oft eine **andere Farbfolge** als das WT32-Kabel. Geh nach der Beschriftung (VIN, GND, SDA, SCL), nicht nach der Farbe.
-3. Alle Lötstellen einzeln mit Schrumpfschlauch isolieren.
-4. USB anstecken.
+   Hat deine HX711-Platine zwei Versorgungspins (VCC und VDD), kommen **beide** an 3,3 V.
+5. Alle Lötstellen einzeln mit Schrumpfschlauch isolieren.
+6. **Die Wägezelle richtig montieren:** Ein Ende fest an den Boden, das andere trägt die Waagschale. Der Pfeil auf dem Balken zeigt nach unten (Richtung der Last). Die Mitte des Balkens (die weiße Vergussmasse) darf nirgends anliegen.
+7. USB anstecken. Die Waage sucht beim Start zuerst eine NAU7802 und dann den HX711. Hat sie ihn gefunden, merkt sie sich das.
 
 **Prüfen:**
 
-- [ ] Die Meldung „Kein Modul am I2C-Bus“ ist weg. Jetzt darf **„NFC-Reader fehlt (PN532)“** dastehen, der kommt erst in Stufe 2.
-- [ ] Die Waage zeigt ungefähr 0 g. Mit der Hand leicht drücken lässt die Zahl **steigen**.
+- [ ] Oben steht nicht mehr „Waagen-ADC fehlt“. Jetzt darf **„NFC-Reader fehlt (PN532)“** dastehen, der kommt erst in Stufe 2.
+- [ ] Die Waage zeigt eine Zahl. Mit der Hand leicht auf die Schale drücken lässt sie **steigen**.
 - [ ] Kalibrieren: Einstellungen → Waage → Kalibrierung. Leer tarieren, ein bekanntes Gewicht (z. B. 1000 g, eine volle Wasserflasche auf der Küchenwaage abgewogen) auflegen, Wert eingeben, speichern.
 - [ ] Danach stimmt das bekannte Gewicht auf ±2 g.
 
@@ -150,18 +163,28 @@ Oben erscheint jetzt **„Kein Modul am I2C-Bus“**. Das ist richtig, es ist ja
 
 | Anzeige | Ursache und Abhilfe |
 |---|---|
-| „Kein Modul am I2C-Bus“ bleibt | 5 V oder GND fehlen, oder SDA und SCL sind vertauscht. Mit dem Multimeter zwischen VIN und GND am NAU7802 messen: etwa 5 V? |
-| „Wägezelle verpolt (A+/A−)“ oder negative Werte beim Drücken | A+ und A− tauschen (weiß und grün). |
-| „Wägezelle unruhig“ | Eine Ader hat Wackelkontakt, oder die Zelle berührt das Gehäuse. Lötstellen prüfen, die Zelle frei schweben lassen. |
+| „Waagen-ADC fehlt (NAU7802)“ gleich nach dem ersten Start | Die Waage hat den HX711 nicht gefunden. 3,3 V an VCC messen; SCK an Pin 5 und DT an Pin 7 prüfen (nicht vertauscht). Danach neu starten. |
+| „Waagen-ADC fehlt (HX711)“ | Der HX711 war schon einmal da und antwortet nicht mehr: Wackelkontakt an VCC, GND, SCK oder DT. |
+| „Wägezelle verpolt (A+/A−)“ oder Werte sinken beim Drücken | Weiß und grün an A+/A− tauschen, oder die Zelle umdrehen (Pfeil nach unten). |
+| „Wägezelle unruhig“ | Eine Ader hat Wackelkontakt, oder die Zelle berührt das Gehäuse. Lötstellen prüfen, den Balken frei schweben lassen. |
 | „Waage nicht kalibriert“ | Kalibrierung wie oben machen. |
 
 Ein Gerät ganz ohne Waage (nur NFC)? Dann in Einstellungen → Waage **„Waage vorhanden“** ausschalten, die Meldung verschwindet.
 
-### Stufe 2: NFC-Leser (PN532)
+<details>
+<summary>Stufe 1 mit NAU7802 statt HX711</summary>
+
+1. **Wägezelle an die NAU7802:** rot E+, schwarz E−, weiß A+, grün A− (auch hier zählt die Beschriftung; bei „Wägezelle verpolt“ weiß und grün tauschen).
+2. **NAU7802 an das I/O-Kabel:** VIN an Pin 1 (5 V), GND an Pin 2, SDA an Pin 3, SCL an Pin 4. Fertige STEMMA-QT-Kabel haben oft eine **andere Farbfolge** als das WT32-Kabel: nach der Beschriftung gehen, nicht nach der Farbe.
+3. Prüfen wie oben. Bleibt „Kein Modul am I2C-Bus“: 5 V und GND an VIN/GND messen, SDA und SCL vertauscht?
+
+</details>
+
+### Stufe 2: NFC-Leser (PN532 V3)
 
 1. USB abziehen.
-2. **DIP-Schalter am PN532 auf I2C stellen: Schalter 1 = ON, Schalter 2 = OFF.** Steht er anders (HSU oder SPI), antwortet der Leser gar nicht.
-3. **Von der Rückseite löten**, vorne ist im Gehäuse kein Platz. Die fünf Drähte:
+2. **DIP-Schalter am PN532 auf I2C stellen: Schalter 1 = ON, Schalter 2 = OFF.** Steht er anders (HSU oder SPI), antwortet der Leser gar nicht. Die Stellungen sind auf der Platine aufgedruckt.
+3. **Von der Rückseite löten**, vorne ist im Gehäuse kein Platz. Vier Drähte an die Stiftleiste mit GND, VCC, SDA, SCL:
 
    | PN532 | I/O-Kabel |
    |---|---|
@@ -169,42 +192,46 @@ Ein Gerät ganz ohne Waage (nur NFC)? Dann in Einstellungen → Waage **„Waage
    | GND | Pin 2, schwarz |
    | SDA | Pin 3, gelb |
    | SCL | Pin 4, grün |
-   | RSTO bzw. RST | Pin 7, braun |
 
-   Am bequemsten: an den PN532 ein kurzes Kabel mit **5-poligem JST-SH-1,0-Stecker** löten. Dann geht das Löten außerhalb des Gehäuses, und beim Zusammenbau wird nur eingesteckt. Die Belegung solcher Fremdkabel steht in [BUILDING.md](BUILDING.md#pn532--cable-pinout-jst-sh-10mm-5-pin-3rd-party-colors).
-4. Die Drähte von NAU7802 und PN532 treffen sich an Pin 1 bis 4: beide zusammen an den jeweiligen Draht des I/O-Kabels löten (parallel), nicht hintereinander.
-5. USB anstecken.
+   **Kein Reset-Draht.** Pin 7 gehört beim HX711-Aufbau der Waage (DT). Die Firmware weiß das und kommt ohne Reset-Leitung aus.
+
+   Am bequemsten: an den PN532 ein kurzes Kabel mit **JST-SH-1,0-Stecker** löten. Dann geht das Löten außerhalb des Gehäuses, und beim Zusammenbau wird nur eingesteckt. Die Belegung solcher Fremdkabel steht in [BUILDING.md](BUILDING.md#pn532--cable-pinout-jst-sh-10mm-5-pin-3rd-party-colors).
+4. USB anstecken.
 
 **Prüfen:**
 
 - [ ] Keine Meldung mehr oben.
-- [ ] Eine Bambu-Spule (oder ein NFC-Tag) auf die Waage legen: Nach 1 bis 2 Sekunden wird der Tag gelesen. Eine bekannte Spule erscheint mit Name und Restgewicht.
+- [ ] Einen NFC-Aufkleber oder eine Bambu-Spule auflegen: Nach 1 bis 2 Sekunden wird der Tag gelesen. Eine bekannte Spule erscheint mit Name und Restgewicht.
 - [ ] Ein unbekannter Tag: Die Waage bietet **Verknüpfen** oder **Anlegen** an.
+
+**NFC-Aufkleber (NTAG215, 25 mm) an die Spule:** Der Leser sitzt unter der Mitte der Waagschale und liest etwa 2 bis 4 cm weit. Den Aufkleber deshalb **auf die Unterseite der Spulenwange nahe der Nabe** kleben, so dass er beim Auflegen über der Mitte liegt. Nicht auf Metall (z. B. Alu-Folie, Metallspulen), das schirmt ab. Ein NTAG215 hat Platz für alle Formate, die die Waage schreibt.
 
 **Wenn es nicht geht:**
 
 | Anzeige | Ursache und Abhilfe |
 |---|---|
-| „NFC-Reader fehlt (PN532)“ | DIP-Schalter prüfen (1 = ON, 2 = OFF). VCC muss an **5 V** hängen, nicht am STEMMA-QT-Ausgang des NAU7802. |
-| „Waagen-ADC fehlt (NAU7802)“, seit der PN532 dran ist | Beim Löten ist am NAU7802 etwas abgegangen, oder SDA und SCL sind am PN532 vertauscht und stören den Bus. |
-| Tag wird nicht gelesen | Den Tag mittig auflegen. Der Leser sitzt unter der Mitte der Waagschale, Metall dazwischen schirmt ab. |
+| „NFC-Reader fehlt (PN532)“ | DIP-Schalter prüfen (1 = ON, 2 = OFF). VCC muss an **5 V** hängen. SDA und SCL nicht vertauscht? |
+| „Kein Modul am I2C-Bus“ | Beim HX711-Aufbau hängt nur der PN532 am Bus: VCC/GND/SDA/SCL am PN532 prüfen. |
+| Tag wird nicht gelesen | Den Tag mittig auflegen. Metall zwischen Tag und Leser schirmt ab. |
+| Leser hängt nach Stunden („NFC-Reader stumm“) | Ohne Reset-Draht bringt nur ein Neustart ihn zurück. Passiert das öfter, ins Log schauen und melden. |
 
 ### Stufe 3: Ins Gehäuse
 
 Erst wenn Stufe 1 und 2 funktionieren. Die Reihenfolge und Fotos stehen in [BUILDING.md](BUILDING.md#assembly-steps). Worauf es ankommt:
 
-1. Die USB-C-Einbaubuchse kürzen, bis sie nicht über den Displayrand ragt (mit dem Cuttermesser in kleinen Schritten).
-2. Die Kabel so verlegen, dass sie **nicht an die Waagschale drücken**. Sonst wiegt die Waage das Kabel mit, und das Gewicht schwankt.
-3. Nach dem Zuschrauben die Kalibrierung aus Stufe 1 **noch einmal** machen: Das Gehäuse verändert den Nullpunkt.
+1. **USB-C-Einbaukabel:** Den Stecker in die USB-C-Buchse des WT32-SC01 Plus, die Einbaubuchse von innen in die Öffnung der Gehäusewand schrauben. Das Kabel in einem weiten Bogen legen, nicht knicken. Über diese Buchse geht später auch das Flashen per USB.
+2. Die Kabel so verlegen, dass sie **nicht an die Waagschale oder den Wägebalken drücken**. Sonst wiegt die Waage das Kabel mit, und das Gewicht schwankt.
+3. Den 3,3-V-Regler und den HX711 mit doppelseitigem Klebeband an die Gehäusewand, nicht an den Balken.
+4. Nach dem Zuschrauben die Kalibrierung aus Stufe 1 **noch einmal** machen: Das Gehäuse verändert den Nullpunkt.
 
 ### Stufe 4: Barcode-Scanner (optional)
 
 Der Scanner liest Barcodes auf Filament-Kartons und QR-Codes auf Etiketten. Er ist in der Firmware **ab Werk ausgeschaltet**. Ohne ihn läuft alles andere normal.
 
 > [!WARNING]
-> Der GM861 läuft laut Handbuch mit **3,3 V** (höchstens 70 mA). Der I/O-Stecker hat aber nur **5 V**. Den Scanner **nicht direkt an Pin 1** hängen. Dazwischen gehört ein kleiner 3,3-V-Regler. Läuft der Scanner mit 3,3 V, sendet er auch mit 3,3 V und darf direkt an GPIO 13.
+> Der GM861 läuft mit **3,3 V** (höchstens 70 mA, so steht es auch beim Edelstahl-Modell). Der I/O-Stecker hat aber nur **5 V**. Den Scanner **nicht direkt an Pin 1** hängen, sondern an den **3,3-V-Regler aus Stufe 1** (der versorgt HX711 und Scanner zusammen). Läuft der Scanner mit 3,3 V, sendet er auch mit 3,3 V und darf direkt an GPIO 13.
 
-Der GM861 hat ein 6-poliges SH-1,0-Kabel. **Die Farben der Adern sagen nichts**, es zählt die Reihenfolge am Stecker (Pin 1 ist auf der Platine markiert):
+Der GM861 im Edelstahlgehäuse hat ein Kabel mit UART und USB. **Die Farben der Adern sagen nichts**, es zählt die Belegung auf dem Beipackzettel bzw. die Reihenfolge am Stecker (Pin 1 ist markiert). Beim 6-poligen SH-1,0-Stecker:
 
 | GM861 Pin | Signal | geht an |
 |---|---|---|
@@ -215,14 +242,14 @@ Der GM861 hat ein 6-poliges SH-1,0-Kabel. **Die Farben der Adern sagen nichts**,
 | 5 | D− (USB) | frei lassen |
 | 6 | D+ (USB) | frei lassen |
 
-Der 3,3-V-Regler (z. B. AMS1117-3.3-Modul): **IN** an Pin 1 (rot, 5 V), **GND** an Pin 2 (schwarz), **OUT** an GM861 Pin 1.
+VCC kommt an **OUT des 3,3-V-Reglers** aus Stufe 1. Mit NAU7802-Aufbau gibt es den Regler noch nicht: dann jetzt einen anschließen, **IN** an Pin 1 (rot, 5 V), **GND** an Pin 2 (schwarz).
 
 RXD ist nur nötig, wenn die Waage dem Scanner etwas sagen soll: Licht und grüne LED aus der Weboberfläche einstellen. Pin 8 ist nicht am 7-poligen Kabel, dafür einen einzelnen Draht an den achten Kontakt der Buchse (z. B. mit einer einzelnen JST-Crimp-Hülse).
 
 **Schritt für Schritt:**
 
 1. USB abziehen.
-2. Den 3,3-V-Regler an Pin 1 und 2 anschließen, **noch ohne Scanner**. USB anstecken und am Ausgang (OUT gegen GND) messen: **3,2 bis 3,4 V**? Wieder abziehen.
+2. Ohne Regler aus Stufe 1: Regler an Pin 1 und 2 anschließen, **noch ohne Scanner**, und am Ausgang (OUT gegen GND) messen: **3,2 bis 3,4 V**?
 3. Den Scanner anschließen: VCC an OUT des Reglers, GND an Pin 2, TXD an Pin 6. Optional RXD an Pin 8.
 4. USB anstecken. Weboberfläche → Einstellungen → **Barcode-Scanner** → einschalten. Pins (RX 13, TX 21) und 9600 Baud passen im Normalfall, also speichern.
 5. Optional: die **filament_to_bambuddy-Adresse** eintragen (gleiche Karte), z. B. `http://zimaboard:8088`. Ohne sie kennt die Waage nur Codes, die schon an einer Spule hängen.
