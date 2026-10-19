@@ -17,6 +17,7 @@
 #include "services/backend_api.h"
 #include "services/ble_service.h"
 #include "services/label_printer.h"
+#include "services/f2b_api.h"
 #include "services/label_render.h"
 #include "ui/info_popup.h"
 #include "ui/print_card.h"
@@ -296,7 +297,19 @@ void handlePrinterDeferredActions() {
       labelDateFor(sm_id, &spool);
       printCardShow();
       LabelRaster raster{};
-      if (!labelRenderSpool(c, spool, &raster)) result = LP_BAD_RASTER;
+      // The label in the layout arranged on the phone, when filament_to_bambuddy
+      // keeps the same BamBuddy spools; else the scale's own.
+      bool drawn = false;
+      if (g_f2b_url[0] && backendIsBamBuddy()) {
+        uint8_t* bits = nullptr;
+        size_t len = 0;
+        uint16_t w = 0, h = 0;
+        if (f2bFetchLabel(sm_id, c.media_width_mm, c.media_length_mm, &bits, &len, &w, &h) == 200)
+          drawn = labelRasterFromBits(c, bits, w, h, &raster);
+        if (bits) heap_caps_free(bits);
+        if (!drawn) labelRasterFree(&raster);
+      }
+      if (!drawn && !labelRenderSpool(c, spool, &raster)) result = LP_BAD_RASTER;
       else result = labelPrinterPrint(c, raster, printCardTick);
       labelRasterFree(&raster);
     }

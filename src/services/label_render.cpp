@@ -530,3 +530,39 @@ bool labelRenderSpool(const LabelPrinterConfig& printer, const SpoolLabelData& s
   for (int i = 0; i < n; i++) lines[i] = facts[i];
   return renderLabel(printer, spool, lines, n, false, qr, "spool", out);
 }
+
+bool labelRasterFromBits(const LabelPrinterConfig& printer, const uint8_t* bits,
+                         uint16_t w, uint16_t h, LabelRaster* out) {
+  if (!out || !bits) return false;
+  *out = LabelRaster{};
+  const uint16_t content_w = labelPrinterDotsForMm(printer.media_width_mm);
+  const uint16_t label_h = labelPrinterDotsForMm(printer.media_length_mm);
+  const uint16_t row_w = labelPrinterRasterWidth(printer.model, printer.media_width_mm);
+  if (!row_w || !label_h || content_w > row_w) return false;
+  const uint16_t cw = w < content_w ? w : content_w;
+  const uint16_t ch = h < label_h ? h : label_h;
+  const uint16_t row_bytes = (row_w + 7) / 8, src_bytes = (w + 7) / 8;
+  const size_t length = size_t(row_bytes) * label_h;
+  uint8_t* px = (uint8_t*)heap_caps_calloc(length, 1, MALLOC_CAP_SPIRAM);
+  if (!px) { logSD("Label: no PSRAM for the raster"); return false; }
+  const uint16_t x0 = labelPrinterContentX(printer);
+  for (uint16_t y = 0; y < ch; y++) {
+    const uint8_t* src = bits + size_t(y) * src_bytes;
+    uint8_t* row = px + size_t(y) * row_bytes;
+    for (uint16_t x = 0; x < cw; x++) {
+      if (src[x / 8] & (0x80 >> (x % 8))) {
+        const uint16_t rx = x0 + x;
+        if (rx < row_w) row[rx / 8] |= 0x80 >> (rx % 8);
+      }
+    }
+  }
+  out->width = row_w;
+  out->height = label_h;
+  out->row_bytes = row_bytes;
+  out->pixels = px;
+  out->length = length;
+  out->content_width = content_w;
+  logSDf("Label: drawn by filament_to_bambuddy, %ux%u at dot %u of a %u dot row",
+         (unsigned)w, (unsigned)h, (unsigned)x0, (unsigned)row_w);
+  return labelRasterValid(*out);
+}
