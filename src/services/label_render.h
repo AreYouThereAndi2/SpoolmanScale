@@ -48,6 +48,13 @@ bool labelRenderCalibration(const LabelPrinterConfig& printer, LabelRaster* out)
 bool labelRenderSpool(const LabelPrinterConfig& printer, const SpoolLabelData& spool,
                       LabelRaster* out);
 
+// A label drawn elsewhere (filament_to_bambuddy's own layout, see
+// f2bFetchLabel), w by h dots, rows of (w + 7) / 8 bytes, a 1 bit black,
+// placed where the loaded stock runs in the printer's row. Wider or longer
+// than the stock is cut to it. False when the printer has no usable stock.
+bool labelRasterFromBits(const LabelPrinterConfig& printer, const uint8_t* bits,
+                         uint16_t w, uint16_t h, LabelRaster* out);
+
 // What the QR code on a spool label carries for the active backend: the
 // spool's page on Spoolman, FilaMan and BamBuddy, so a phone opens it.
 void labelQrForSpool(int spool_id, char* out, size_t n);

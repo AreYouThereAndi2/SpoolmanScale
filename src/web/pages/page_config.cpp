@@ -370,6 +370,8 @@ static String body() {
   h += T(STR_W_SAVE);
   h += F("</button></div><span class='hint'>");
   h += T(STR_W_F2B_HINT);
+  h += F(" ");
+  h += T(STR_W_F2B_CREATES);
   h += F("</span><span class='msg' id='f2-s'></span></div></div>");
 
   // ---- how the panel behaves --------------------------------------------

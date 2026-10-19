@@ -72,6 +72,27 @@ static float candidateTare(JsonObjectConst s) {
   return s["filament"]["vendor"]["empty_spool_weight"] | 0.0f;
 }
 
+// Who a failed request went to, for the reason the status line gives.
+enum ScanPeer { PEER_F2B, PEER_SPOOLMAN, PEER_BACKEND };
+
+// What an HTTP code means in words: a transport error by whom could not be
+// reached, a status by what the user can do about it. -2 from the app is an
+// answer that did not parse.
+static int scanWhy(int code, ScanPeer peer) {
+  if (code == -11) return peer == PEER_F2B ? STR_WHY_F2B_SLOW : peer == PEER_SPOOLMAN ? STR_WHY_SM_NET : STR_WHY_BB_NET;
+  if (code == -2 && peer == PEER_F2B) return STR_WHY_ANSWER;
+  if (code < 0) return peer == PEER_F2B ? STR_WHY_F2B_NET : peer == PEER_SPOOLMAN ? STR_WHY_SM_NET : STR_WHY_BB_NET;
+  if (code == 401 || code == 403) return STR_WHY_AUTH;
+  if (code == 400) return STR_WHY_MODE;
+  if (code == 404) return STR_WHY_NOT_FOUND;
+  if (code == 503) return STR_WHY_SM_DOWN;
+  return STR_WHY_SERVER;
+}
+
+static void scanFailed(int fmt, int code, ScanPeer peer) {
+  scanStatus(UI_COL_BAD_TEXT, fmt, T(scanWhy(code, peer)), code);
+}
+
 static void handleSpoolId(int spool_id) {
   logSDf("Scan: spool %d", spool_id);
   // An unknown tag on the reader, or the link flow open for one: the scan
@@ -125,7 +146,7 @@ static void offerNewSpool(const char* code, int filament_id = 0) {
   lv_timer_handler();   // the lookup can take seconds on a cold cache
   const int code_http = f2bLookup(code, s_ns);
   if (code_http != 200) {
-    scanStatus(UI_COL_BAD_TEXT, STR_SCAN_LOOKUP_FAILED, code_http);
+    scanFailed(STR_SCAN_FAIL_WHY, code_http, PEER_F2B);
     return;
   }
   if (!s_ns.found) {
@@ -167,19 +188,38 @@ static void newSpoolAnswerTick() {
   const float cost_per_kg = (a == QB_LEFT && s_ns.price_avg > 0.0f)
       ? s_ns.price_avg * 1000.0f / (float)s_ns.label_weight : 0.0f;
   int new_id = 0;
-  // Made on the user's Spoolman filament, the spool inherits its empty spool
-  // weight; a copy on the spool would not follow a correction of it.
-  const bool inherit = s_ns.core_from_filament && s_ns.spoolman_filament_id > 0 &&
-                       bbInventoryMode() == BB_INV_SPOOLMAN;
-  // An unopened spool from the box: all of it is still there.
-  const int code = serverReachNote(backendCreateSpoolFromTag(
-      s_ns.material, s_ns.subtype, s_ns.brand, s_ns.rgba, s_ns.color_name,
-      s_ns.label_weight, inherit ? 0 : s_ns.core_weight, (float)s_ns.label_weight,
-      s_ns.temp_min, s_ns.temp_max, &new_id, 8000, cost_per_kg, s_ns.spoolman_filament_id,
-      s_ns.slicer_filament, s_ns.slicer_filament_name), true);
+  // The app creates it as its own page does: on the user's Spoolman filament,
+  // with the slicer profile for every printer model, the bed temperature and
+  // price on the filament, the remembered location, and the code learned.
+  // What the app itself refused (BamBuddy said no) is said; the scale tries
+  // itself only when the app is not there to ask.
+  char why[96] = "";
+  int code = f2bCreateSpool(s_ns, cost_per_kg, &new_id, why, sizeof(why));
+  ScanPeer peer = PEER_F2B;
+  if (code != 200 && (code == -1 || code == -4 || code == -5 || code == -11 || code == 404 ||
+                      code == 405 || code == 400)) {
+    logSDf("Scan: filament_to_bambuddy did not create (%d %s), creating here", code, why);
+    // Made on the user's Spoolman filament, the spool inherits its empty
+    // spool weight; a copy on the spool would not follow a correction of it.
+    const bool inherit = s_ns.core_from_filament && s_ns.spoolman_filament_id > 0 &&
+                         bbInventoryMode() == BB_INV_SPOOLMAN;
+    // An unopened spool from the box: all of it is still there.
+    code = serverReachNote(backendCreateSpoolFromTag(
+        s_ns.material, s_ns.subtype, s_ns.brand, s_ns.rgba, s_ns.color_name,
+        s_ns.label_weight, inherit ? 0 : s_ns.core_weight, (float)s_ns.label_weight,
+        s_ns.temp_min, s_ns.temp_max, &new_id, 8000, cost_per_kg, s_ns.spoolman_filament_id,
+        s_ns.slicer_filament, s_ns.slicer_filament_name), true);
+    peer = PEER_BACKEND;
+  }
   if ((code != 200 && code != 201) || new_id <= 0) {
-    logSDf("Scan: creating from %s failed, HTTP %d", s_ns.barcode, code);
-    scanStatus(UI_COL_BAD_TEXT, STR_NS_FAILED, code);
+    logSDf("Scan: creating from %s failed, HTTP %d %s", s_ns.barcode, code, why);
+    // BamBuddy's answer through the app: its own status where it gave one.
+    int shown = code;
+    if (peer == PEER_F2B && code == 502 && why[0]) {
+      const int inner = atoi(why);
+      if (inner >= 400 && inner < 600) shown = inner;
+    }
+    scanFailed(STR_NS_FAIL_WHY, shown, peer == PEER_F2B && code == 502 ? PEER_BACKEND : peer);
     return;
   }
   logSDf("Scan: spool %d created from %s (%s), %.2f per kg", new_id, s_ns.barcode, s_ns.source,
@@ -257,7 +297,7 @@ static void handleArticle(const ScanCode& sc) {
   code = serverReachNote(code, true);
   if (code != 200) {
     logSDf("Scan: lookup failed, HTTP %d", code);
-    scanStatus(UI_COL_BAD_TEXT, STR_SCAN_LOOKUP_FAILED, code);
+    scanFailed(STR_SCAN_FAIL_WHY, code, PEER_SPOOLMAN);
     return;
   }
   char what[20];
