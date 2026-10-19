@@ -191,6 +191,31 @@ Fehler bitte mit dem Log melden: Weboberfläche → Log, oder die SD-Karte (fall
    - Box-EAN scannen: Die Waage findet die Spule oder bietet an, sie anzulegen.
    - Erscheint nichts, im Log nach `Scan:` suchen. Kommen dort unlesbare Zeichen an, stimmt die Baudrate nicht.
 
+## BamBuddy mit Spoolman: welches Inventar?
+
+BamBuddy antwortet unter zwei Adressen: mit seinem eigenen Inventar (`/api/v1/inventory`) oder, wenn in BamBuddy Spoolman eingeschaltet ist, mit Spoolman dahinter (`/api/v1/spoolman/inventory`). Die Waage fragt BamBuddy, welches gilt (`/api/v1/settings/spoolman`). Das beantwortet BamBuddy aber nur einem API-Schlüssel mit **„Read Status“**. Ohne diese Berechtigung nahm die Waage stillschweigend das eigene Inventar, was hinter Spoolman falsch ist.
+
+**Weboberfläche → Backend → BamBuddy-Inventar:**
+
+- **Automatisch (BamBuddy fragen):** wie bisher. Darunter steht, was gerade gilt, oder in Rot „BamBuddy verweigert die Abfrage (HTTP 403)“.
+- **Spoolman (über BamBuddy)** und **BamBuddys eigenes Inventar:** gelten nur, solange BamBuddy die Abfrage verweigert. Antwortet BamBuddy, folgt die Waage BamBuddy, und die Seite sagt das. Sonst hätte die Waage eine Spule aus dem einen Inventar angezeigt und ihr Gewicht über BamBuddys Gerätefunktionen in das andere geschrieben.
+
+filament_to_bambuddy hat denselben Schalter, unten auf seiner Seite, mit derselben Regel. Am einfachsten: dem Schlüssel „Read Status“ geben und beide auf **Automatisch** lassen.
+
+**Spoolman-Adresse für die Waage:** Für einen Box-Scan sucht die Waage direkt in Spoolman nach vorhandenen Spulen, unter der Adresse, die BamBuddy für seinen Spoolman kennt. Läuft beides in Docker, ist das oft ein Name wie `http://spoolman:8000`, den nur BamBuddy erreicht. Jeder Box-Scan endete dann mit „Suche fehlgeschlagen (-1)“. In diesem Fall unter **Backend → Spoolman-Adresse für die Waage** die Adresse eintragen, unter der die Waage Spoolman erreicht (z. B. `http://192.168.1.5:7912`). Leer bleibt BamBuddys Adresse.
+
+**Deine Spoolman-Filamente:** Im Spoolman-Modus sucht filament_to_bambuddy zu einem gescannten Code zuerst in deinen eigenen Spoolman-Filamenten (Artikelnummer, sonst Marke, Material und Farbe). Findet es eines, legt die Waage die neue Spule genau auf diesem Filament an, mit seinen Temperaturen, seinem Leergewicht und seinem Preis, statt BamBuddy ein neues, fast leeres Filament machen zu lassen. Ist das Filament inzwischen gelöscht, legt sie die Spule wie bisher an.
+
+Was die Waage beim Scannen jetzt außerdem kann:
+
+- **QR-Codes von BamBuddy-Etiketten** (`…/inventory?spool=12`), von den Etiketten der Waage selbst und von filament_to_bambuddy laden die Spule. Bisher kam „unbekannter Code“.
+- **UPC-Codes mit führender Null** (Hatchbox, Overture, Inland …) findet die Waage wieder. filament_to_bambuddy speichert sie ohne die Null, die Waage verglich bisher genau und bot jedes Mal eine neue Spule an.
+- **Nachkauf:** Ist die letzte Spule eines Produkts aufgebraucht, bietet der Scan einer neuen Box eine neue Spule auf demselben Filament an. Bisher kam nur „keine aktive Spule“.
+- **Leergewicht:** Kommt es vom Spoolman-Filament, legt die Waage es nicht mehr auf jede neue Spule. Die Spule erbt es vom Filament, eine Korrektur dort gilt dann für alle.
+- **Druckprofil:** Das passende in BamBuddy importierte Profil (siehe filament_to_bambuddy, *Druckprofile*) kommt mit auf die neue Spule. Die Profile für weitere Druckermodelle ergänzt filament_to_bambuddy über **Dein Bestand → Druckprofile zuordnen**.
+- **Leergewicht einer Spule ändern** geht jetzt auch mit BamBuddy + Spoolman. BamBuddy speichert es dort seit #2908.
+- Die Anfrage an filament_to_bambuddy darf 30 s dauern statt 15 s und lässt die Preissuche weg (`quick=1`).
+
 ## Zubehör an der Spule abziehen (Clip, RFID-Halter)
 
 Die Waage kennt das Leergewicht der Spule aus FilaMan, Spoolman oder BamBuddy. Ein Filament-Clip oder ein RFID-Halter an der Spule wiegt zusätzlich ein paar Gramm, und die zieht die Waage auf Wunsch ebenfalls ab.

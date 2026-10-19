@@ -14,7 +14,7 @@ static bool startsWithNoCase(const char* s, const char* prefix) {
 }
 
 // A positive id of at most six digits at p, followed by nothing, a slash, a
-// query or a fragment. 0 for anything else.
+// query, a fragment or the next query parameter. 0 for anything else.
 static int parseIdAt(const char* p) {
   int n = 0, digits = 0;
   while (isdigit((unsigned char)*p)) {
@@ -23,7 +23,7 @@ static int parseIdAt(const char* p) {
     p++;
   }
   if (digits == 0) return 0;
-  if (*p && *p != '/' && *p != '?' && *p != '#') return 0;
+  if (*p && *p != '/' && *p != '?' && *p != '#' && *p != '&') return 0;
   return n;
 }
 
@@ -86,6 +86,10 @@ ScanCode scanClassify(const char* code) {
   if (startsWithNoCase(code, "http://") || startsWithNoCase(code, "https://")) {
     int id = idAfterMarker(code, "/spool/show/");
     if (id <= 0) id = idAfterMarker(code, "/spools/");
+    // BamBuddy's labels, the scale's own and filament_to_bambuddy's carry
+    // the spool as a query: ".../inventory?spool=12", "/?spool=12".
+    if (id <= 0) id = idAfterMarker(code, "?spool=");
+    if (id <= 0) id = idAfterMarker(code, "&spool=");
     if (id > 0) { r.kind = SCAN_SPOOL_ID; r.id = id; }
     return r;
   }

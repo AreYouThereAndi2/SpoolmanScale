@@ -46,7 +46,8 @@ int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
   out = F2bProduct{};
   if (!g_f2b_url[0] || !code || !code[0]) return -1;
 
-  String url = String(g_f2b_url) + "/api/lookup?barcode=" + urlEncode(code);
+  // quick: no shop price search, which can take several seconds more.
+  String url = String(g_f2b_url) + "/api/lookup?quick=1&barcode=" + urlEncode(code);
   BackendHttp http;
   if (!http.begin(url)) return -1;
   http.setTimeout(timeout_ms);
@@ -82,6 +83,16 @@ int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
   out.core_weight  = f["core_weight"] | 0;
   out.temp_min     = f["nozzle_temp_min"] | 0;
   out.temp_max     = f["nozzle_temp_max"] | 0;
+  // In Spoolman mode the app looks in the user's own filaments first; the
+  // spool is then made on the one it found.
+  out.spoolman_filament_id = f["spoolman_filament_id"] | 0;
+  // The empty spool's weight is the filament's: the spool inherits it, so it
+  // is not copied onto the spool, where a correction would not reach it.
+  out.core_from_filament = f["core_weight_from_filament"] | false;
+  // The profile imported into BamBuddy that fits (any printer model's; the
+  // phone app adds the other models' when it links profiles).
+  copyStr(out.slicer_filament,      sizeof(out.slicer_filament),      f["slicer_filament"] | "");
+  copyStr(out.slicer_filament_name, sizeof(out.slicer_filament_name), f["slicer_filament_name"] | "");
   // Only a UPCitemdb answer carries one: the mean of the shop offers it found
   // for the code, in the currency most of them use.
   JsonObjectConst pr = doc["price"];

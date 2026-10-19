@@ -11,6 +11,7 @@
 // reverse proxy needs, because a proxy tells its backends apart by the Host
 // header and the proxy's own IP reaches none of them.
 #include "web/web_pages.h"
+#include "services/bambuddy_api.h"
 
 #include "app/backend_switch.h"
 
@@ -210,8 +211,54 @@ static String body() {
     h += bambuddyApiKey()[0] ? F("________________") : F("");
     h += F("'><button onclick='setBb()'>");
     h += T(STR_W_SAVE);
-    h += F("</button></div><span class='msg' id='bk-s'></span></div>"
-           "<p class='note'>");
+    h += F("</button></div><span class='msg' id='bk-s'></span></div>");
+    // Which inventory: asked of BamBuddy, or set by hand for a key that may
+    // not ask (no "Read Status"). Same three choices as filament_to_bambuddy.
+    {
+      const BbInventoryChoice ch = bbInventoryChoice();
+      h += F("<div class='field'><label>");
+      h += T(STR_W_BB_INV);
+      h += F("</label><select id='bi'>");
+      const struct { BbInventoryChoice v; int s; } opts[] = {
+        {BB_CHOICE_AUTO, STR_W_BB_INV_AUTO}, {BB_CHOICE_SPOOLMAN, STR_W_BB_INV_SM},
+        {BB_CHOICE_LOCAL, STR_W_BB_INV_LOCAL}};
+      for (const auto& o : opts) {
+        h += F("<option value='");
+        h += String((int)o.v);
+        h += F("'");
+        if (ch == o.v) h += F(" selected");
+        h += F(">");
+        h += T(o.s);
+        h += F("</option>");
+      }
+      h += F("</select><span class='hint'>");
+      char now[160];
+      const int probe = bbLastModeProbe();
+      if (ch == BB_CHOICE_AUTO && probe != 0 && probe != 200) {
+        snprintf(now, sizeof(now), T(STR_W_BB_INV_DENIED), probe);
+      } else if (bbChoiceOverruled()) {
+        char mode[48];
+        copyT(mode, sizeof(mode), bbInventoryMode() == BB_INV_SPOOLMAN ? STR_BB_INV_SPOOLMAN : STR_BB_INV_OWN);
+        snprintf(now, sizeof(now), T(STR_W_BB_INV_OVERRULED), mode);
+      } else {
+        copyT(now, sizeof(now), bbInventoryMode() == BB_INV_SPOOLMAN ? STR_BB_INV_SPOOLMAN : STR_BB_INV_OWN);
+      }
+      h += htmlEsc(now);
+      h += F("</span><span class='msg' id='bi-s'></span></div>");
+    }
+    // Where the scale itself reaches BamBuddy's Spoolman, for box scans.
+    h += F("<div class='field'><label>");
+    h += T(STR_W_BB_SM_URL);
+    h += F("</label><div class='inrow'><input id='bsu' type='text' maxlength='95' placeholder='");
+    h += htmlEsc(bbSpoolmanUrl()[0] ? bbSpoolmanUrl() : "http://192.168.1.5:7912");
+    h += F("' value='");
+    h += htmlEsc(bbSpoolmanUrlOverride());
+    h += F("'><button onclick='setBsu()'>");
+    h += T(STR_W_SAVE);
+    h += F("</button></div><span class='hint'>");
+    h += T(STR_W_BB_SM_URL_HINT);
+    h += F("</span><span class='msg' id='bsu-s'></span></div>");
+    h += F("<p class='note'>");
     h += T(STR_W_BB_SETUP);
     h += F("</p></div>");
   } else {
@@ -289,6 +336,9 @@ static String body() {
          "function setBb(){const v=$('bk').value;"
          "if(!guard(v))return;postFlash('/api/bambuddy/key',v,'bk-s')"
          ".then(function(r){if(r.ok)hostPoll(0);});}"
+         "if($('bi'))$('bi').addEventListener('change',function(){"
+         "postFlash('/api/bambuddy/inv',$('bi').value,'bi-s');});"
+         "function setBsu(){postFlash('/api/bambuddy/smurl',$('bsu').value.trim(),'bsu-s');}"
          "$('ti').addEventListener('change',function(){"
          "postFlash('/api/tls',$('ti').checked?'1':'0','ti-s');});"
          "$('tk').addEventListener('change',function(){"
@@ -612,6 +662,32 @@ static void routes(WebServer &srv) {
     key.trim();
     if (key.length() < 8) { srv.send(400, "text/plain", T(STR_W_ERROR)); return; }
     filamanSetApiKey(key.c_str());
+    srv.send(200, "text/plain", T(STR_W_SAVED));
+  });
+
+  // The scale's own address of BamBuddy's Spoolman; empty clears it.
+  srv.on("/api/bambuddy/smurl", HTTP_POST, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_BACKEND))) return;
+    String url = srv.arg("plain");
+    url.trim();
+    if (url.length() >= 96 ||
+        (url.length() && !url.startsWith("http://") && !url.startsWith("https://"))) {
+      srv.send(400, "text/plain", T(STR_W_ERROR));
+      return;
+    }
+    bbSetSpoolmanUrlOverride(url.c_str());
+    srv.send(200, "text/plain", T(STR_W_SAVED));
+  });
+
+  // 0 auto, 1 BamBuddy's own inventory, 2 Spoolman through BamBuddy.
+  srv.on("/api/bambuddy/inv", HTTP_POST, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_BACKEND))) return;
+    const int v = srv.arg("plain").toInt();
+    if (v < BB_CHOICE_AUTO || v > BB_CHOICE_SPOOLMAN) {
+      srv.send(400, "text/plain", T(STR_W_ERROR));
+      return;
+    }
+    bbSetInventoryChoice((BbInventoryChoice)v);
     srv.send(200, "text/plain", T(STR_W_SAVED));
   });
 

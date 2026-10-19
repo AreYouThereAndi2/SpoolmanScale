@@ -10,6 +10,7 @@
 
 #include "hardware/sd_logger.h"
 #include "services/device_name.h"
+#include "services/prefs_store.h"
 #include "services/http_progress.h"
 #include "services/spool_cache.h"
 #include "services/spool_color.h"
@@ -44,6 +45,79 @@ struct SpiRamAllocator : ArduinoJson::Allocator {
 
 static BbInventoryMode s_mode = BB_INV_LOCAL;
 static char s_spoolman_url[96] = "";
+static int  s_choice = -1;        // BbInventoryChoice, -1 until read from NVS
+static int  s_last_probe = 0;
+// What BamBuddy answered last, when it answered: that wins over a choice set
+// by hand, which only stands in while BamBuddy refuses the question.
+static bool s_answered = false;
+static BbInventoryMode s_answer = BB_INV_LOCAL;
+// The Spoolman address the scale reaches, when BamBuddy's is not one it can
+// (a Docker name like http://spoolman:8000). NVS "bb_sm_url".
+static char s_sm_override[96] = "";
+static bool s_sm_override_read = false;
+
+const char* bbSpoolmanUrlOverride() {
+  if (!s_sm_override_read) {
+    String u = prefsGetString("bb_sm_url", "");
+    u.trim();
+    while (u.endsWith("/")) u.remove(u.length() - 1);
+    snprintf(s_sm_override, sizeof(s_sm_override), "%s", u.c_str());
+    s_sm_override_read = true;
+  }
+  return s_sm_override;
+}
+
+void bbSetSpoolmanUrlOverride(const char* url) {
+  prefsPutString("bb_sm_url", url ? url : "");
+  s_sm_override_read = false;
+  const char* o = bbSpoolmanUrlOverride();
+  // In Spoolman mode the address changes at once; the next mode question
+  // would bring it too.
+  if (s_mode == BB_INV_SPOOLMAN && o[0]) snprintf(s_spoolman_url, sizeof(s_spoolman_url), "%s", o);
+  logSDf("BamBuddy: Spoolman address for the scale %s", o[0] ? o : "(BamBuddy's)");
+}
+
+bool bbChoiceOverruled() {
+  return s_answered && bbInventoryChoice() != BB_CHOICE_AUTO &&
+         (bbInventoryChoice() == BB_CHOICE_SPOOLMAN) != (s_answer == BB_INV_SPOOLMAN);
+}
+
+BbInventoryChoice bbInventoryChoice() {
+  if (s_choice < 0) {
+    const uint8_t v = prefsGetUChar("bb_inv", BB_CHOICE_AUTO);
+    s_choice = v <= BB_CHOICE_SPOOLMAN ? v : BB_CHOICE_AUTO;
+  }
+  return (BbInventoryChoice)s_choice;
+}
+
+int bbLastModeProbe() { return s_last_probe; }
+
+// The mode a hand-set choice stands for, or the asked one under auto.
+static BbInventoryMode chosenMode(BbInventoryMode asked) {
+  switch (bbInventoryChoice()) {
+    case BB_CHOICE_LOCAL:    return BB_INV_LOCAL;
+    case BB_CHOICE_SPOOLMAN: return BB_INV_SPOOLMAN;
+    default:                 return asked;
+  }
+}
+
+void bbSetInventoryChoice(BbInventoryChoice choice) {
+  if (choice > BB_CHOICE_SPOOLMAN) choice = BB_CHOICE_AUTO;
+  s_choice = choice;
+  prefsPutUChar("bb_inv", (uint8_t)choice);
+  // A hand-set mode holds from now on unless BamBuddy answers otherwise;
+  // auto waits for the next question, which the health check asks every 30 s.
+  if (choice != BB_CHOICE_AUTO && !s_answered) {
+    const BbInventoryMode mode = chosenMode(s_mode);
+    if (mode != s_mode) {
+      if (mode == BB_INV_LOCAL) s_spoolman_url[0] = '\0';
+      s_mode = mode;
+      spoolCacheForget("BamBuddy inventory set by hand");
+    }
+  }
+  logSDf("BamBuddy: inventory choice %s",
+         choice == BB_CHOICE_LOCAL ? "local" : choice == BB_CHOICE_SPOOLMAN ? "Spoolman" : "auto");
+}
 
 static bool hasBaseUrl(const char* base_url) {
   return base_url && strlen(base_url) > 7;   // longer than "http://"
@@ -182,7 +256,7 @@ int bbDetectInventoryMode(const char* base_url, const char* api_key,
   BbInventoryMode mode = BB_INV_LOCAL;
   char spoolman_url[sizeof(s_spoolman_url)] = "";
   if (!hasBaseUrl(base_url)) {
-    s_mode = mode;
+    s_mode = chosenMode(mode);
     s_spoolman_url[0] = '\0';
     return -1;
   }
@@ -192,13 +266,20 @@ int bbDetectInventoryMode(const char* base_url, const char* api_key,
 
   JsonDocument doc;
   int code = getJson(url, api_key, doc, timeout_ms, nullptr, nullptr);
+  s_last_probe = code;
   if (code != 200) {
     // 403 means the key was created without "Read Status". Local mode is the
     // right guess then: it is what a fresh install runs, and a wrong guess
-    // surfaces as a 404 on the first spool read rather than silently.
-    logSDf("BamBuddy: inventory mode unknown (HTTP %d), assuming local", code);
+    // surfaces as a 404 on the first spool read rather than silently. A mode
+    // set by hand stands, without the Spoolman url the answer would carry.
+    mode = chosenMode(mode);
+    logSDf("BamBuddy: inventory mode unknown (HTTP %d), %s", code,
+           mode == BB_INV_SPOOLMAN ? "Spoolman as set" : "assuming local");
+    s_answered = false;
+    // Without the answer there is no address either, unless one is set here.
+    snprintf(s_spoolman_url, sizeof(s_spoolman_url), "%s",
+             mode == BB_INV_SPOOLMAN ? bbSpoolmanUrlOverride() : "");
     s_mode = mode;
-    s_spoolman_url[0] = '\0';
     return code;
   }
 
@@ -212,6 +293,24 @@ int bbDetectInventoryMode(const char* base_url, const char* api_key,
     size_t n = strlen(spoolman_url);
     while (n > 0 && spoolman_url[n - 1] == '/') spoolman_url[--n] = '\0';
   }
+  // BamBuddy's answer wins over a mode set by hand: the device calls
+  // (tag-scanned, update-spool-weight) follow BamBuddy's own setting, and a
+  // spool written to the other inventory would not be the one they name.
+  if (bbInventoryChoice() != BB_CHOICE_AUTO && chosenMode(mode) != mode) {
+    static BbInventoryMode warned = (BbInventoryMode)0xFF;
+    if (warned != mode) {
+      logSDf("BamBuddy: inventory set to %s here, but BamBuddy uses %s - following BamBuddy",
+             chosenMode(mode) == BB_INV_SPOOLMAN ? "Spoolman" : "local",
+             mode == BB_INV_SPOOLMAN ? "Spoolman" : "local");
+      warned = mode;
+    }
+  }
+  s_answered = true;
+  s_answer = mode;
+  if (mode == BB_INV_LOCAL) spoolman_url[0] = '\0';
+  // BamBuddy's address for its Spoolman may be one only BamBuddy reaches.
+  else if (bbSpoolmanUrlOverride()[0])
+    snprintf(spoolman_url, sizeof(spoolman_url), "%s", bbSpoolmanUrlOverride());
   // The url first: a reader that sees the new mode then also sees its url.
   memcpy(s_spoolman_url, spoolman_url, sizeof(s_spoolman_url));
   s_mode = mode;
@@ -259,7 +358,10 @@ const char* bbSpoolmanUrl() { return s_spoolman_url; }
 // Only this direction is loud. Switched the other way, the local routes keep
 // answering and the next regular check moves the scale over.
 static bool bbModeMovedAway(int code, const char* base_url, const char* api_key) {
-  if (code != 400 || s_mode != BB_INV_SPOOLMAN) return false;
+  // A mode set by hand while BamBuddy refuses the question does not move on
+  // its own; one BamBuddy answered does.
+  if (code != 400 || s_mode != BB_INV_SPOOLMAN || (bbInventoryChoice() != BB_CHOICE_AUTO && !s_answered))
+    return false;
   bbDetectInventoryMode(base_url, api_key, BB_MODE_RECHECK_MS);
   if (s_mode == BB_INV_SPOOLMAN) return false;
   logSD("BamBuddy: the Spoolman proxy refused a read, the inventory is local now - asking again");
@@ -770,14 +872,9 @@ int bbPatchSpoolFields(const char* base_url, const char* api_key, int spool_id,
   if (weight_used)      body["weight_used"]  = *weight_used;
   if (storage_location) body["storage_location"] = storage_location;
   if (note)             body["note"] = note;
-  if (core_weight) {
-    // Only reaches the database in BamBuddy's own inventory. The Spoolman
-    // proxy accepts core_weight and drops it on the floor: "Accepted for
-    // schema parity but not persisted to Spoolman". Sending it there would
-    // return 200 and change nothing, so the caller is told instead.
-    if (s_mode == BB_INV_SPOOLMAN) return -1;
-    body["core_weight"] = *core_weight;
-  }
+  // Both inventories keep it: behind Spoolman as the spool's own
+  // spool_weight (BamBuddy #2908; before that it was dropped).
+  if (core_weight) body["core_weight"] = *core_weight;
   if (body.size() == 0) return -1;
 
   char url[192];
@@ -979,6 +1076,13 @@ int bbCreateSpool(const char* base_url, const char* api_key,
   // proxy turns it into the spool's price and answers 207 when Spoolman
   // refuses that, with the spool created all the same.
   if (spool.cost_per_kg > 0.0f) body["cost_per_kg"] = roundf(spool.cost_per_kg * 100.0f) / 100.0f;
+  if (spool.spoolman_filament_id > 0 && s_mode == BB_INV_SPOOLMAN)
+    body["spoolman_filament_id"] = spool.spoolman_filament_id;
+  if (spool.slicer_filament && spool.slicer_filament[0]) {
+    body["slicer_filament"] = spool.slicer_filament;
+    if (spool.slicer_filament_name && spool.slicer_filament_name[0])
+      body["slicer_filament_name"] = spool.slicer_filament_name;
+  }
 
   char url[192];
   snprintf(url, sizeof(url), "%s%s/spools", base_url, bbInventoryBase());

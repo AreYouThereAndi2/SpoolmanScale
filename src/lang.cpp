@@ -3443,6 +3443,30 @@ const char* const STRINGS[][3] = {
   { "Standard",
     "Default",
     "Par défaut" },  // STR_W_EXTRAS_DEFAULT
+  { "BamBuddy-Inventar",
+    "BamBuddy inventory",
+    "Inventaire BamBuddy" },  // STR_W_BB_INV
+  { "Automatisch (BamBuddy fragen)",
+    "Automatic (ask BamBuddy)",
+    "Automatique (demander à BamBuddy)" },  // STR_W_BB_INV_AUTO
+  { "Spoolman (über BamBuddy)",
+    "Spoolman (through BamBuddy)",
+    "Spoolman (via BamBuddy)" },  // STR_W_BB_INV_SM
+  { "BamBuddys eigenes Inventar",
+    "BamBuddy's own inventory",
+    "Inventaire propre de BamBuddy" },  // STR_W_BB_INV_LOCAL
+  { "BamBuddy verweigert die Abfrage (HTTP %d): dem API-Schlüssel fehlt „Read Status“. Inventar hier fest wählen.",
+    "BamBuddy refused the question (HTTP %d): the API key lacks “Read Status”. Set the inventory here.",
+    "BamBuddy refuse la requête (HTTP %d) : la clé API n’a pas « Read Status ». Choisissez l’inventaire ici." },  // STR_W_BB_INV_DENIED
+  { "BamBuddy nutzt %s, die Waage folgt BamBuddy. Die Wahl hier gilt nur, wenn BamBuddy die Abfrage verweigert.",
+    "BamBuddy uses %s and the scale follows BamBuddy. The choice here only counts while BamBuddy refuses the question.",
+    "BamBuddy utilise %s et la balance suit BamBuddy. Le choix ici ne compte que si BamBuddy refuse la requête." },  // STR_W_BB_INV_OVERRULED
+  { "Spoolman-Adresse für die Waage",
+    "Spoolman address for the scale",
+    "Adresse Spoolman pour la balance" },  // STR_W_BB_SM_URL
+  { "Nur nötig, wenn BamBuddy seinen Spoolman unter einer Adresse kennt, die die Waage nicht erreicht (Docker-Name wie http://spoolman:8000). Leer: BamBuddys Adresse. Damit findet ein Box-Scan vorhandene Spulen.",
+    "Only needed when BamBuddy knows its Spoolman by an address the scale cannot reach (a Docker name like http://spoolman:8000). Empty: BamBuddy's address. A box scan uses it to find spools you have.",
+    "Utile seulement si BamBuddy connaît son Spoolman sous une adresse que la balance n’atteint pas (nom Docker comme http://spoolman:8000). Vide : l’adresse de BamBuddy. Un scan de boîte s’en sert pour trouver les bobines existantes." },  // STR_W_BB_SM_URL_HINT
 };
 
 StringID tagWriteResultString(uint8_t code) {

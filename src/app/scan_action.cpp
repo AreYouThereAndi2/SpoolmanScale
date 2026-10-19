@@ -112,7 +112,7 @@ static int pickByWeight(JsonArrayConst spools, float* out_diff) {
 // Looks the code up in filament_to_bambuddy and, when it knows the product,
 // asks whether to create the spool. Without an address, or for a product
 // nobody knows, the status line says what to do instead.
-static void offerNewSpool(const char* code) {
+static void offerNewSpool(const char* code, int filament_id = 0) {
   if (!g_f2b_url[0]) {
     scanStatus(UI_COL_WARN, STR_SCAN_UNKNOWN_ARTICLE, code);
     return;
@@ -133,6 +133,8 @@ static void offerNewSpool(const char* code) {
     return;
   }
   if (s_ns.label_weight <= 0) s_ns.label_weight = 1000;
+  // Bought again: the filament the box's code was found on.
+  if (filament_id > 0 && s_ns.spoolman_filament_id <= 0) s_ns.spoolman_filament_id = filament_id;
 
   char title[48], q[112], hint[128];
   snprintf(title, sizeof(title), T(STR_NS_TITLE), s_ns.barcode);
@@ -165,11 +167,16 @@ static void newSpoolAnswerTick() {
   const float cost_per_kg = (a == QB_LEFT && s_ns.price_avg > 0.0f)
       ? s_ns.price_avg * 1000.0f / (float)s_ns.label_weight : 0.0f;
   int new_id = 0;
+  // Made on the user's Spoolman filament, the spool inherits its empty spool
+  // weight; a copy on the spool would not follow a correction of it.
+  const bool inherit = s_ns.core_from_filament && s_ns.spoolman_filament_id > 0 &&
+                       bbInventoryMode() == BB_INV_SPOOLMAN;
   // An unopened spool from the box: all of it is still there.
   const int code = serverReachNote(backendCreateSpoolFromTag(
       s_ns.material, s_ns.subtype, s_ns.brand, s_ns.rgba, s_ns.color_name,
-      s_ns.label_weight, s_ns.core_weight, (float)s_ns.label_weight,
-      s_ns.temp_min, s_ns.temp_max, &new_id, 8000, cost_per_kg), true);
+      s_ns.label_weight, inherit ? 0 : s_ns.core_weight, (float)s_ns.label_weight,
+      s_ns.temp_min, s_ns.temp_max, &new_id, 8000, cost_per_kg, s_ns.spoolman_filament_id,
+      s_ns.slicer_filament, s_ns.slicer_filament_name), true);
   if ((code != 200 && code != 201) || new_id <= 0) {
     logSDf("Scan: creating from %s failed, HTTP %d", s_ns.barcode, code);
     scanStatus(UI_COL_BAD_TEXT, STR_NS_FAILED, code);
@@ -201,11 +208,16 @@ static bool looksLikeSku(const char* code) {
   return digit && n >= 5 && n <= 32;
 }
 
-static void handleSpoolList(JsonArrayConst spools, const char* what, int filaments) {
+static void handleSpoolList(JsonArrayConst spools, const char* what, int filaments,
+                            int filament_id = 0) {
   const int n = (int)spools.size();
   if (n == 0) {
-    if (filaments > 0) scanStatus(UI_COL_WARN, STR_SCAN_NO_ACTIVE, what);
-    else               offerNewSpool(what);
+    // A product bought again after the last spool of it was used up: a new
+    // spool on the same filament, offered as for a box never seen.
+    if (filaments > 0 && (!g_f2b_url[0] || !backendCanCreateFromTag()))
+      scanStatus(UI_COL_WARN, STR_SCAN_NO_ACTIVE, what);
+    else
+      offerNewSpool(what, filament_id);
     return;
   }
   if (n == 1) {
@@ -232,11 +244,11 @@ static void handleArticle(const ScanCode& sc) {
     return;
   }
   JsonDocument doc;
-  int filaments = 0;
+  int filaments = 0, filament_id = 0;
   int code;
   if (sc.kind == SCAN_ARTICLE) {
     logSDf("Scan: article %s", sc.article);
-    code = spoolmanFindSpoolsByArticle(base, sc.article, doc, &filaments);
+    code = spoolmanFindSpoolsByArticle(base, sc.article, doc, &filaments, 6000, &filament_id);
   } else {
     logSDf("Scan: filament %d", sc.id);
     code = spoolmanFindSpoolsByFilament(base, sc.id, doc);
@@ -251,7 +263,7 @@ static void handleArticle(const ScanCode& sc) {
   char what[20];
   if (sc.kind == SCAN_ARTICLE) snprintf(what, sizeof(what), "%s", sc.article);
   else                         snprintf(what, sizeof(what), "F%d", sc.id);
-  handleSpoolList(doc.as<JsonArrayConst>(), what, filaments);
+  handleSpoolList(doc.as<JsonArrayConst>(), what, filaments, filament_id);
 }
 
 bool scanQuestionOpen() { return s_ns_scr != nullptr; }

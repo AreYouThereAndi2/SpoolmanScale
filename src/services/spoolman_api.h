@@ -146,13 +146,17 @@ int spoolmanPatchSpoolLastDried(const char* base_url, int spool_id, const char* 
 // id, weights, location and the filament's name, material and vendor.
 int spoolmanFindSpoolsByFilament(const char* base_url, int filament_id, JsonDocument& doc,
                                  uint32_t timeout_ms = 6000);
-// The active spools of every filament whose article_number is exactly
-// `article`, the EAN on the box. Two requests: the filaments, then their
-// spools. 200 with an empty array when no filament carries the number;
-// out_filaments says how many did, so "known filament, no spool left" can be
-// told from "never heard of it".
+// The active spools of every filament whose article_number is `article`,
+// the EAN on the box: letters and digits compared without case, a number
+// without its leading zeros (a UPC-A and its EAN-13 are one code, and
+// filament_to_bambuddy stores the short form). Two requests: the filaments,
+// then their spools. 200 with an empty array when no filament carries the
+// number; out_filaments says how many did, so "known filament, no spool
+// left" can be told from "never heard of it", and out_filament_id is the
+// first of them.
 int spoolmanFindSpoolsByArticle(const char* base_url, const char* article, JsonDocument& doc,
-                                int* out_filaments = nullptr, uint32_t timeout_ms = 6000);
+                                int* out_filaments = nullptr, uint32_t timeout_ms = 6000,
+                                int* out_filament_id = nullptr);
 // Writes the barcode a spool was created from into its filament's
 // article_number, so the next scan of the same box finds the filament.
 // Leaves a filament that already has a number alone.
