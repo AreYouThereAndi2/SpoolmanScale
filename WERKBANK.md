@@ -212,9 +212,11 @@ Was die Waage beim Scannen jetzt außerdem kann:
 - **UPC-Codes mit führender Null** (Hatchbox, Overture, Inland …) findet die Waage wieder. filament_to_bambuddy speichert sie ohne die Null, die Waage verglich bisher genau und bot jedes Mal eine neue Spule an.
 - **Nachkauf:** Ist die letzte Spule eines Produkts aufgebraucht, bietet der Scan einer neuen Box eine neue Spule auf demselben Filament an. Bisher kam nur „keine aktive Spule“.
 - **Leergewicht:** Kommt es vom Spoolman-Filament, legt die Waage es nicht mehr auf jede neue Spule. Die Spule erbt es vom Filament, eine Korrektur dort gilt dann für alle.
-- **Druckprofil:** Das passende in BamBuddy importierte Profil (siehe filament_to_bambuddy, *Druckprofile*) kommt mit auf die neue Spule. Die Profile für weitere Druckermodelle ergänzt filament_to_bambuddy über **Dein Bestand → Druckprofile zuordnen**.
+- **filament_to_bambuddy legt die Spule an**, genau wie vom Handy. Sie kommt auf dein Spoolman-Filament und bekommt das Druckprofil für jedes deiner Druckermodelle. Betttemperatur, Preis und Artikelnummer landen auf dem Filament, der Lagerort aus dem Speicher, und der Code wird gemerkt. Ist filament_to_bambuddy nicht erreichbar, legt die Waage die Spule wie bisher selbst über BamBuddy an.
+- **Etiketten im Handy-Layout:** Druckt die Waage ein Etikett, holt sie es von filament_to_bambuddy, in der Anordnung, die du am Handy eingestellt hast (siehe dort, *Etiketten drucken*). Ohne filament_to_bambuddy druckt sie ihr eigenes Etikett.
+- **Klare Fehlermeldungen:** Statt „fehlgeschlagen (-1)“ steht da, was los ist, z. B. „filament_to_bambuddy nicht erreichbar“, „Spoolman nicht erreichbar, Adresse prüfen“, „API-Schlüssel: Recht fehlt“, „abgelehnt, Inventar-Modus prüfen“. Die Zahl dahinter bleibt für die Fehlersuche.
 - **Leergewicht einer Spule ändern** geht jetzt auch mit BamBuddy + Spoolman. BamBuddy speichert es dort seit #2908.
-- Die Anfrage an filament_to_bambuddy darf 30 s dauern statt 15 s und lässt die Preissuche weg (`quick=1`).
+- Die Anfrage an filament_to_bambuddy darf 30 s dauern statt 15 s. Der Durchschnittspreis aus den Shop-Angeboten kommt wieder mit.
 
 ## Zubehör an der Spule abziehen (Clip, RFID-Halter)
 

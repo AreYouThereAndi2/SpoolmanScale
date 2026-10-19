@@ -3467,6 +3467,45 @@ const char* const STRINGS[][3] = {
   { "Nur nötig, wenn BamBuddy seinen Spoolman unter einer Adresse kennt, die die Waage nicht erreicht (Docker-Name wie http://spoolman:8000). Leer: BamBuddys Adresse. Damit findet ein Box-Scan vorhandene Spulen.",
     "Only needed when BamBuddy knows its Spoolman by an address the scale cannot reach (a Docker name like http://spoolman:8000). Empty: BamBuddy's address. A box scan uses it to find spools you have.",
     "Utile seulement si BamBuddy connaît son Spoolman sous une adresse que la balance n’atteint pas (nom Docker comme http://spoolman:8000). Vide : l’adresse de BamBuddy. Un scan de boîte s’en sert pour trouver les bobines existantes." },  // STR_W_BB_SM_URL_HINT
+  { "Suche: %s (%d)",
+    "Lookup: %s (%d)",
+    "Scan : %s (%d)" },  // STR_SCAN_FAIL_WHY
+  { "Anlegen: %s (%d)",
+    "Creating: %s (%d)",
+    "Créer : %s (%d)" },  // STR_NS_FAIL_WHY
+  { "filament_to_bambuddy nicht erreichbar",
+    "filament_to_bambuddy unreachable",
+    "filament_to_bambuddy injoignable" },  // STR_WHY_F2B_NET
+  { "filament_to_bambuddy antwortet nicht",
+    "filament_to_bambuddy does not answer",
+    "filament_to_bambuddy ne répond pas" },  // STR_WHY_F2B_SLOW
+  { "Spoolman nicht erreichbar, Adresse prüfen",
+    "Spoolman unreachable, check its address",
+    "Spoolman injoignable, vérifier l'adresse" },  // STR_WHY_SM_NET
+  { "BamBuddy nicht erreichbar",
+    "BamBuddy unreachable",
+    "BamBuddy injoignable" },  // STR_WHY_BB_NET
+  { "API-Schlüssel: Recht fehlt",
+    "API key lacks a permission",
+    "Clé API : droit manquant" },  // STR_WHY_AUTH
+  { "abgelehnt, Inventar-Modus prüfen",
+    "refused, check the inventory mode",
+    "refusé, voir mode d'inventaire" },  // STR_WHY_MODE
+  { "nicht gefunden",
+    "not found",
+    "introuvable" },  // STR_WHY_NOT_FOUND
+  { "Spoolman hinter BamBuddy nicht erreichbar",
+    "Spoolman behind BamBuddy unreachable",
+    "Spoolman derrière BamBuddy injoignable" },  // STR_WHY_SM_DOWN
+  { "Serverfehler",
+    "server error",
+    "erreur" },  // STR_WHY_SERVER
+  { "Antwort unlesbar",
+    "unreadable answer",
+    "réponse illisible" },  // STR_WHY_ANSWER
+  { "Neue Spulen aus einem Box-Scan legt filament_to_bambuddy an, wie vom Handy: auf deinem Spoolman-Filament, mit Druckprofilen, Lagerort aus dem Speicher. Etiketten kommen im Layout, das am Handy angeordnet ist. Ist es nicht erreichbar, macht die Waage beides selbst.",
+    "New spools from a box scan are created by filament_to_bambuddy, as from the phone: on your Spoolman filament, with slicer profiles and the remembered location. Labels come in the layout arranged on the phone. When it cannot be reached, the scale does both itself.",
+    "Les nouvelles bobines d'un scan de boîte sont créées par filament_to_bambuddy, comme depuis le téléphone : sur ton filament Spoolman, avec profils de tranchage et emplacement mémorisé. Les étiquettes suivent la mise en page du téléphone. S'il est injoignable, la balance fait les deux elle-même." },  // STR_W_F2B_CREATES
 };
 
 StringID tagWriteResultString(uint8_t code) {
