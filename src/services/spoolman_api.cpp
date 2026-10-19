@@ -634,30 +634,55 @@ int spoolmanFindSpoolsByFilament(const char* base_url, int filament_id, JsonDocu
   return spoolmanGetJson(base_url, path.c_str(), doc, timeout_ms, &filter);
 }
 
+// An article number as compared: letters and digits only, upper case; a
+// number without its leading zeros.
+static void articleKey(const char* in, char* out, size_t n) {
+  size_t o = 0;
+  bool digits = true;
+  for (const char* p = in ? in : ""; *p && o + 1 < n; p++) {
+    const unsigned char c = (unsigned char)*p;
+    if (!isalnum(c)) continue;
+    if (!isdigit(c)) digits = false;
+    out[o++] = (char)toupper(c);
+  }
+  out[o] = '\0';
+  if (digits && o > 1) {
+    size_t z = 0;
+    while (z + 1 < o && out[z] == '0') z++;
+    memmove(out, out + z, o - z + 1);
+  }
+}
+
 int spoolmanFindSpoolsByArticle(const char* base_url, const char* article, JsonDocument& doc,
-                                int* out_filaments, uint32_t timeout_ms) {
+                                int* out_filaments, uint32_t timeout_ms, int* out_filament_id) {
   if (out_filaments) *out_filaments = 0;
+  if (out_filament_id) *out_filament_id = 0;
   if (!hasBaseUrl(base_url) || !article || !article[0]) return -1;
 
   // Spoolman matches this filter as a partial, case insensitive search, so
-  // every filament that comes back is checked for the exact number.
+  // every filament that comes back is checked for the number. Asked with
+  // the short form: it is part of the long one too.
+  char want[40];
+  articleKey(article, want, sizeof(want));
+  if (!want[0]) return -1;
   JsonDocument ffilter;
   JsonObject fe = ffilter.add<JsonObject>();
   fe["id"] = true;
   fe["article_number"] = true;
   JsonDocument fdoc;
-  String fpath = String("/api/v1/filament?article_number=") + urlEncode(article);
+  String fpath = String("/api/v1/filament?article_number=") + urlEncode(want);
   int code = spoolmanGetJson(base_url, fpath.c_str(), fdoc, timeout_ms, &ffilter);
   if (code != 200) return code;
 
   String ids;
   int count = 0;
   for (JsonObjectConst f : fdoc.as<JsonArrayConst>()) {
-    String nr = f["article_number"] | "";
-    nr.trim();
-    if (nr != article) continue;
+    char have[40];
+    articleKey(f["article_number"] | "", have, sizeof(have));
+    if (strcmp(have, want) != 0) continue;
     const int id = f["id"] | 0;
     if (id <= 0) continue;
+    if (out_filament_id && !*out_filament_id) *out_filament_id = id;
     if (ids.length()) ids += ',';
     ids += id;
     count++;

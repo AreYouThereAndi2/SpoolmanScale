@@ -754,7 +754,8 @@ int backendCreateSpoolFromTag(const char* material, const char* subtype,
                               int label_weight, int core_weight, float remaining_weight,
                               int nozzle_temp_min, int nozzle_temp_max,
                               int* out_spool_id, uint32_t timeout_ms,
-                              float cost_per_kg, int spoolman_filament_id) {
+                              float cost_per_kg, int spoolman_filament_id,
+                              const char* slicer_filament, const char* slicer_filament_name) {
   HttpStallTime stall(__func__);   // the loop stands still for this call
   if (out_spool_id) *out_spool_id = 0;
   if (backendMode() != BACKEND_BAMBUDDY) return notSupported("CreateSpoolFromTag");
@@ -771,6 +772,8 @@ int backendCreateSpoolFromTag(const char* material, const char* subtype,
   ns.nozzle_temp_max = nozzle_temp_max;
   ns.cost_per_kg     = cost_per_kg;
   ns.spoolman_filament_id = spoolman_filament_id;
+  ns.slicer_filament      = slicer_filament;
+  ns.slicer_filament_name = slicer_filament_name;
   ns.weight_used = (float)label_weight - remaining_weight;
   if (ns.weight_used < 0.0f) ns.weight_used = 0.0f;
 
@@ -1047,10 +1050,8 @@ int backendPatchSpoolWeight(const char* base_url, int spool_id, float spool_weig
       return filamanPatchSpoolFloat(backendBaseUrl(), filamanApiKey(), spool_id,
                                     "empty_spool_weight_g", spool_weight, timeout_ms);
     case BACKEND_BAMBUDDY: {
-      // Only reaches the database in BamBuddy's own inventory. With Spoolman
-      // behind it the proxy accepts core_weight and drops it, so that mode
-      // answers "not supported" rather than reporting a false success.
-      if (bbInventoryMode() == BB_INV_SPOOLMAN) return notSupported("PatchSpoolWeight");
+      // Both inventories keep it; behind Spoolman as the spool's own
+      // spool_weight (BamBuddy #2908).
       const int core = (int)spool_weight;
       return bbPatchSpoolFields(backendBaseUrl(), bambuddyApiKey(), spool_id,
                                 nullptr, &core, nullptr, nullptr, nullptr, timeout_ms);

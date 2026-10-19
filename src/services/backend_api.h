@@ -269,7 +269,8 @@ int  backendCreateSpoolFromTag(const char* material, const char* subtype,
        int label_weight, int core_weight,
        float remaining_weight, int nozzle_temp_min, int nozzle_temp_max,
        int* out_spool_id = nullptr, uint32_t timeout_ms = 8000,
-       float cost_per_kg = 0.0f, int spoolman_filament_id = 0);
+       float cost_per_kg = 0.0f, int spoolman_filament_id = 0,
+       const char* slicer_filament = nullptr, const char* slicer_filament_name = nullptr);
 
 // Turns the colour value on a tag into a name the backend knows. Empty output
 // means "no name for this colour", which is not an error.
