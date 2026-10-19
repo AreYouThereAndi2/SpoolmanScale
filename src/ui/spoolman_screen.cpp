@@ -12,14 +12,12 @@
 #include "extra_fields_screen.h"
 #include "ota_browser.h"
 #include "hardware/sd_logger.h"
-#include "services/app_settings.h"
 #include "services/backend.h"
 #include "services/backend_api.h"
 #include "services/backend_http.h"
 #include "services/bambuddy_api.h"
 #include "header_status.h"
 #include "services/device_name.h"
-#include "services/wifi_manager.h"
 #include "web/web_access.h"
 #include "confirm_popup.h"
 #include "lang.h"
@@ -504,120 +502,4 @@ void buildSpoolmanScreen() {
   lv_obj_set_style_text_color(lbl_ef, lv_color_hex(UI_COL_ACCENT), 0);
   lv_obj_set_style_text_font(lbl_ef, &lv_font_montserrat_ext_14, 0);
   lv_obj_align(lbl_ef, LV_ALIGN_CENTER, 0, 0);
-}
-
-// ============================================================
-//  SPOOLMAN CONNECTION FAILED SCREEN
-// ============================================================
-void showSpoolmanFailScreen(bool is_setup_flow) {
-  logSD("SHOW: SpoolmanFailScreen");
-  logSDf("UI: Screen -> SpoolmanFail (setup=%d)", is_setup_flow ? 1 : 0);
-  spoolman_fail_is_setup = is_setup_flow;
-  hideAllOverlays();
-  if (scr_spoolman_fail) { lv_obj_del(scr_spoolman_fail); scr_spoolman_fail = nullptr; }
-
-  // Copy all strings to RAM buffers - T() returns Flash pointers which LVGL can't read directly
-  char buf_title[32], buf_msg[96], buf_retry[48], buf_skip[48];
-  backendText(T(STR_SPOOLMAN_TITLE), buf_title, sizeof(buf_title));
-  backendText(T(STR_SPOOLMAN_FAIL), buf_msg, sizeof(buf_msg));
-  copyT(buf_retry, sizeof(buf_retry), STR_SPOOLMAN_RETRY); buf_retry[sizeof(buf_retry)-1]=0;
-  copyT(buf_skip, sizeof(buf_skip), STR_SPOOLMAN_SKIP);  buf_skip[sizeof(buf_skip)-1]=0;
-
-  scr_spoolman_fail = lv_obj_create(lv_scr_act());
-  lv_obj_set_size(scr_spoolman_fail, 480, 320);
-  lv_obj_set_pos(scr_spoolman_fail, 0, 0);
-  lv_obj_set_style_radius(scr_spoolman_fail, 0, 0);
-  lv_obj_set_style_border_width(scr_spoolman_fail, 0, 0);
-  lv_obj_set_style_pad_all(scr_spoolman_fail, 0, 0);
-  lv_obj_clear_flag(scr_spoolman_fail, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_set_style_bg_color(scr_spoolman_fail, lv_color_hex(UI_COL_GROUND), 0);
-
-  // Title
-  lv_obj_t *lbl_title = lv_label_create(scr_spoolman_fail);
-  lv_label_set_text(lbl_title, buf_title);
-  lv_obj_set_style_text_color(lbl_title, lv_color_hex(UI_COL_ACCENT), 0);
-  lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_ext_18, 0);
-  lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 20);
-
-  // Back → Spoolman IP
-  addBackButton(scr_spoolman_fail, [](lv_event_t *e){
-    logSD("BTN: SpoolmanFail -> Back");
-    show_spoolman_pending = true;
-    // pending handler will delete scr_spoolman_fail via hideAllOverlays + recreate spoolman
-  });
-  addCloseButton(scr_spoolman_fail);
-
-  // Warning icon
-  lv_obj_t *lbl_icon = lv_label_create(scr_spoolman_fail);
-  lv_label_set_text(lbl_icon, LV_SYMBOL_WARNING);
-  lv_obj_set_style_text_color(lbl_icon, lv_color_hex(UI_COL_BAD_TEXT), 0);
-  lv_obj_set_style_text_font(lbl_icon, &lv_font_montserrat_ext_24, 0);
-  lv_obj_align(lbl_icon, LV_ALIGN_TOP_MID, 0, 60);
-
-  // IP entered
-  char ip_buf[80];
-  backendComposeBase(ip_buf, sizeof(ip_buf), cfg_spoolman_ip);
-  lv_obj_t *lbl_ip = lv_label_create(scr_spoolman_fail);
-  lv_label_set_text(lbl_ip, ip_buf);
-  lv_obj_set_style_text_color(lbl_ip, lv_color_hex(UI_COL_WARN), 0);
-  lv_obj_set_style_text_font(lbl_ip, &lv_font_montserrat_ext_16, 0);
-  lv_obj_set_style_text_align(lbl_ip, LV_TEXT_ALIGN_CENTER, 0);
-  lv_label_set_long_mode(lbl_ip, LV_LABEL_LONG_DOT);
-  lv_obj_set_width(lbl_ip, 440);
-  lv_obj_align(lbl_ip, LV_ALIGN_TOP_MID, 0, 96);
-
-  // Error message (from RAM buffer)
-  lv_obj_t *lbl_msg = lv_label_create(scr_spoolman_fail);
-  lv_label_set_text(lbl_msg, buf_msg);
-  lv_obj_set_style_text_color(lbl_msg, lv_color_hex(UI_COL_BAD_TEXT), 0);
-  lv_obj_set_style_text_font(lbl_msg, &lv_font_montserrat_ext_14, 0);
-  lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
-  lv_label_set_long_mode(lbl_msg, LV_LABEL_LONG_WRAP);
-  lv_obj_set_width(lbl_msg, 440);
-  lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 128);
-
-  // Change IP button (left)
-  lv_obj_t *btn_retry = lv_btn_create(scr_spoolman_fail);
-  lv_obj_set_size(btn_retry, 210, 50);
-  lv_obj_set_pos(btn_retry, 16, 248);
-  lv_obj_set_style_bg_color(btn_retry, lv_color_hex(UI_COL_BAD_BG), 0);
-  lv_obj_set_style_bg_color(btn_retry, lv_color_hex(UI_COL_BAD_BG_PRESSED), LV_STATE_PRESSED);
-  lv_obj_set_style_radius(btn_retry, 8, 0);
-  lv_obj_set_style_shadow_width(btn_retry, 0, 0);
-  lv_obj_set_style_border_width(btn_retry, 0, 0);
-  lv_obj_add_event_cb(btn_retry, [](lv_event_t *e){
-    logSD("BTN: SpoolmanFail -> Retry");
-    show_spoolman_pending = true;
-  }, LV_EVENT_CLICKED, NULL);
-  lv_obj_t *lbl_r = lv_label_create(btn_retry);
-  lv_label_set_text(lbl_r, buf_retry);
-  lv_obj_set_style_text_color(lbl_r, lv_color_hex(UI_COL_BAD_TEXT), 0);
-  lv_obj_set_style_text_font(lbl_r, &lv_font_montserrat_ext_16, 0);
-  lv_obj_center(lbl_r);
-
-  // Continue anyway button (right)
-  lv_obj_t *btn_cont = lv_btn_create(scr_spoolman_fail);
-  lv_obj_set_size(btn_cont, 210, 50);
-  lv_obj_set_pos(btn_cont, 254, 248);
-  lv_obj_set_style_bg_color(btn_cont, lv_color_hex(UI_COL_ROW), 0);
-  lv_obj_set_style_bg_color(btn_cont, lv_color_hex(UI_COL_QUIET_BG_PRESSED), LV_STATE_PRESSED);
-  lv_obj_set_style_radius(btn_cont, 8, 0);
-  lv_obj_set_style_shadow_width(btn_cont, 0, 0);
-  lv_obj_set_style_border_width(btn_cont, 0, 0);
-  lv_obj_add_event_cb(btn_cont, [](lv_event_t *e){
-    // Delete this screen first to avoid it being accessed during navigation
-    if (scr_spoolman_fail) { lv_obj_del(scr_spoolman_fail); scr_spoolman_fail = nullptr; }
-    if (spoolman_fail_is_setup) {
-      cal_reminder_pending = true;
-    } else {
-      closeConnectionScreen();
-      buildConnectionScreen();
-      if (!scr_connection) buildConnectionScreen(); hideAllOverlays(); lv_obj_clear_flag(scr_connection, LV_OBJ_FLAG_HIDDEN);
-    }
-  }, LV_EVENT_CLICKED, NULL);
-  lv_obj_t *lbl_c = lv_label_create(btn_cont);
-  lv_label_set_text(lbl_c, buf_skip);
-  lv_obj_set_style_text_color(lbl_c, lv_color_hex(UI_COL_CAPTION), 0);
-  lv_obj_set_style_text_font(lbl_c, &lv_font_montserrat_ext_16, 0);
-  lv_obj_center(lbl_c);
 }

@@ -431,7 +431,6 @@
  *You can use these fonts as default font too and they will be available globally.
  *E.g. #define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(my_font_1) LV_FONT_DECLARE(my_font_2)*/
 #define LV_FONT_CUSTOM_DECLARE \
-    LV_FONT_DECLARE(lv_font_montserrat_ext_8)   \
     LV_FONT_DECLARE(lv_font_montserrat_ext_10)  \
     LV_FONT_DECLARE(lv_font_montserrat_ext_12)  \
     LV_FONT_DECLARE(lv_font_montserrat_ext_14)  \
@@ -440,11 +439,7 @@
     LV_FONT_DECLARE(lv_font_montserrat_ext_20)  \
     LV_FONT_DECLARE(lv_font_montserrat_ext_22)  \
     LV_FONT_DECLARE(lv_font_montserrat_ext_24)  \
-    LV_FONT_DECLARE(lv_font_montserrat_ext_26)  \
     LV_FONT_DECLARE(lv_font_montserrat_ext_28)  \
-    LV_FONT_DECLARE(lv_font_montserrat_ext_30)  \
-    LV_FONT_DECLARE(lv_font_montserrat_ext_32)  \
-    LV_FONT_DECLARE(lv_font_montserrat_ext_34)  \
     LV_FONT_DECLARE(lv_font_montserrat_ext_36)  \
     LV_FONT_DECLARE(lv_font_fr_supp_10)  \
     LV_FONT_DECLARE(lv_font_fr_supp_12)  \

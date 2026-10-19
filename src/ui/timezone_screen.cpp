@@ -1,5 +1,4 @@
 #include "timezone_screen.h"
-#include "navigation.h"
 #include "app/app_state.h"
 #include "app/deferred_actions.h"
 

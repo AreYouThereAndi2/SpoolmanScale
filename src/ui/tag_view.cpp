@@ -41,11 +41,9 @@
 #define TV_MAT_W        166
 
 #define TV_IDENT_CAP_Y  60
-#define TV_IDENT_VAL_Y  76
 #define TV_DIV1_Y       104
 #define TV_R1           110
 #define TV_R2           152
-#define TV_R3           194
 #define TV_ROW_STEP     (TV_R2 - TV_R1)   // one row of the scrolling field area
 #define TV_ITEMS_MAX    16
 #define TV_DIV2_Y       238
@@ -98,8 +96,6 @@ static void snapshot(Shown* s) {
   s->spool_id  = s->found ? sm_id : 0;
   if (s->found) snprintf(s->spool_name, sizeof(s->spool_name), "%s", sm_filament_name);
 }
-
-bool isTagViewOpen() { return s_view != nullptr; }
 
 void closeTagView() {
   s_erase_pending = false;

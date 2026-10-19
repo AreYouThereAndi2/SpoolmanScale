@@ -6,7 +6,6 @@
 #include "app/app_state.h"
 #include "app_config.h"
 #include "hardware/i2c_scan.h"
-#include "hardware/nfc.h"
 #include "hardware/sd_logger.h"
 #include "lang.h"
 #include "services/user_options.h"

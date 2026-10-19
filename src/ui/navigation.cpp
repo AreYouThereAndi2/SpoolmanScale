@@ -80,7 +80,6 @@ void hideAllOverlays() {
   if (scr_timezone)    lv_obj_add_flag(scr_timezone,    LV_OBJ_FLAG_HIDDEN);
   if (scr_spoolman_options) lv_obj_add_flag(scr_spoolman_options, LV_OBJ_FLAG_HIDDEN);
   if (scr_tag_field)     lv_obj_add_flag(scr_tag_field, LV_OBJ_FLAG_HIDDEN);
-  if (scr_spoolman_fail) lv_obj_add_flag(scr_spoolman_fail, LV_OBJ_FLAG_HIDDEN);
   if (scr_wifi)        lv_obj_add_flag(scr_wifi,        LV_OBJ_FLAG_HIDDEN);
   if (scr_wifi_menu)   lv_obj_add_flag(scr_wifi_menu,   LV_OBJ_FLAG_HIDDEN);
   if (scr_bluetooth)   lv_obj_add_flag(scr_bluetooth,   LV_OBJ_FLAG_HIDDEN);
@@ -189,7 +188,6 @@ void showMainScreen() {
   if (scr_bambuddy_dried)  { lv_obj_del(scr_bambuddy_dried);  scr_bambuddy_dried  = nullptr; }
   if (scr_tagwrite)        { lv_obj_del(scr_tagwrite);        scr_tagwrite        = nullptr; }
   if (scr_lastused)    { lv_obj_del(scr_lastused);    scr_lastused    = nullptr; }
-  if (scr_spoolman_fail){ lv_obj_del(scr_spoolman_fail); scr_spoolman_fail = nullptr; }
   if (scr_welcome)     { lv_obj_del(scr_welcome);     scr_welcome     = nullptr; }
   if (scr_first_boot)  { lv_obj_del(scr_first_boot);  scr_first_boot  = nullptr; }
   if (scr_extra_fields){ lv_obj_del(scr_extra_fields); scr_extra_fields = nullptr;
@@ -230,7 +228,6 @@ void showSettingsScreen() {
   lbl_factor_cal_weight = nullptr;
   if (scr_bag)         { lv_obj_del(scr_bag);         scr_bag         = nullptr; }
   if (scr_lastused)    { lv_obj_del(scr_lastused);    scr_lastused    = nullptr; }
-  if (scr_spoolman_fail){ lv_obj_del(scr_spoolman_fail); scr_spoolman_fail = nullptr; }
   buildSettingsScreen();
   lv_obj_clear_flag(scr_settings, LV_OBJ_FLAG_HIDDEN);
   resetActivityTimer();

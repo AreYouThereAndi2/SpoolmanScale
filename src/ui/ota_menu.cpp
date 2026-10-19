@@ -10,21 +10,12 @@
 #include "hardware/sd_logger.h"
 #include "lang.h"
 #include "ota_browser.h"
-#include "services/ota_state.h"
 #include "ui_common.h"
 #include "update_badges.h"
 #include "theme.h"
 
 
 void showOtaGithubScreen();
-
-void showOtaScreen() {
-  logSD("SHOW: OtaScreen");
-  logSD("UI: Screen -> OTA Selection");
-  hideAllOverlays();
-  if (!scr_ota) buildOtaScreen();
-  lv_obj_clear_flag(scr_ota, LV_OBJ_FLAG_HIDDEN);
-}
 
 void buildOtaScreen() {
   logSD("BUILD: OtaScreen");

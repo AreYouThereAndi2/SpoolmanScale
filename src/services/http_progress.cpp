@@ -63,8 +63,7 @@ uint32_t httpStallTotalMs() {
   return s_stall_total_ms;
 }
 
-void           httpSetProgressHook(HttpProgressFn fn) { s_progress = fn; }
-HttpProgressFn httpProgressHook()                     { return s_progress; }
+void httpSetProgressHook(HttpProgressFn fn) { s_progress = fn; }
 // A hook paints into LVGL, and only the loop task may. The loop sets one
 // around its own blocking fetch, and a worker on the other core requesting at
 // that moment would otherwise find it set and call it from there.

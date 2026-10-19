@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include <lvgl.h>
 
-#include "hardware/sd_logger.h"
 #include "services/filaman_api.h"
 #include "ui_common.h"
 

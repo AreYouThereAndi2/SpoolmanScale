@@ -77,15 +77,10 @@ void scannerConfigure(bool enabled, int rx, int tx, uint32_t baud,
                        uint8_t lamp = SCAN_LAMP_KEEP, uint8_t led = SCAN_LED_KEEP);
 void scannerApplyPending();
 
-// True while the UART is open.
-bool scannerActive();
-
 // Collects bytes and hands back one finished code, trimmed and terminated.
 // A code ends at CR or LF, or after a short pause for a scanner that is set
 // to send no terminator. Non-blocking, call every loop pass.
 bool scannerPoll(char* out, size_t out_size);
 
-// The last code read and when, for the status page.
+// The last code read, for the status page.
 const char* scannerLastCode();
-uint32_t    scannerLastCodeMs();
-uint32_t    scannerCodeCount();

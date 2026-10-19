@@ -22,7 +22,6 @@ void handleBleDevicesDeferredActions();
 
 // The card over the list. Closed, not hidden, by the navigation.
 void closeBleDeviceCard();
-bool isBleDeviceCardOpen();
 
 // What the last scan saw, for the row on the Bluetooth screen.
 bool bleDevicesScanned();

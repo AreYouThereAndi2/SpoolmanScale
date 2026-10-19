@@ -7,7 +7,6 @@
 #include <lvgl.h>
 #include <cstring>
 
-#include "confirm_popup.h"
 #include "hardware/scale_state.h"
 #include "hardware/sd_logger.h"
 #include "services/auto_weight_state.h"

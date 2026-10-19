@@ -2,7 +2,6 @@
 
 #include "services/tag_field.h"
 #include "services/tag_uid.h"
-#include "services/user_options.h"
 
 int     bright_normal   = BRIGHT_NORMAL_DEFAULT;
 int     dim_timeout_ms  = DIM_TIMEOUT_DEFAULT;
@@ -18,7 +17,6 @@ char cfg_spoolman_base[80] = "";
 bool cfg_lang_set          = false;
 bool cfg_first_boot        = true;
 bool cfg_setup_resume      = false;
-bool spoolman_fail_is_setup  = false;
 bool setup_active            = false;
 
 bool nfc_ok = false;
@@ -33,7 +31,6 @@ bool sm_reachable = false;
 
 bool tag_present = false;
 
-lv_obj_t *scr_main   = nullptr;
 lv_obj_t *scr_settings   = nullptr;
 lv_obj_t *scr_wifi       = nullptr;
 lv_obj_t *scr_backend    = nullptr;
@@ -46,7 +43,6 @@ lv_obj_t *scr_tagwrite       = nullptr;
 lv_obj_t *scr_timezone = nullptr;
 lv_obj_t *scr_spoolman_options = nullptr;
 lv_obj_t *scr_spoolman   = nullptr;
-lv_obj_t *scr_spoolman_fail = nullptr;
 lv_obj_t *scr_welcome    = nullptr;
 lv_obj_t *scr_first_boot = nullptr;
 lv_obj_t *scr_extra_fields = nullptr;
@@ -76,10 +72,6 @@ lv_obj_t *lbl_burger_badge   = nullptr;
 lv_obj_t *lbl_system_badge   = nullptr;
 lv_obj_t *lbl_fw_badge       = nullptr;
 lv_obj_t *lbl_gh_btn_badge   = nullptr;
-lv_obj_t *lbl_wifi_info = nullptr;
-
-lv_obj_t *ta_factor_weight = nullptr;
-lv_obj_t *kb_factor     = nullptr;
 lv_obj_t *lbl_factor_result = nullptr;
 lv_obj_t *lbl_factor_cal_weight = nullptr;
 
@@ -103,10 +95,6 @@ bool  sm_archived = false;
 int   sm_tag_conflict_spool = 0;
 int   sm_tag_conflict_filament = 0;
 
-const char* smSelectedTagValue() {
-  return sm_tag_values[tagFieldEffective()];
-}
-
 int smBoundUidCount() {
   int n = 0;
   for (uint8_t i = 0; i < TAG_FIELD_EXTRA_COUNT; i++) {
@@ -123,20 +111,12 @@ int smBoundUidCount() {
   return n;
 }
 
-int smBoundSourceCount() {
-  int n = 0;
-  for (uint8_t i = 0; i < TAG_FIELD_EXTRA_COUNT; i++)
-    if (sm_tag_values[i][0]) n++;
-  if (sm_tag_values[TAG_FIELD_NATIVE][0]) n++;
-  return n;
-}
 char  sm_article_nr[32] = "";
 char  sm_filament_name[32] = "";
 char  sm_material_global[32] = "";
 char  sm_vendor_g[32] = "";
 char  sm_color_global[16] = "";
 char  sm_location_name[LOCATION_NAME_MAX] = "";
-int   sm_location_id = 0;
 int   sm_status_id = 0;
 
 float scale_weight_g = 0.0f;
@@ -162,7 +142,6 @@ void tagLookupForget() {
 char  sm_last_used[32] = "";
 
 int nfc_retry_count = 0;
-int nfc_absent_count = 0;
 int nfc_fast_polls = 0;
 int nfc_miss_streak = 0;
 unsigned long nfc_stat_scans = 0;
@@ -172,18 +151,12 @@ unsigned long nfc_stat_removals = 0;
 unsigned long nfc_stat_reinits = 0;
 
 lv_obj_t *lbl_status;
-lv_obj_t *lbl_uid;
-lv_obj_t *lbl_tray_uuid;
 lv_obj_t *lbl_material;
-lv_obj_t *lbl_color;
 lv_obj_t *lbl_filament_name;
 lv_obj_t *lbl_color_swatch;
 lv_obj_t *lbl_vendor;
 lv_obj_t *lbl_temp;
-lv_obj_t *lbl_detail;
-lv_obj_t *lbl_date;
 lv_obj_t *lbl_spoolman_id;
-lv_obj_t *lbl_scan_count;
 lv_obj_t *lbl_keys;
 lv_obj_t *lbl_raw_info;
 
@@ -230,6 +203,5 @@ lv_obj_t *btn_hdr_nfc = nullptr;
 lv_obj_t *scr_more_info = nullptr;
 
 int scan_count = 0;
-lv_obj_t *page_main;
 
 lv_obj_t *scr_info = nullptr;

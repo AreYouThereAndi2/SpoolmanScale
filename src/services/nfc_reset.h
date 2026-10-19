@@ -37,10 +37,9 @@ bool nfcResetVerified();
 // binds its reset pin in the constructor.
 bool nfcResetSelfTest();
 
-// Whether the reader has ever had to be re-initialised on this device. The
+// Notes that the reader has had to be re-initialised on this device. The
 // hint is only worth showing to people this has actually happened to: on a
 // scale whose reader has never stumbled, the modification buys nothing.
-bool nfcReaderNeededRecovery();
 void nfcReaderNoteRecovery();
 
 // The modification hint. Due only when the reader has needed recovery, the

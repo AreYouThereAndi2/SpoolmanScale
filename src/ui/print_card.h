@@ -26,8 +26,6 @@ void printCardTick();
 // The answer. text_id is labelPrintResultString(result) for a failure.
 void printCardResult(LabelPrintResult result);
 
-bool printCardOpen();
-
 // From appLoop(): closes the card when OK or the countdown asked for it,
 // never from the card's own callback.
 void printCardLoop();

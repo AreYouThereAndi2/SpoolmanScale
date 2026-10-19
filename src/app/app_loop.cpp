@@ -116,7 +116,6 @@
 #include "ui/ota_menu.h"
 #include "ui/printer_screen.h"
 #include "ui/scale_menu.h"
-#include "ui/settings_screen.h"
 #include "ui/setup_welcome_screen.h"
 #include "ui/spool_flow.h"
 #include "ui/spoolman_lookup.h"
@@ -436,9 +435,6 @@ static bool wifiRoamQuiet() {
   if (amsWeightsBusy() || driedBatchBusy()) return false;
   return true;
 }
-
-static unsigned long tare_msg_ms = 0;
-lv_obj_t *lbl_ok_ptr = nullptr;
 
 static unsigned long last_tag_seen_ms = 0;    // last NFC detection
 static unsigned long last_bambu_retry_ms = 0; // backoff between Bambu re-scans
@@ -960,7 +956,6 @@ void appLoop() {
     show_spoolman_pending = false;
     // Always rebuild - sp_ip_input is reset on entry
     closeSpoolmanScreen();
-    if (scr_spoolman_fail) { lv_obj_del(scr_spoolman_fail); scr_spoolman_fail = nullptr; }
     buildSpoolmanScreen();
     hideAllOverlays();
     lv_obj_clear_flag(scr_spoolman, LV_OBJ_FLAG_HIDDEN);
@@ -1239,11 +1234,6 @@ void appLoop() {
     finish_setup_pending = false;
     showMainScreen();
   }
-  // Hide tare confirmation
-  if (tare_msg_ms > 0 && millis() - tare_msg_ms > 800) {
-    if (lbl_ok_ptr) { lv_obj_del(lbl_ok_ptr); lbl_ok_ptr = nullptr; }
-    tare_msg_ms = 0;
-  }
 
   // No-tag timer: clear display if no tag detected for too long.
   // Only clear if truly no tag present (tag_present=false).
@@ -1349,8 +1339,8 @@ void appLoop() {
     displayNoteWeight(scale_weight_g);
 
     // Keep the reference fresh only while the tag is genuinely being read.
-    // The guard used to ask nfc_absent_count, which is written to 0 at every
-    // one of its sites and never incremented - so it was always true and the
+    // The guard used to ask a miss counter that was only ever written to 0
+    // and never incremented - so it was always true and the
     // reference followed the spool all the way down as it was lifted, which
     // also left the location cross-check below permanently mute.
     // nfc_fast_polls is the counter that actually rises on a missed read.
@@ -1883,13 +1873,6 @@ void appLoop() {
         last_tag_seen_ms = millis();
         const bool newly_placed = !tag_present;
         tag_present = true;
-        // A successful read means zero consecutive misses, by definition.
-        // This used to be reset only when the UID changed, so after the very
-        // first read of a spool the counter never went back to zero. The
-        // "4 consecutive misses" below then counted misses that were minutes
-        // apart, and the fifth glitch of a session declared the spool removed
-        // while it was still lying on the scale.
-        nfc_absent_count = 0;
         // Putting a tag down wakes the screen, a tag lying there does not: see
         // handlePowerManagement(). One that merely dropped out and came back
         // under a spool that never moved is not news either.
@@ -1917,7 +1900,7 @@ void appLoop() {
           // never looked up: on 22.09.2026 an NTAG after two Bambu tags kept
           // the Bambu spool on screen, "Update weight" included.
           ntag_handled_uid[0] = '\0';
-          nfc_retry_count = 0; nfc_absent_count = 0;
+          nfc_retry_count = 0;
           last_bambu_retry_ms = 0;
           bambu_uid_probed = false;
           snapmaker_decoded = false;
@@ -2036,7 +2019,6 @@ void appLoop() {
         last_tag_seen_ms = millis();
         const bool newly_placed = !tag_present;
         tag_present = true;
-        nfc_absent_count = 0;   // see the comment in the Bambu branch above
         if (newly_placed && !weightSaysSpoolStayed()) resetActivityTimer();
         // Back after it demonstrably left the pad: whatever was answered
         // for it last time was about that trip, this is a new one.
@@ -2089,12 +2071,9 @@ void appLoop() {
           g_tag.color_hex[0] = '\0';
           g_tag.vendor[0] = '\0';
           spoolman_queried_uid[0] = '\0';
-          lv_label_set_text(lbl_uid, uid_str);
-          lv_label_set_text(lbl_tray_uuid, "-");
           lv_label_set_text(lbl_material, "-");
           lv_label_set_text(lbl_filament_name, "-");
           lv_label_set_text(lbl_vendor, "-");
-          lv_label_set_text(lbl_detail, "-");
           lv_label_set_text(lbl_last_used, "-");
           lv_label_set_text(lbl_spoolman_dried_val, "-");
         if (lbl_dried_sym) lv_obj_add_flag(lbl_dried_sym, LV_OBJ_FLAG_HIDDEN);
@@ -2174,7 +2153,6 @@ void appLoop() {
             nfc_fast_polls = 0;
             tag_present = false;
             tag_absent_since_ms = millis();
-            nfc_absent_count = 0;
             last_tag_seen_ms = millis();
             spoolman_queried_uid[0] = '\0';  // allow re-query when same tag is placed again
             // Only a spool that demonstrably left counts as news when it comes

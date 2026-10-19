@@ -109,8 +109,6 @@ public:
   HttpStallTime& operator=(const HttpStallTime&) = delete;
 };
 
-HttpProgressFn httpProgressHook();
-
 // The byte count for a download on another task. The hook above paints and
 // therefore only ever runs on the loop task; a worker has nothing to paint
 // with and only wants the number, which the loop then reads and paints

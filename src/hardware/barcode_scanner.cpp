@@ -34,7 +34,6 @@ static bool     s_overflow = false;
 
 static char     s_last_code[SCANNER_CODE_MAX];
 static uint32_t s_last_code_ms = 0;
-static uint32_t s_code_count = 0;
 
 bool scannerPinAllowed(int pin, bool is_tx) {
   if (is_tx && pin == -1) return true;
@@ -181,8 +180,6 @@ void scannerApplyPending() {
   scannerBegin();
 }
 
-bool scannerActive() { return s_open; }
-
 // Strips control characters at both ends: some scanners prefix an STX or
 // append a tab, and none of that belongs to the code.
 static size_t trimCode(char* s) {
@@ -212,7 +209,6 @@ static bool finishCode(char* out, size_t out_size) {
   }
   snprintf(s_last_code, sizeof(s_last_code), "%s", s_buf);
   s_last_code_ms = now;
-  s_code_count++;
   snprintf(out, out_size, "%s", s_buf);
   return true;
 }
@@ -239,5 +235,3 @@ bool scannerPoll(char* out, size_t out_size) {
 }
 
 const char* scannerLastCode()   { return s_last_code; }
-uint32_t    scannerLastCodeMs() { return s_last_code_ms; }
-uint32_t    scannerCodeCount()  { return s_code_count; }

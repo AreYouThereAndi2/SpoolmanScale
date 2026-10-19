@@ -23,8 +23,8 @@ bool backendLastListPartial();
 //  Functions with no FilaMan equivalent return BACKEND_NOT_SUPPORTED
 //  there, they never silently do nothing.
 //
-//  Two functions from spoolman_api are deliberately absent because
-//  nothing calls them: spoolmanGetJson and spoolmanIsReachable.
+//  spoolmanGetJson from spoolman_api is deliberately absent because
+//  nothing outside spoolman_api calls it.
 // ============================================================
 
 // Runs once after the connection is up, before the first real call. Only

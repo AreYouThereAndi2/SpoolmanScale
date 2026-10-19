@@ -5,4 +5,3 @@
 // Two ways out, as with the NFC reset hint: OK until the next boot, or never
 // again.
 void showPartitionHint();
-void closePartitionHint();

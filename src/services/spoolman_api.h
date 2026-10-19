@@ -19,7 +19,6 @@ int spoolmanGetLocationsJson(const char* base_url, JsonDocument& doc,
 int spoolmanGetSpoolFieldsJson(const char* base_url, JsonDocument& doc,
   uint32_t timeout_ms = 4000, DeserializationError* out_err = nullptr);
 int spoolmanGetHealthCode(const char* base_url, uint32_t timeout_ms = 3000);
-bool spoolmanIsReachable(const char* base_url, uint32_t timeout_ms = 3000);
 bool spoolmanGetVersion(const char* base_url, char* out_version, size_t out_size, uint32_t timeout_ms = 3000);
 int spoolmanCountActiveSpools(const char* base_url, uint32_t timeout_ms = 6000);
 // Count of the active spools and the highest id among them, from one request

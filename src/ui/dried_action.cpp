@@ -7,7 +7,6 @@
 
 #include "date_display.h"
 #include "hardware/sd_logger.h"
-#include "services/backend.h"
 #include "services/backend_api.h"
 #include "services/server_reach.h"
 #include "services/dried_batch.h"

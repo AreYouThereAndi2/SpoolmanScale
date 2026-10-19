@@ -26,7 +26,6 @@ AmsSlotState   s_state;
 }  // namespace
 
 bool amsPresenceHasAms()    { return s_known && s_has_ams; }
-int  amsPresencePrinterId() { return s_printer_id; }
 
 void amsPresenceForget() {
   s_known      = false;

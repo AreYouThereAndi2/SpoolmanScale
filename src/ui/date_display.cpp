@@ -19,7 +19,7 @@ static int dryingAlertLevel(const char* last_dried_local, const char* material);
 // ISO date "YYYY-MM-DD" -> local format based on g_date_fmt:
 //   0 = DD.MM.YYYY  (German style)
 //   1 = YYYY-MM-DD  (ISO)
-void isoToLocal(const char* iso, char* out, size_t len) {
+void isoToDe(const char* iso, char* out, size_t len) {
   if (strlen(iso) >= 10 && iso[4] == '-' && iso[7] == '-') {
     if (g_date_fmt == 1) {
       // ISO belassen
@@ -33,8 +33,6 @@ void isoToLocal(const char* iso, char* out, size_t len) {
     out[len-1] = '\0';
   }
 }
-// Legacy alias so all existing calls continue to work
-void isoToDe(const char* iso, char* out, size_t len) { isoToLocal(iso, out, len); }
 
 // Days since a localized date until today
 // Supports DD.MM.YYYY (fmt 0) and YYYY-MM-DD (fmt 1)

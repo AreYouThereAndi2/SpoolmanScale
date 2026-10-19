@@ -7,7 +7,6 @@
 #include "app/app_state.h"
 #include "hardware/sd_logger.h"
 #include "services/backend.h"
-#include "services/filaman_api.h"
 #include "services/remote_link.h"
 #include "services/setup_portal.h"
 #include "services/tag_write.h"

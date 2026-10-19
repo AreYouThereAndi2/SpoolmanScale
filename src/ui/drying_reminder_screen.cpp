@@ -60,7 +60,6 @@ static void buildDryNumpadScreen(int target) {
   const int NP_X0 = (480 - 3*NP_W - 2*NP_GAP) / 2;
   const int NP_Y0 = 122;
   static const char* keys[] = { "1","2","3","4","5","6","7","8","9","DEL","0","OK" };
-  int kx = 0, ky = 0, kw = NP_W, kh = NP_H, gap = NP_GAP;  // unused vars kept for compat
   for (int i = 0; i < 12; i++) {
     int col = i % 3, row = i / 3;
     int bx = NP_X0 + col * (NP_W + NP_GAP);

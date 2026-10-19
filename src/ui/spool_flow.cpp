@@ -1,6 +1,5 @@
 #include "spool_flow.h"
 #include "ui_common.h"
-#include "navigation.h"
 #include "app/app_state.h"
 
 #include <Arduino.h>
@@ -20,7 +19,6 @@
 #include "services/spool_cache.h"
 #include "services/uid_index.h"
 #include "services/http_progress.h"
-#include "services/spoolman_api.h"
 #include "services/tag_field.h"
 #include "services/tag_uid.h"
 #include "services/user_options.h"
@@ -175,7 +173,6 @@ static bool linkSpoolsEnsureCapacity(int needed) {
 }
 
 char          link_tag_uid[24] = "";   // UID of the tag to be linked
-static lv_obj_t     *scr_link_list = nullptr; // Spool selection overlay (old, kept for compatibility)
 
 // Neuer Link-Flow Overlays
 static lv_obj_t *scr_link_entry   = nullptr;  // Entry popup
@@ -266,8 +263,6 @@ static bool link_id_lookup_is_bambu = false;
 // workable, a list of nothing is a dead end, but the user still has to know
 // which of the two they are looking at.
 bool link_material_ignored = false;
-// The list on screen came out of services/spool_cache rather than off the wire.
-static bool link_list_from_cache = false;
 // Whether the list on screen gets the strip with its time and "Reload": one
 // out of the cache, and one just downloaded into it. Only the second used to
 // be missing, so a reload took the button away with it - and with it the way
@@ -320,7 +315,6 @@ static bool id_input_open = false;           // true while IdInputPopup is visib
 
 bool link_popup_dismissed = false;              // user dismissed the popup
 unsigned long link_tag_first_seen_ms = 0;       // time of first detection
-#define LINK_POPUP_DELAY_MS  3000               // 3s warten bevor Popup erscheint
 
 // ============================================================
 //  SPOOLMAN: LOAD ALL SPOOLS (for new link flow)
@@ -595,7 +589,6 @@ LinkFetch fetchAllSpoolsForLink(bool is_bambu, const char* material_filter, bool
   // verdict standing, and the next list would drop its material filter for no
   // reason and say so.
   link_material_ignored = false;
-  link_list_from_cache  = false;
   link_list_reloadable  = false;
   if (!wifi_ok) return LINK_FETCH_FAILED;
 
@@ -717,7 +710,6 @@ LinkFetch fetchAllSpoolsForLink(bool is_bambu, const char* material_filter, bool
 // passes, the rows in PSRAM, the sort.
 static bool linkFetchBuild(JsonDocument& doc, bool from_cache, bool is_bambu,
                            const char* material_filter, bool archived_only) {
-  link_list_from_cache = from_cache;
   // A download may be kept exactly when a list out of the cache could have
   // been served: not the archive, not the copy flow.
   link_list_reloadable = from_cache || s_lf_may_cache;
@@ -1093,9 +1085,6 @@ void linkPickerClose() {
   closeLinkOverlays();
 }
 
-// Legacy wrapper for compatibility
-void fetchUnlinkedSpools() { linkFetchRun(false, "", false, LF_NEXT_NONE); }
-
 // ============================================================
 //  A ROW OUT OF THE CACHE IS READ AGAIN BEFORE IT IS USED
 // ============================================================
@@ -1204,7 +1193,6 @@ static void closeLinkOverlays() {
   releaseScreen(&scr_link_mat);
   releaseScreen(&scr_link_mat_sub);
   releaseScreen(&scr_link_spools);
-  releaseScreen(&scr_link_list);
   linkSpoolsFree();
 }
 
@@ -3627,25 +3615,6 @@ void showLinkEntryPopup(bool is_bambu) {
 }
 
 // ============================================================
-//  LEGACY: closeLinkList / showLinkList (nicht mehr aktiv genutzt)
-// ============================================================
-void closeLinkList() {
-  releaseScreen(&scr_link_list);
-  releaseScreen(&scr_link_entry);
-  releaseScreen(&scr_link_id);
-  releaseScreen(&scr_link_vendor);
-  releaseScreen(&scr_link_mat);
-  releaseScreen(&scr_link_mat_sub);
-  releaseScreen(&scr_link_spools);
-}
-
-void showLinkList() {
-  logSD("SHOW: LinkList (legacy)");
-  // Wird nicht mehr direkt aufgerufen - Entry-Popup uebernimmt
-  showLinkEntryPopup(false);
-}
-
-// ============================================================
 //  UI BAUEN - Redesign Beta_0.4.100
 // Main screen construction lives in ui/main_screen.cpp.
 
@@ -3905,7 +3874,7 @@ void hideSpoolFlowOverlays() {
   lv_obj_t *const link_scr[] = {
     scr_link_entry, scr_link_id, scr_link_warn_a, scr_link_warn_b,
     scr_link_vendor, scr_link_mat, scr_link_mat_sub, scr_link_spools,
-    scr_link_list, scr_link_confirm, scr_tag_move,
+    scr_link_confirm, scr_tag_move,
     scr_copy_entry, scr_copy_list, scr_copy_confirm, scr_newtag
   };
   for (unsigned i = 0; i < sizeof(link_scr) / sizeof(link_scr[0]); i++)

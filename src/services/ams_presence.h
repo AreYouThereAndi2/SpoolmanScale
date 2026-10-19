@@ -30,9 +30,6 @@
 // rather than flickering away when it is not.
 bool amsPresenceHasAms();
 
-// The printer the answer belongs to, or 0. Saves the view a lookup.
-int  amsPresencePrinterId();
-
 // Throws the answer away, for a backend switch or a changed host: the next
 // tick asks again. Without this the chip would keep promising an AMS that
 // belongs to a server no longer in use.

@@ -1,5 +1,4 @@
 #include "ams_assign_screen.h"
-#include "navigation.h"
 #include "app/app_state.h"
 #include "app/deferred_actions.h"
 
@@ -25,14 +24,6 @@ static bool s_write_window_pending = false;  // push s_ams_numpad_value
 // missing instead of showing a stale number as if it were fresh.
 static int  s_server_code    = 0;
 static bool s_server_enabled = false;
-
-const char* amsModeName() {
-  switch (g_ams_mode) {
-    case AMS_ASK:    return T(STR_AMS_MODE_ASK);
-    case AMS_ALWAYS: return T(STR_AMS_MODE_ALWAYS);
-    default:         return T(STR_AMS_MODE_OFF);
-  }
-}
 
 // Row with a label, a hint underneath and a value on the right. Same shape
 // as the drying thresholds, which is the only other place a settings value

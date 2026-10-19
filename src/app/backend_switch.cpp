@@ -9,12 +9,10 @@
 #include "services/backend_http.h"
 #include "services/ams_presence.h"
 #include "services/backend_api.h"
-#include "services/bambuddy_device.h"
 #include "services/dried_batch.h"
 #include "services/filaman_api.h"
 
 #include "app/app_state.h"
-#include "app/deferred_actions.h"
 #include "hardware/sd_logger.h"
 #include "services/ams_assign.h"
 #include "services/ams_pick.h"
@@ -130,7 +128,6 @@ void backendApplyMode(BackendMode mode) {
   sm_total = 0;
   sm_dup_count = 0;
   sm_archived = false;
-  sm_location_id = 0;            // its name is cleared, the id was not
   sm_tag_conflict_spool = 0;
   sm_tag_conflict_filament = 0;
   sm_hw_uid_value[0] = '\0';     // belongs to a spool on the old server

@@ -12,7 +12,6 @@
 #include "hardware/scale.h"
 #include "hardware/scale_state.h"
 #include "confirm_popup.h"
-#include "info_popup.h"
 #include "hardware/sd_logger.h"
 #include "lang.h"
 #include "scale_menu.h"
@@ -41,8 +40,8 @@ void showFactorScreen() {
   buildFactorScreen();
   // hideAllOverlays() is the authoritative list. A hand maintained copy used to
   // live here and had drifted: scr_backend, scr_drying_reminder, scr_lastused,
-  // scr_more_info, scr_ota_github and scr_spoolman_fail were missing, so coming
-  // here from any of them left the old screen standing. Order matters - it also
+  // scr_more_info and scr_ota_github were missing, so coming here from any of
+  // them left the old screen standing. Order matters - it also
   // hides scr_factor, which buildFactorScreen() created hidden anyway, so the
   // screen is shown right afterwards.
   hideAllOverlays();

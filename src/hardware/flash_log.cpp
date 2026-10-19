@@ -326,8 +326,6 @@ void flashLogClear() {
     Serial.println("Flash log: clear boundary not stored, a restart before the erase ends brings lines back");
 }
 
-bool flashLogClearBusy() { return s_clearing; }
-
 uint32_t flashLogLines() {
   if (!s_part || s_clearing || s_next_seq <= s_first_seq) return 0;
   // Never more than the ring holds. A ring written while it was larger
@@ -341,8 +339,6 @@ uint32_t flashLogUsedBytes() {
   if (!s_part || s_clearing) return 0;
   return s_lapped ? (uint32_t)FLASH_LOG_BYTES : (s_next_rec * REC_BYTES);
 }
-
-uint32_t flashLogCapacityBytes() { return FLASH_LOG_BYTES; }
 
 // ---- reading --------------------------------------------------------
 

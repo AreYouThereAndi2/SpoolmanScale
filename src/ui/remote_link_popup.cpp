@@ -7,7 +7,6 @@
 #include <cstring>
 #include <strings.h>
 
-#include "app_config.h"
 #include "bambu/bambu_tag.h"
 #include "hardware/sd_logger.h"
 #include "lang.h"
