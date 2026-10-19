@@ -209,6 +209,7 @@ void addBackButton(lv_obj_t *parent, lv_event_cb_t cb) {
   lv_obj_t *btn = lv_btn_create(parent);
   lv_obj_set_size(btn, 44, 44);
   lv_obj_align(btn, LV_ALIGN_TOP_LEFT, 4, 2);
+  lv_obj_add_flag(btn, UI_FLAG_BACK_BTN);
   lv_obj_set_style_bg_color(btn, lv_color_hex(UI_COL_SURFACE), 0);
   lv_obj_set_style_bg_color(btn, lv_color_hex(UI_COL_PRESS_FILL), LV_STATE_PRESSED);
   lv_obj_set_style_radius(btn, 8, 0);
@@ -226,6 +227,7 @@ void addCloseButton(lv_obj_t *parent) {
   lv_obj_t *btn = lv_btn_create(parent);
   lv_obj_set_size(btn, 44, 44);
   lv_obj_align(btn, LV_ALIGN_TOP_RIGHT, -4, 2);
+  lv_obj_add_flag(btn, UI_FLAG_CLOSE_BTN);
   lv_obj_set_style_bg_color(btn, lv_color_hex(UI_COL_BAD_BG), 0);
   lv_obj_set_style_bg_color(btn, lv_color_hex(UI_COL_BAD_BG_PRESSED), LV_STATE_PRESSED);
   lv_obj_set_style_radius(btn, 8, 0);

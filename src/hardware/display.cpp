@@ -148,9 +148,17 @@ static void lvgl_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *co
   lv_disp_flush_ready(drv);
 }
 
+static void (*touch_observer)(bool, int16_t, int16_t) = nullptr;
+
+void displaySetTouchObserver(void (*observer)(bool pressed, int16_t x, int16_t y)) {
+  touch_observer = observer;
+}
+
 static void lvgl_touch(lv_indev_drv_t *drv, lv_indev_data_t *data) {
   uint16_t x, y;
-  if (tft.getTouch(&x, &y)) {
+  const bool pressed = tft.getTouch(&x, &y);
+  if (touch_observer) touch_observer(pressed, pressed ? (int16_t)x : 0, pressed ? (int16_t)y : 0);
+  if (pressed) {
     data->state = LV_INDEV_STATE_PR;
     data->point.x = x;
     data->point.y = y;

@@ -29,6 +29,7 @@
 #include "ui/header_status.h"
 #include "ui/main_screen_helpers.h"
 #include "ui/more_info_screen.h"
+#include "ui/quick_panel.h"
 #include "ui/settings_screen.h"
 #include "ui/spool_flow.h"
 #include "ui/theme.h"
@@ -257,6 +258,8 @@ void buildUI() {
   lv_label_set_text(lbl_hdr_sm, backendBadge());
   lv_obj_set_style_text_color(lbl_hdr_sm, lv_color_hex(UI_COL_HDR_OFF), 0);
   lv_obj_set_style_text_font(lbl_hdr_sm, &lv_font_montserrat_ext_12, 0);
+
+  quickPanelAddHandle(hdr);
 
   // ── ZONE 2: Status bar y=26..47 (22px) ──────────────────
   // dot + status text centered | #scan_count right

@@ -95,9 +95,23 @@ The PN532 and NAU7802 share the same I2C bus (SDA/SCL) and are wired in parallel
 
 ### Barcode scanner (optional, GM861 or any UART scanner)
 
-The scanner sends what it reads as a line of text. Only its TX is needed: connect it to **pin 6 (GPIO13)**, its GND to pin 2. Its RX on GPIO21 (pin 8) is only for sending commands and can stay unconnected. Switch it on under **Settings → Barcode scanner** in the web interface, where pins and baud rate (default 9600) can be changed.
+The scanner sends what it reads as a line of text. Switch it on under **Settings → Barcode scanner** in the web interface, where pins and baud rate (default 9600) can be changed.
 
-The connector has **5 V and no 3.3 V**. Feed the scanner from 5 V only if its manual allows it, and **measure its TX line while idle before connecting it**: it must sit at 3.3 V, because the ESP32-S3 is not 5 V tolerant. GPIO10 and 11 are the I2C bus of reader and scale and cannot carry the scanner.
+**The GM861 runs on 3.3 V** (70 mA max, per its manual), and the I/O connector only has **5 V**. Feed it through a small 3.3 V regulator (e.g. an AMS1117-3.3 or AP2112-3.3 module: IN to pin 1, GND to pin 2). At 3.3 V its TX is a 3.3 V signal and goes straight to GPIO13. The ESP32-S3 is not 5 V tolerant.
+
+GM861 connector (SH 1.0 mm, 6 pin; wire colours mean nothing, count from the marked pin 1):
+
+| GM861 pin | Signal | Connect to |
+|---|---|---|
+| 1 | VCC 3.3 V | 3.3 V regulator OUT |
+| 2 | TXD | I/O pin 6 (GPIO13) |
+| 3 | RXD | I/O pin 8 (GPIO21), optional: only for sending commands (light, LED) |
+| 4 | GND | I/O pin 2 |
+| 5, 6 | USB D−/D+ | leave unconnected |
+
+A scanner on its own carrier board rated for 5 V may run on pin 1 directly: then **measure its TX line while idle before connecting it**. It must sit at 3.3 V, otherwise use a level shifter or a 10 kΩ / 20 kΩ divider. GPIO10 and 11 are the I2C bus of reader and scale and cannot carry the scanner.
+
+A step-by-step build in stages (display only, scale, NFC, enclosure, scanner, label printer), with a test for each, is in German in [WERKBANK.md](WERKBANK.md#aufbau-in-stufen).
 
 ### PN532 – Soldering & Assembly
 

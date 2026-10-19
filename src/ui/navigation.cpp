@@ -30,12 +30,14 @@
 #include "ui/more_info_screen.h"
 #include "ui/main_screen_helpers.h"
 #include "ui/header_status.h"
+#include "ui/quick_panel.h"
 #include "ui/settings_screen.h"
 #include "ui/spool_flow.h"
 #include "ui/tag_view.h"
 
 
 void hideAllOverlays() {
+  quickPanelClose(false);
   if (sd_verbose) {
     int visible_count = 0;
     if (scr_settings && !lv_obj_has_flag(scr_settings, LV_OBJ_FLAG_HIDDEN)) visible_count++;

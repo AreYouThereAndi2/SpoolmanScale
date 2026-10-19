@@ -12,16 +12,19 @@ Ausgelegt ist er auf **BamBuddy mit Spoolman dahinter**. Der Scanner funktionier
 Inhalt:
 
 1. [Was der Fork kann](#was-der-fork-kann)
-2. [Teile](#teile)
-3. [Verkabelung](#verkabelung)
-4. [Firmware installieren](#firmware-installieren)
-5. [Ersteinrichtung](#ersteinrichtung)
-6. [Erst ohne Scanner testen, Scanner später nachrüsten](#erst-ohne-scanner-testen-scanner-später-nachrüsten)
-7. [Updates](#updates)
-8. [Einen Release machen](#einen-release-machen)
-9. [Was im Gemini-Handoff nicht stimmte](#was-im-gemini-handoff-nicht-stimmte)
-10. [Etikettendrucker TYPONOS PM240](#etikettendrucker-typonos-pm240)
-11. [Noch offen](#noch-offen)
+2. [Teile und Werkzeug](#teile-und-werkzeug)
+3. [So hängt alles zusammen](#so-hängt-alles-zusammen)
+4. [Aufbau in Stufen](#aufbau-in-stufen): 0 Display, 1 Waage, 2 NFC, 3 Gehäuse, 4 Scanner, 5 Etikettendrucker
+5. [Firmware installieren](#firmware-installieren)
+6. [Ersteinrichtung](#ersteinrichtung)
+7. [Bedienen wie am Handy](#bedienen-wie-am-handy)
+8. [Funktionstest nach dem Aufbau](#funktionstest-nach-dem-aufbau)
+9. [BamBuddy mit Spoolman: welches Inventar?](#bambuddy-mit-spoolman-welches-inventar)
+10. [Updates](#updates)
+11. [Einen Release machen](#einen-release-machen)
+12. [Was im Gemini-Handoff nicht stimmte](#was-im-gemini-handoff-nicht-stimmte)
+13. [Etikettendrucker TYPONOS PM240](#etikettendrucker-typonos-pm240)
+14. [Noch offen](#noch-offen)
 
 ## Was der Fork kann
 
@@ -39,72 +42,217 @@ Inhalt:
 
 Alles bezieht sich auf den Drucker, der in der AMS-Ansicht gewählt ist (Chip „1/2 P1S“): der Power-Button, die Abfrage nach dem Druck und das Abschalten.
 
-## Teile
+## Teile und Werkzeug
 
-Die vollständige Teileliste mit Links steht in [BUILDING.md](BUILDING.md#parts-list). Kurz:
+Die vollständige Teileliste mit Links steht in [BUILDING.md](BUILDING.md#parts-list).
 
-| Teil | Modell |
+| Teil | Modell | Für Stufe |
+|---|---|---|
+| Display + Rechner | WT32-SC01 Plus (ESP32-S3, 3,5 Zoll, mit 7-poligem I/O-Kabel) | 0 |
+| USB-C-Kabel | ein **Datenkabel**, kein reines Ladekabel | 0 |
+| Waagen-ADC | NAU7802 (Adafruit oder Nachbau) | 1 |
+| Wägezelle | YZC-133, 2 kg oder 5 kg | 1 |
+| NFC-Leser | PN532 (rote Platine, mit DIP-Schaltern) | 2 |
+| Gehäuse, Schrauben, USB-C-Einbaubuchse | siehe BUILDING.md | 3 |
+| Barcode-Scanner (optional) | GM861 mit 6-poligem SH-1,0-Kabel | 4 |
+| 3,3-V-Spannungsregler (nur für den Scanner) | kleines AMS1117-3.3- oder AP2112-3.3-Modul | 4 |
+| Etikettendrucker (optional) | TYPONOS PM240, Bluetooth, **ohne Kabel** | 5 |
+
+**Werkzeug:** Lötkolben mit feiner Spitze, Lötzinn, Abisolierzange, Seitenschneider, **Multimeter**, Schrumpfschlauch oder Kapton-Band. Dazu dünne Litze in fünf Farben (rot, schwarz, gelb, grün, weiß, je 30 bis 40 cm).
+
+## So hängt alles zusammen
+
+Alles hängt an **einer Buchse**: dem **I/O-Stecker** auf der Rückseite des WT32-SC01 Plus. Dort steckt das mitgelieferte **7-polige Kabel**, **links bündig** in der 8-poligen Buchse. Der achte Kontakt (ganz rechts) bleibt frei, er wird nur für eine Option beim Scanner gebraucht.
+
+| Pin | Kabelfarbe | Signal | Stufe 1: Waage | Stufe 2: NFC | Stufe 4: Scanner |
+|---|---|---|---|---|---|
+| 1 | rot | **5 V** | NAU7802 VIN | PN532 VCC | Eingang des 3,3-V-Reglers |
+| 2 | schwarz | **GND** | NAU7802 GND | PN532 GND | Regler GND + Scanner GND |
+| 3 | gelb | SDA (GPIO 10) | NAU7802 SDA | PN532 SDA | – |
+| 4 | grün | SCL (GPIO 11) | NAU7802 SCL | PN532 SCL | – |
+| 5 | blau | – | – | – | – |
+| 6 | weiß | GPIO 13 | – | – | **Scanner TXD** |
+| 7 | braun | GPIO 12 | – | PN532 RSTO/RST | – |
+| 8 | (nicht am Kabel) | GPIO 21 | – | – | Scanner RXD (optional) |
+
+```
+WT32-SC01 Plus, I/O-Kabel
+ rot    5V ──┬──────────── NAU7802 VIN
+             ├──────────── PN532 VCC
+             └── [3,3-V-Regler] ── GM861 VCC (Pin 1)
+ schwarz GND ─┬─────────── NAU7802 GND
+              ├─────────── PN532 GND
+              └─────────── Regler GND, GM861 GND (Pin 4)
+ gelb   SDA ──┬─────────── NAU7802 SDA
+              └─────────── PN532 SDA
+ grün   SCL ──┬─────────── NAU7802 SCL
+              └─────────── PN532 SCL
+ weiß   IO13 ───────────── GM861 TXD (Pin 2)
+ braun  IO12 ───────────── PN532 RST
+```
+
+Drei Regeln, die Schäden vermeiden:
+
+1. **Immer stromlos arbeiten.** USB abziehen, bevor du etwas an- oder absteckst.
+2. **Kein 5-V-Signal an einen Datenpin.** Der ESP32-S3 verträgt an GPIO 10 bis 13 und 21 nur 3,3 V. 5 V gehören nur an Pin 1.
+3. **NAU7802 und PN532 parallel anschließen**, beide direkt an Pin 1 bis 4. Den PN532 **nicht** über die STEMMA-QT-Buchse des NAU7802 anschließen: Die liefert nur 3,3 V, der PN532 braucht 5 V.
+
+## Aufbau in Stufen
+
+Baue und teste eine Stufe nach der anderen. Funktioniert eine Stufe, kommt die nächste dazu. Dann weißt du bei einem Fehler immer, dass er in der letzten Stufe steckt.
+
+### Stufe 0: Nur das Display (ohne Kabel)
+
+1. Firmware flashen, siehe [Firmware installieren](#firmware-installieren).
+2. Am Bildschirm Sprache, Zeitzone und WLAN einstellen (oder das WLAN vom Web Flasher übertragen lassen).
+3. Backend einrichten, siehe [Ersteinrichtung](#ersteinrichtung).
+
+**Prüfen:**
+
+- [ ] Das Display startet, Touch reagiert.
+- [ ] WLAN verbunden, der Info-Bildschirm zeigt die IP-Adresse.
+- [ ] Die Weboberfläche öffnet sich im Browser unter dieser IP.
+
+Oben erscheint jetzt **„Kein Modul am I2C-Bus“**. Das ist richtig, es ist ja noch nichts angeschlossen.
+
+### Stufe 1: Waage (NAU7802 + Wägezelle)
+
+1. **Wägezelle an den NAU7802** (an die Schraubklemmen oder Lötpads):
+
+   | Ader der Wägezelle | NAU7802 |
+   |---|---|
+   | rot | E+ |
+   | schwarz | E− |
+   | weiß | A+ |
+   | grün | A− |
+
+2. **NAU7802 an das I/O-Kabel**, am besten direkt an die beschrifteten Pads löten:
+
+   | NAU7802 | I/O-Kabel |
+   |---|---|
+   | VIN | Pin 1, rot (5 V) |
+   | GND | Pin 2, schwarz |
+   | SDA | Pin 3, gelb |
+   | SCL | Pin 4, grün |
+
+   Fertige STEMMA-QT-Kabel anderer Hersteller haben oft eine **andere Farbfolge** als das WT32-Kabel. Geh nach der Beschriftung (VIN, GND, SDA, SCL), nicht nach der Farbe.
+3. Alle Lötstellen einzeln mit Schrumpfschlauch isolieren.
+4. USB anstecken.
+
+**Prüfen:**
+
+- [ ] Die Meldung „Kein Modul am I2C-Bus“ ist weg. Jetzt darf **„NFC-Reader fehlt (PN532)“** dastehen, der kommt erst in Stufe 2.
+- [ ] Die Waage zeigt ungefähr 0 g. Mit der Hand leicht drücken lässt die Zahl **steigen**.
+- [ ] Kalibrieren: Einstellungen → Waage → Kalibrierung. Leer tarieren, ein bekanntes Gewicht (z. B. 1000 g, eine volle Wasserflasche auf der Küchenwaage abgewogen) auflegen, Wert eingeben, speichern.
+- [ ] Danach stimmt das bekannte Gewicht auf ±2 g.
+
+**Wenn es nicht geht:**
+
+| Anzeige | Ursache und Abhilfe |
 |---|---|
-| Display + Rechner | WT32-SC01 Plus (ESP32-S3, 3,5 Zoll) |
-| NFC-Leser | PN532 (rote Platine) |
-| Waagen-ADC | NAU7802 (Adafruit) |
-| Wägezelle | YZC-133, 2 kg oder 5 kg |
-| Barcode-Scanner (optional, kann später dazu) | GM861 mit UART-Ausgang |
-| USB-C-Kabel | ein **Datenkabel**, kein reines Ladekabel |
+| „Kein Modul am I2C-Bus“ bleibt | 5 V oder GND fehlen, oder SDA und SCL sind vertauscht. Mit dem Multimeter zwischen VIN und GND am NAU7802 messen: etwa 5 V? |
+| „Wägezelle verpolt (A+/A−)“ oder negative Werte beim Drücken | A+ und A− tauschen (weiß und grün). |
+| „Wägezelle unruhig“ | Eine Ader hat Wackelkontakt, oder die Zelle berührt das Gehäuse. Lötstellen prüfen, die Zelle frei schweben lassen. |
+| „Waage nicht kalibriert“ | Kalibrierung wie oben machen. |
 
-Dazu das Gehäuse von MakerWorld (Link in BUILDING.md) und dünne Litze in fünf Farben.
+Ein Gerät ganz ohne Waage (nur NFC)? Dann in Einstellungen → Waage **„Waage vorhanden“** ausschalten, die Meldung verschwindet.
 
-## Verkabelung
+### Stufe 2: NFC-Leser (PN532)
 
-Alles hängt am **I/O-Stecker** des WT32-SC01 Plus. Das mitgelieferte 7-polige Kabel wird **links bündig** in die 8-polige Buchse gesteckt.
+1. USB abziehen.
+2. **DIP-Schalter am PN532 auf I2C stellen: Schalter 1 = ON, Schalter 2 = OFF.** Steht er anders (HSU oder SPI), antwortet der Leser gar nicht.
+3. **Von der Rückseite löten**, vorne ist im Gehäuse kein Platz. Die fünf Drähte:
 
-### I/O-Stecker
+   | PN532 | I/O-Kabel |
+   |---|---|
+   | VCC | Pin 1, rot (5 V) |
+   | GND | Pin 2, schwarz |
+   | SDA | Pin 3, gelb |
+   | SCL | Pin 4, grün |
+   | RSTO bzw. RST | Pin 7, braun |
 
-| Pin | Farbe (Kabel) | Signal | geht an |
-|---|---|---|---|
-| 1 | rot | 5 V | PN532 VCC, NAU7802 VIN (Scanner VCC, siehe unten) |
-| 2 | schwarz | GND | PN532 GND, NAU7802 GND, Scanner GND |
-| 3 | gelb | GPIO 10 (SDA) | PN532 SDA, NAU7802 SDA |
-| 4 | grün | GPIO 11 (SCL) | PN532 SCL, NAU7802 SCL |
-| 5 | blau | – | frei |
-| 6 | weiß | GPIO 13 | **TX des Scanners** |
-| 7 | braun | GPIO 12 | PN532 RST |
-| 8 | – (nicht am Kabel) | GPIO 21 | RX des Scanners, optional |
+   Am bequemsten: an den PN532 ein kurzes Kabel mit **5-poligem JST-SH-1,0-Stecker** löten. Dann geht das Löten außerhalb des Gehäuses, und beim Zusammenbau wird nur eingesteckt. Die Belegung solcher Fremdkabel steht in [BUILDING.md](BUILDING.md#pn532--cable-pinout-jst-sh-10mm-5-pin-3rd-party-colors).
+4. Die Drähte von NAU7802 und PN532 treffen sich an Pin 1 bis 4: beide zusammen an den jeweiligen Draht des I/O-Kabels löten (parallel), nicht hintereinander.
+5. USB anstecken.
 
-PN532 und NAU7802 hängen **parallel** am selben I2C-Bus. Den PN532 **nicht** über den STEMMA-QT-Durchgang des NAU7802 anschließen: Der liefert nur 3,3 V, der PN532 braucht 5 V.
+**Prüfen:**
 
-### PN532
+- [ ] Keine Meldung mehr oben.
+- [ ] Eine Bambu-Spule (oder ein NFC-Tag) auf die Waage legen: Nach 1 bis 2 Sekunden wird der Tag gelesen. Eine bekannte Spule erscheint mit Name und Restgewicht.
+- [ ] Ein unbekannter Tag: Die Waage bietet **Verknüpfen** oder **Anlegen** an.
 
-- **DIP-Schalter für I2C: 1 = ON, 2 = OFF.** (Im Gemini-Handoff stand es andersherum, das wäre SPI.)
-- Von der **Rückseite** löten, vorne ist im Gehäuse kein Platz.
-- Mit einem 5-poligen JST-SH-1,0-Stecker am PN532 kann man außerhalb des Gehäuses löten und später nur einstecken. Die Reihenfolge steht in [BUILDING.md](BUILDING.md#pn532--cable-pinout-jst-sh-10mm-5-pin-3rd-party-colors).
+**Wenn es nicht geht:**
 
-### NAU7802 und Wägezelle
-
-Am sichersten direkt an die Pads VIN, GND, SDA, SCL löten. Wägezelle → NAU7802:
-
-| Ader | Klemme |
+| Anzeige | Ursache und Abhilfe |
 |---|---|
-| rot | E+ |
-| schwarz | E− |
-| weiß | A+ |
-| grün | A− |
+| „NFC-Reader fehlt (PN532)“ | DIP-Schalter prüfen (1 = ON, 2 = OFF). VCC muss an **5 V** hängen, nicht am STEMMA-QT-Ausgang des NAU7802. |
+| „Waagen-ADC fehlt (NAU7802)“, seit der PN532 dran ist | Beim Löten ist am NAU7802 etwas abgegangen, oder SDA und SCL sind am PN532 vertauscht und stören den Bus. |
+| Tag wird nicht gelesen | Den Tag mittig auflegen. Der Leser sitzt unter der Mitte der Waagschale, Metall dazwischen schirmt ab. |
 
-Zeigt die Waage negative Werte, A+ und A− tauschen.
+### Stufe 3: Ins Gehäuse
 
-### Barcode-Scanner (kann später dazu)
+Erst wenn Stufe 1 und 2 funktionieren. Die Reihenfolge und Fotos stehen in [BUILDING.md](BUILDING.md#assembly-steps). Worauf es ankommt:
 
-| Scanner | I/O-Pin |
-|---|---|
-| TX | 6 (weiß, GPIO 13) |
-| GND | 2 (schwarz) |
-| VCC | 1 (rot, 5 V), **nur wenn das Handbuch des Scanners 5 V erlaubt** |
-| RX | 8 (GPIO 21), optional; nur nötig, um dem Scanner Befehle zu schicken |
+1. Die USB-C-Einbaubuchse kürzen, bis sie nicht über den Displayrand ragt (mit dem Cuttermesser in kleinen Schritten).
+2. Die Kabel so verlegen, dass sie **nicht an die Waagschale drücken**. Sonst wiegt die Waage das Kabel mit, und das Gewicht schwankt.
+3. Nach dem Zuschrauben die Kalibrierung aus Stufe 1 **noch einmal** machen: Das Gehäuse verändert den Nullpunkt.
+
+### Stufe 4: Barcode-Scanner (optional)
+
+Der Scanner liest Barcodes auf Filament-Kartons und QR-Codes auf Etiketten. Er ist in der Firmware **ab Werk ausgeschaltet**. Ohne ihn läuft alles andere normal.
 
 > [!WARNING]
-> Der ESP32-S3 verträgt an seinen Pins **keine 5 V**. Den Scanner erst an 5 V und GND anschließen und mit dem Multimeter seinen **TX gegen GND im Ruhezustand messen**. Liegt er bei etwa 3,3 V, darf er an Pin 6. Liegt er bei 5 V, braucht es einen Pegelwandler oder einen Spannungsteiler (z. B. 10 kΩ / 20 kΩ).
+> Der GM861 läuft laut Handbuch mit **3,3 V** (höchstens 70 mA). Der I/O-Stecker hat aber nur **5 V**. Den Scanner **nicht direkt an Pin 1** hängen. Dazwischen gehört ein kleiner 3,3-V-Regler. Läuft der Scanner mit 3,3 V, sendet er auch mit 3,3 V und darf direkt an GPIO 13.
 
-Der Scanner sendet jeden gelesenen Code als Textzeile mit 9600 Baud. Die meisten GM861 sind ab Werk so eingestellt.
+Der GM861 hat ein 6-poliges SH-1,0-Kabel. **Die Farben der Adern sagen nichts**, es zählt die Reihenfolge am Stecker (Pin 1 ist auf der Platine markiert):
+
+| GM861 Pin | Signal | geht an |
+|---|---|---|
+| 1 | VCC (3,3 V) | Ausgang (OUT/3V3) des 3,3-V-Reglers |
+| 2 | TXD | **Pin 6 (weiß, GPIO 13)** |
+| 3 | RXD | Pin 8 (GPIO 21), **optional** |
+| 4 | GND | Pin 2 (schwarz) |
+| 5 | D− (USB) | frei lassen |
+| 6 | D+ (USB) | frei lassen |
+
+Der 3,3-V-Regler (z. B. AMS1117-3.3-Modul): **IN** an Pin 1 (rot, 5 V), **GND** an Pin 2 (schwarz), **OUT** an GM861 Pin 1.
+
+RXD ist nur nötig, wenn die Waage dem Scanner etwas sagen soll: Licht und grüne LED aus der Weboberfläche einstellen. Pin 8 ist nicht am 7-poligen Kabel, dafür einen einzelnen Draht an den achten Kontakt der Buchse (z. B. mit einer einzelnen JST-Crimp-Hülse).
+
+**Schritt für Schritt:**
+
+1. USB abziehen.
+2. Den 3,3-V-Regler an Pin 1 und 2 anschließen, **noch ohne Scanner**. USB anstecken und am Ausgang (OUT gegen GND) messen: **3,2 bis 3,4 V**? Wieder abziehen.
+3. Den Scanner anschließen: VCC an OUT des Reglers, GND an Pin 2, TXD an Pin 6. Optional RXD an Pin 8.
+4. USB anstecken. Weboberfläche → Einstellungen → **Barcode-Scanner** → einschalten. Pins (RX 13, TX 21) und 9600 Baud passen im Normalfall, also speichern.
+5. Optional: die **filament_to_bambuddy-Adresse** eintragen (gleiche Karte), z. B. `http://zimaboard:8088`. Ohne sie kennt die Waage nur Codes, die schon an einer Spule hängen.
+
+**Prüfen:**
+
+- [ ] Einen beliebigen Barcode vor den Scanner halten: In der Weboberfläche steht er unter **Letzter Code**.
+- [ ] Den QR-Code eines Spulen-Etiketts scannen: Die Spule wird geladen.
+- [ ] Den Barcode eines Filament-Kartons scannen: Die Waage findet die Spule oder bietet an, sie anzulegen.
+
+**Wenn es nicht geht:**
+
+| Anzeige | Ursache und Abhilfe |
+|---|---|
+| Scanner leuchtet nicht | Keine 3,3 V am Scanner: Regler und Pin 1/4 am Scanner-Stecker prüfen. |
+| Scanner leuchtet und piept, aber „Letzter Code“ bleibt leer | TXD steckt nicht an Pin 6, oder TXD und RXD sind vertauscht. Scanner in der Weboberfläche eingeschaltet? |
+| „Letzter Code“ zeigt Zeichensalat | Die Baudrate stimmt nicht. Der GM861 hat ab Werk 9600. |
+| Licht/LED-Einstellung: „keine Antwort“ | RXD fehlt an Pin 8, oder in der Weboberfläche ist kein TX-Pin (21) eingetragen. |
+
+Hat dein Scanner eine eigene Platine, auf der **5 V** steht, gilt das Handbuch dieser Platine. Dann an 5 V betreiben und vorher mit dem Multimeter **TXD gegen GND im Ruhezustand** messen: Nur bei etwa 3,3 V darf er an Pin 6, sonst braucht es einen Pegelwandler oder Spannungsteiler (10 kΩ / 20 kΩ).
+
+### Stufe 5: Etikettendrucker (optional, ohne Kabel)
+
+Der TYPONOS PM240 verbindet sich per **Bluetooth**, es gibt nichts zu verdrahten.
+
+1. Drucker einschalten und eine Etikettenrolle einlegen (Standard 50 × 30 mm).
+2. An der Waage: Einstellungen → Bluetooth → **Drucker** → suchen und den PM240 wählen. Die Rollengröße einstellen.
+3. Testetikett drucken. Sitzt es schief, mit dem Kalibrierausdruck die Verschiebung einstellen.
+
+Steht filament_to_bambuddy in den Einstellungen, druckt die Waage das Etikett im Layout, das du am Handy angeordnet hast. Mehr dazu unter [Etikettendrucker TYPONOS PM240](#etikettendrucker-typonos-pm240).
 
 ## Firmware installieren
 
@@ -155,6 +303,8 @@ Details stehen in [BUILDING.md](BUILDING.md).
    - **Read Status** und **Manage Inventory** (Grundfunktionen),
    - **Control Printer** (Steckdosen),
    - **Manage Archives** (Bewertung nach dem Druck).
+
+   Läuft BamBuddy mit Spoolman in Docker, unter **Backend → Spoolman-Adresse für die Waage** die LAN-Adresse von Spoolman eintragen (z. B. `http://192.168.1.5:7912`), siehe [unten](#bambuddy-mit-spoolman-welches-inventar).
 3. **Kalibrieren:** Einstellungen → Waage → Kalibrierung. Leer tarieren, ein bekanntes Gewicht von etwa 1000 g auflegen, Wert eingeben, speichern.
 4. **Steckdose in BamBuddy** dem Drucker zuordnen (Settings → Smart Plugs).
    - Ist dort „Auto Power Off“ an, schaltet BamBuddy selbst ab, und die Waage sagt das nur.
@@ -162,34 +312,43 @@ Details stehen in [BUILDING.md](BUILDING.md).
 5. **BamBuddy-Optionen** an der Waage: „Nach dem Wiegen ins AMS“ und „Nach dem Druck fragen“ einschalten.
 6. **filament_to_bambuddy-Adresse** (Weboberfläche → Einstellungen → Barcode-Scanner), z. B. `http://zimaboard:8088`. Wird nur vom Scanner gebraucht und kann auch später eingetragen werden.
 
-## Erst ohne Scanner testen, Scanner später nachrüsten
+## Bedienen wie am Handy
 
-Der Scanner ist ab Werk **ausgeschaltet**. Ohne ihn läuft alles andere normal, Pin 6 kann frei bleiben.
+Die Waage kennt zwei Gesten. Die Knöpfe bleiben trotzdem da.
 
-**Testliste ohne Scanner:**
+| Geste | Was passiert |
+|---|---|
+| Vom **linken Rand** nach rechts wischen | Zurück, wie der Zurück- oder Schließen-Knopf oben links. Ist das Schnellmenü offen, schließt es zuerst. |
+| Vom **oberen Rand** nach unten wischen, oder den kleinen Strich oben in der Mitte antippen | Das **Schnellmenü** fährt von oben herein. |
+| Im Schnellmenü nach **oben** wischen, daneben tippen oder zurückwischen | Das Schnellmenü fährt wieder hoch. |
 
-- [ ] Display startet, Touch reagiert, WLAN verbunden.
-- [ ] Waage zeigt 0 g ohne Last, nach der Kalibrierung stimmt ein bekanntes Gewicht.
+Im Schnellmenü:
+
+- WLAN und IP-Adresse, dazu das verbundene Backend.
+- Ein Regler für die Helligkeit. Er wird sofort gespeichert.
+- Vier Kacheln: **Tara**, **AMS**, **Info** und **Einstellungen**.
+
+Kurze Hinweise:
+
+- Die Wisch-Gesten müssen ganz am Rand beginnen, in den äußersten 2 bis 3 mm des Glases. So wird ein Wischen in einer Liste nicht mit Zurück verwechselt.
+- Bei einer Frage, die auf eine Antwort wartet (zum Beispiel nach dem Druck), öffnet sich das Schnellmenü nicht.
+- Fenster und Fragen gleiten jetzt kurz von unten herein, wie eine Karte am Handy.
+
+## Funktionstest nach dem Aufbau
+
+Die Hardware-Tests stehen bei den [Stufen](#aufbau-in-stufen). Danach die Funktionen mit BamBuddy:
+
 - [ ] Bambu-Spule auflegen: Tag wird gelesen, die Spule kommt aus BamBuddy/Spoolman, das Restgewicht wird geschrieben.
 - [ ] Unbekannten Tag auflegen: Die Waage bietet Verknüpfen oder Anlegen an.
-- [ ] AMS-Ansicht: Drucker wählen, Slots stimmen mit BamBuddy überein.
-- [ ] Power-Button: Steckdose schaltet ein. Beim Ausschalten zeigt die Waage das Abkühlen bzw. den Hinweis auf Auto Power Off.
+- [ ] AMS-Ansicht: Drucker wählen, die Slots stimmen mit BamBuddy überein.
+- [ ] Power-Button: Die Steckdose schaltet ein. Beim Ausschalten zeigt die Waage das Abkühlen bzw. den Hinweis auf Auto Power Off.
 - [ ] Slot antippen → „Austragen“ → zweimal tippen: Die Zuordnung ist in BamBuddy weg.
 - [ ] Nach einem Druck: Die Abfrage erscheint, die Bewertung steht danach im BamBuddy-Archiv.
-- [ ] Info-Bildschirm zeigt `v0.9.0` (oder neuer).
+- [ ] Der Info-Bildschirm zeigt die aktuelle Version.
+- [ ] Vom oberen Rand nach unten wischen: Das Schnellmenü erscheint. Nach oben wischen: Es verschwindet.
+- [ ] In den Einstellungen vom linken Rand nach rechts wischen: Die Waage geht eine Seite zurück.
 
 Fehler bitte mit dem Log melden: Weboberfläche → Log, oder die SD-Karte (falls eingesetzt).
-
-**Scanner nachrüsten:**
-
-1. Waage vom USB trennen.
-2. Scanner an 5 V und GND anschließen (nur wenn das Handbuch 5 V erlaubt), TX messen (siehe [Warnung oben](#barcode-scanner-kann-später-dazu)).
-3. TX an Pin 6, optional RX an Pin 8.
-4. Waage einschalten, Weboberfläche → Einstellungen → **Barcode-Scanner** → einschalten. Pins (RX 13, TX 21) und Baudrate (9600) passen im Normalfall.
-5. Testen:
-   - Spoolman-QR-Code einer Spule scannen: Die Spule wird geladen.
-   - Box-EAN scannen: Die Waage findet die Spule oder bietet an, sie anzulegen.
-   - Erscheint nichts, im Log nach `Scan:` suchen. Kommen dort unlesbare Zeichen an, stimmt die Baudrate nicht.
 
 ## BamBuddy mit Spoolman: welches Inventar?
 

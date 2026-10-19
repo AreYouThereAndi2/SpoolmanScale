@@ -4,6 +4,10 @@
 
 bool displayHardwareBegin(void (*touch_activity_cb)() = nullptr);
 void displaySetBrightness(uint8_t brightness);
+
+// Called with every touch read, pressed or not: the UI's gestures watch the
+// finger before LVGL hands the press to a widget.
+void displaySetTouchObserver(void (*observer)(bool pressed, int16_t x, int16_t y));
 void displayPrepareDeepSleep();
 
 // Backlight fully off, and back again. Not the same as brightness 0.

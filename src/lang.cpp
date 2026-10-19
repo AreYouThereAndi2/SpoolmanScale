@@ -3506,6 +3506,21 @@ const char* const STRINGS[][3] = {
   { "Neue Spulen aus einem Box-Scan legt filament_to_bambuddy an, wie vom Handy: auf deinem Spoolman-Filament, mit Druckprofilen, Lagerort aus dem Speicher. Etiketten kommen im Layout, das am Handy angeordnet ist. Ist es nicht erreichbar, macht die Waage beides selbst.",
     "New spools from a box scan are created by filament_to_bambuddy, as from the phone: on your Spoolman filament, with slicer profiles and the remembered location. Labels come in the layout arranged on the phone. When it cannot be reached, the scale does both itself.",
     "Les nouvelles bobines d'un scan de boîte sont créées par filament_to_bambuddy, comme depuis le téléphone : sur ton filament Spoolman, avec profils de tranchage et emplacement mémorisé. Les étiquettes suivent la mise en page du téléphone. S'il est injoignable, la balance fait les deux elle-même." },  // STR_W_F2B_CREATES
+  { "Tara",
+    "Tare",
+    "Tare" },  // STR_QP_TARE
+  { "AMS",
+    "AMS",
+    "AMS" },  // STR_QP_AMS
+  { "Info",
+    "Info",
+    "Info" },  // STR_QP_INFO
+  { "Einstellungen",
+    "Settings",
+    "Réglages" },  // STR_QP_SETTINGS
+  { "Vom linken Rand wischen: zurück. Nach oben wischen: schließen.",
+    "Swipe from the left edge: back. Swipe up: close.",
+    "Glisser du bord gauche : retour. Vers le haut : fermer." },  // STR_QP_HINT
 };
 
 StringID tagWriteResultString(uint8_t code) {

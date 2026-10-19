@@ -28,6 +28,7 @@
 #include "services/time_service.h"
 #include "services/update_check.h"
 #include "services/wifi_manager.h"
+#include "ui/gestures.h"
 #include "ui/header_status.h"
 #include "ui/main_screen.h"
 #include "ui/setup_welcome_screen.h"
@@ -167,6 +168,7 @@ void appSetup() {
   backendLoadSettings();
 
   displayHardwareBegin(resetActivityTimer);
+  displaySetTouchObserver(gesturesTouch);
   // The palette, before anything is drawn: every UI_COL_* is read when an
   // object is made, and LVGL's default theme hangs off the display driver.
   uiThemeBegin();

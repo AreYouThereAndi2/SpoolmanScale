@@ -1,4 +1,5 @@
 #include "info_popup.h"
+#include "ui/quick_panel.h"
 
 #include <Arduino.h>
 #include <lvgl.h>
@@ -83,6 +84,7 @@ static void buildResultCard(lv_obj_t *pop, int title_id, int text_id, uint8_t to
   lv_obj_t *box = lv_obj_create(pop);
   lv_obj_set_size(box, UI_POPUP_W, UI_CARD_H);
   lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
+  uiSheetIn(box);
   lv_obj_set_style_bg_color(box, lv_color_hex(UI_COL_SURFACE), 0);
   lv_obj_set_style_border_color(box, lv_color_hex(UI_COL_POPUP_BORDER), 0);
   lv_obj_set_style_border_width(box, 2, 0);
@@ -206,6 +208,7 @@ void showInfoPopup(int title_id, int text_id, uint8_t tone) {
   lv_obj_t *box = lv_obj_create(pop);
   lv_obj_set_size(box, 440, 250);
   lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
+  uiSheetIn(box);
   lv_obj_set_style_bg_color(box, lv_color_hex(UI_COL_SURFACE), 0);
   lv_obj_set_style_border_color(box, lv_color_hex(UI_COL_POPUP_BORDER), 0);
   lv_obj_set_style_border_width(box, 2, 0);
