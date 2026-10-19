@@ -3248,6 +3248,39 @@ const char* const STRINGS[][3] = {
   { "Letzter Code",
     "Last code",
     "Dernier code" },  // STR_W_SCANNER_LAST
+  { "Beleuchtung",
+    "Light",
+    "Éclairage" },  // STR_W_SCANNER_LAMP
+  { "Grüne LED bei Treffer",
+    "Green LED on a read",
+    "LED verte à la lecture" },  // STR_W_SCANNER_LED
+  { "Nicht ändern",
+    "Leave as is",
+    "Inchangé" },  // STR_W_SCANNER_KEEP
+  { "Beim Lesen (Standard)",
+    "While reading (default)",
+    "En lecture (défaut)" },  // STR_W_SCANNER_LAMP_STD
+  { "Immer an",
+    "Always on",
+    "Toujours allumé" },  // STR_W_SCANNER_LAMP_ON
+  { "An",
+    "On",
+    "Allumée" },  // STR_W_SCANNER_ON_SHORT
+  { "Aus",
+    "Off",
+    "Éteint" },  // STR_W_SCANNER_OFF
+  { "Wird bei jedem Start an den Scanner geschickt und braucht dafür die Leitung zu seinem RX (TX-Pin, Pin 8). Beleuchtung schaltet beide Lichter des GM861 gemeinsam. „Nicht ändern“ lässt, was mit den Setup-Codes aus dem Handbuch eingestellt ist.",
+    "Sent to the scanner at every start, which needs the wire to its RX (TX pin, pin 8). Light switches both lights of the GM861 together. “Leave as is” keeps what the setup codes from its manual set.",
+    "Envoyé au lecteur à chaque démarrage, ce qui demande le fil vers son RX (broche TX, broche 8). Éclairage commande ensemble les deux lumières du GM861. « Inchangé » garde ce que les codes de réglage du manuel ont défini." },  // STR_W_SCANNER_LIGHT_HINT
+  { "Vom Scanner bestätigt.",
+    "Confirmed by the scanner.",
+    "Confirmé par le lecteur." },  // STR_W_SCANNER_LIGHT_OK
+  { "Der Scanner hat nicht geantwortet: TX-Leitung prüfen.",
+    "The scanner did not answer: check the TX wire.",
+    "Le lecteur n'a pas répondu : vérifiez le fil TX." },  // STR_W_SCANNER_LIGHT_NOANS
+  { "Ohne TX-Pin kann die Waage nichts senden.",
+    "Without a TX pin the scale cannot send anything.",
+    "Sans broche TX, la balance ne peut rien envoyer." },  // STR_W_SCANNER_LIGHT_NOTX
   { "Druck fertig",
     "Print finished",
     "Terminé" },  // STR_PD_TITLE
