@@ -1,4 +1,5 @@
 #include "confirm_popup.h"
+#include "ui/quick_panel.h"
 #include "ui_common.h"
 #include <math.h>
 #include "app/app_state.h"
@@ -385,6 +386,7 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_set_size(box, BOX_W, BOX_H);
     lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_pad_all(box, 0, 0);
+    uiSheetIn(box);
 
     lv_obj_set_width(lbl_q, BOX_W - 2*EDGE);
     lv_obj_set_pos(lbl_q, EDGE, 6);
@@ -814,6 +816,7 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_set_size(box, BOX_W, box_h);
     lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_pad_all(box, 0, 0);
+    uiSheetIn(box);
 
     lv_obj_t *lbl_icon = lv_label_create(box);
     lv_label_set_text(lbl_icon, icon);

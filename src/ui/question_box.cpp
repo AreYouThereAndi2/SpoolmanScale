@@ -1,4 +1,5 @@
 #include "question_box.h"
+#include "ui/quick_panel.h"
 
 #include "lang.h"
 #include "ui/theme.h"
@@ -81,6 +82,7 @@ lv_obj_t* questionBoxCreate(const char* title, const char* question, const char*
   lv_obj_t* box = lv_obj_create(scr);
   lv_obj_set_size(box, 400, 236);
   lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
+  uiSheetIn(box);
   lv_obj_set_style_bg_color(box, lv_color_hex(UI_COL_SURFACE), 0);
   lv_obj_set_style_border_color(box, lv_color_hex(UI_COL_POPUP_BORDER), 0);
   lv_obj_set_style_border_width(box, 2, 0);

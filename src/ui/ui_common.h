@@ -6,6 +6,11 @@
 #include "services/text_util.h"
 #include "theme.h"
 
+// The back and close buttons carry these flags, so a swipe from the left
+// edge (ui/gestures) finds the button of the screen on top and taps it.
+#define UI_FLAG_BACK_BTN   LV_OBJ_FLAG_USER_1
+#define UI_FLAG_CLOSE_BTN  LV_OBJ_FLAG_USER_2
+
 void addBackButton(lv_obj_t *parent, lv_event_cb_t cb);
 // The "?" circle in the header row, between the centred title and the close
 // button - the one gap on a sub screen nothing else wants. Opens the info

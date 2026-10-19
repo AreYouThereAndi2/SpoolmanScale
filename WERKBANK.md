@@ -17,13 +17,14 @@ Inhalt:
 4. [Aufbau in Stufen](#aufbau-in-stufen): 0 Display, 1 Waage, 2 NFC, 3 Gehäuse, 4 Scanner, 5 Etikettendrucker
 5. [Firmware installieren](#firmware-installieren)
 6. [Ersteinrichtung](#ersteinrichtung)
-7. [Funktionstest nach dem Aufbau](#funktionstest-nach-dem-aufbau)
-8. [BamBuddy mit Spoolman: welches Inventar?](#bambuddy-mit-spoolman-welches-inventar)
-9. [Updates](#updates)
-10. [Einen Release machen](#einen-release-machen)
-11. [Was im Gemini-Handoff nicht stimmte](#was-im-gemini-handoff-nicht-stimmte)
-12. [Etikettendrucker TYPONOS PM240](#etikettendrucker-typonos-pm240)
-13. [Noch offen](#noch-offen)
+7. [Bedienen wie am Handy](#bedienen-wie-am-handy)
+8. [Funktionstest nach dem Aufbau](#funktionstest-nach-dem-aufbau)
+9. [BamBuddy mit Spoolman: welches Inventar?](#bambuddy-mit-spoolman-welches-inventar)
+10. [Updates](#updates)
+11. [Einen Release machen](#einen-release-machen)
+12. [Was im Gemini-Handoff nicht stimmte](#was-im-gemini-handoff-nicht-stimmte)
+13. [Etikettendrucker TYPONOS PM240](#etikettendrucker-typonos-pm240)
+14. [Noch offen](#noch-offen)
 
 ## Was der Fork kann
 
@@ -311,6 +312,28 @@ Details stehen in [BUILDING.md](BUILDING.md).
 5. **BamBuddy-Optionen** an der Waage: „Nach dem Wiegen ins AMS“ und „Nach dem Druck fragen“ einschalten.
 6. **filament_to_bambuddy-Adresse** (Weboberfläche → Einstellungen → Barcode-Scanner), z. B. `http://zimaboard:8088`. Wird nur vom Scanner gebraucht und kann auch später eingetragen werden.
 
+## Bedienen wie am Handy
+
+Die Waage kennt zwei Gesten. Die Knöpfe bleiben trotzdem da.
+
+| Geste | Was passiert |
+|---|---|
+| Vom **linken Rand** nach rechts wischen | Zurück, wie der Zurück- oder Schließen-Knopf oben links. Ist das Schnellmenü offen, schließt es zuerst. |
+| Vom **oberen Rand** nach unten wischen, oder den kleinen Strich oben in der Mitte antippen | Das **Schnellmenü** fährt von oben herein. |
+| Im Schnellmenü nach **oben** wischen, daneben tippen oder zurückwischen | Das Schnellmenü fährt wieder hoch. |
+
+Im Schnellmenü:
+
+- WLAN und IP-Adresse, dazu das verbundene Backend.
+- Ein Regler für die Helligkeit. Er wird sofort gespeichert.
+- Vier Kacheln: **Tara**, **AMS**, **Info** und **Einstellungen**.
+
+Kurze Hinweise:
+
+- Die Wisch-Gesten müssen ganz am Rand beginnen, in den äußersten 2 bis 3 mm des Glases. So wird ein Wischen in einer Liste nicht mit Zurück verwechselt.
+- Bei einer Frage, die auf eine Antwort wartet (zum Beispiel nach dem Druck), öffnet sich das Schnellmenü nicht.
+- Fenster und Fragen gleiten jetzt kurz von unten herein, wie eine Karte am Handy.
+
 ## Funktionstest nach dem Aufbau
 
 Die Hardware-Tests stehen bei den [Stufen](#aufbau-in-stufen). Danach die Funktionen mit BamBuddy:
@@ -322,6 +345,8 @@ Die Hardware-Tests stehen bei den [Stufen](#aufbau-in-stufen). Danach die Funkti
 - [ ] Slot antippen → „Austragen“ → zweimal tippen: Die Zuordnung ist in BamBuddy weg.
 - [ ] Nach einem Druck: Die Abfrage erscheint, die Bewertung steht danach im BamBuddy-Archiv.
 - [ ] Der Info-Bildschirm zeigt die aktuelle Version.
+- [ ] Vom oberen Rand nach unten wischen: Das Schnellmenü erscheint. Nach oben wischen: Es verschwindet.
+- [ ] In den Einstellungen vom linken Rand nach rechts wischen: Die Waage geht eine Seite zurück.
 
 Fehler bitte mit dem Log melden: Weboberfläche → Log, oder die SD-Karte (falls eingesetzt).
 

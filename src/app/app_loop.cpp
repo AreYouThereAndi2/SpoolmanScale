@@ -20,6 +20,7 @@
 #include "app/render_bench.h"
 #include "app/scan_action.h"
 #include "services/printer_watch.h"
+#include "ui/gestures.h"
 #include "ui/printer_popups.h"
 #include "hardware/lvgl_mem.h"
 #include "services/partition_layout.h"
@@ -1046,6 +1047,7 @@ void appLoop() {
   handleAmsAssignDeferredActions();
   handleAmsViewDeferredActions();
   handleAmsDetailDeferredActions();
+  gesturesTick();
   handleTagViewDeferredActions();
   // A request found no server, see server_reach.h. After every handler above,
   // so the popup comes up over whatever the failed action left on screen, and

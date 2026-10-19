@@ -3467,6 +3467,21 @@ const char* const STRINGS[][3] = {
   { "Nur nötig, wenn BamBuddy seinen Spoolman unter einer Adresse kennt, die die Waage nicht erreicht (Docker-Name wie http://spoolman:8000). Leer: BamBuddys Adresse. Damit findet ein Box-Scan vorhandene Spulen.",
     "Only needed when BamBuddy knows its Spoolman by an address the scale cannot reach (a Docker name like http://spoolman:8000). Empty: BamBuddy's address. A box scan uses it to find spools you have.",
     "Utile seulement si BamBuddy connaît son Spoolman sous une adresse que la balance n’atteint pas (nom Docker comme http://spoolman:8000). Vide : l’adresse de BamBuddy. Un scan de boîte s’en sert pour trouver les bobines existantes." },  // STR_W_BB_SM_URL_HINT
+  { "Tara",
+    "Tare",
+    "Tare" },  // STR_QP_TARE
+  { "AMS",
+    "AMS",
+    "AMS" },  // STR_QP_AMS
+  { "Info",
+    "Info",
+    "Info" },  // STR_QP_INFO
+  { "Einstellungen",
+    "Settings",
+    "Réglages" },  // STR_QP_SETTINGS
+  { "Vom linken Rand wischen: zurück. Nach oben wischen: schließen.",
+    "Swipe from the left edge: back. Swipe up: close.",
+    "Glisser du bord gauche : retour. Vers le haut : fermer." },  // STR_QP_HINT
 };
 
 StringID tagWriteResultString(uint8_t code) {
