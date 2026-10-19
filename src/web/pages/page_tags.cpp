@@ -666,8 +666,8 @@ static String tagWriteMessageLocal() {
   return out;
 }
 
-// "NTAG, beschreibbar, 496 Byte". Same reason as above: tagCachedKind() is
-// English, tagCachedKindCode() is the part that translates.
+// "NTAG, beschreibbar, 496 Byte", built from tagCachedKindCode() so it
+// translates.
 static String tagKindLocal() {
   const uint8_t k = tagCachedKindCode();
   if (k == TAG_KIND_NONE) return String("");

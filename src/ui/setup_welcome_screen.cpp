@@ -12,7 +12,6 @@
 #include "services/prefs_store.h"
 #include "ui_common.h"
 #include "wifi_setup_screen.h"
-#include "services/backend.h"
 #include "services/time_service.h"
 #include "services/wifi_manager.h"
 #include "timezone_screen.h"

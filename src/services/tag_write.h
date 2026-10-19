@@ -141,8 +141,7 @@ const TagWriteReport* tagWriteReportData();
 // these rather than touching the reader itself: its page reads would race the
 // main NFC poll and come back with fields missing.
 const char* tagCachedUid();
-const char* tagCachedKind();
-// What tagCachedKind() says, as a number, for the translated web page.
+// The kind of tag on the reader, as a number, for the translated web page.
 enum TagKind : uint8_t {
   TAG_KIND_NONE   = 0,
   TAG_KIND_MIFARE = 1,   // 4 byte UID, this firmware only reads those

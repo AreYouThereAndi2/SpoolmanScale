@@ -37,10 +37,6 @@
 
 extern bool g_print_watch;        // NVS "bb_printdone", default on
 
-// The printer everything here is about. 0 until one is known: the stored AMS
-// view choice, or the first printer BamBuddy lists.
-int  printerWatchPrinterId();
-
 // From appLoop(). Does nothing on most passes.
 void printerWatchTick();
 
@@ -66,7 +62,6 @@ enum PwOffPlan : uint8_t {
 };
 PwOffPlan printerWatchPowerOffWhenCool();
 bool printerWatchCooling();
-void printerWatchCancelCooling();
 // Highest of nozzle and bed at the last look while cooling, -1 unknown.
 int  printerWatchCoolingTemp();
 int  printerWatchCoolingTarget();

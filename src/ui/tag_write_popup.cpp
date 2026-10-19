@@ -363,8 +363,6 @@ int tagWriteAskSpool() {
   return s_spool_id;
 }
 
-bool tagWriteAskIsRewrite() { return s_mode == ASK_REWRITE; }
-
 void tagWriteAskAnswer(bool yes) {
   if (!tagWriteAskSpool()) return;
   logSDf("TagWritePopup: answered from the browser, %s", yes ? "yes" : "no");

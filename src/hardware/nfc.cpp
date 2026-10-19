@@ -6,17 +6,10 @@
 static Adafruit_PN532* nfc = nullptr;
 static constexpr uint8_t MIFARE_SECTOR_READ_ATTEMPTS = 3;
 
-// Remembered so the reader can be brought back up without the caller having to
-// hand the wiring in again - see nfcHardwareReinit().
-static TwoWire* nfc_wire = nullptr;
-static int8_t   nfc_reset_pin = -1;
-
 bool nfcHardwareBegin(TwoWire* wire, int8_t reset_pin, int8_t irq_pin,
                       uint32_t* firmware_version) {
   if (!nfc) nfc = new Adafruit_PN532(irq_pin, reset_pin, wire);
   if (!nfc) return false;
-  nfc_wire = wire;
-  nfc_reset_pin = reset_pin;
   nfc->begin();
   delay(100);
   uint32_t version = nfc->getFirmwareVersion();

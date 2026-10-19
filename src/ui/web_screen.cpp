@@ -10,7 +10,6 @@
 #include "info_popup.h"
 #include "lang.h"
 #include "services/device_name.h"
-#include "services/wifi_manager.h"
 #include "system_screen.h"
 #include "ui_common.h"
 #include "web/web_access.h"

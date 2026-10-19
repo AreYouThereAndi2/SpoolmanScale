@@ -36,10 +36,6 @@ void loadingOverlaySetText(const char* text);
 // than there are frames to draw.
 void loadingOverlayTick();
 
-// Same, as the progress hook signature. `bytes_read` is shown alongside the
-// indicator so a slow network looks slow rather than stuck.
-void loadingOverlayProgress(size_t bytes_read);
-
 // Takes it down. Must be called on every path out of the work, including the
 // ones that fail early, or it stays on top of whatever is built next.
 void loadingOverlayHide();

@@ -6,7 +6,6 @@
 
 #include "app_config.h"
 #include "lang.h"
-#include "services/backend.h"
 #include "app/app_state.h"
 #include "services/device_name.h"
 #include "services/wifi_manager.h"

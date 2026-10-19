@@ -21,7 +21,6 @@ const char* const STRINGS[][3] = {
   { "ID neu eingeben",  "Enter new ID", "Ressaisir l'ID" },  // STR_ENTER_NEW_ID
 
   // Mainscreen Labels
-  { "Spoolman",         "Spoolman",    "Spoolman" },  // STR_LBL_SPOOLMAN
   { "Waage",            "Scale",       "Balance" },  // STR_LBL_SCALE
   { "Letzte Benutzung", "Last used",   "Dernier usage" },  // STR_LBL_LAST_USED
   { "Letzte Trocknung", "Last dried",  "Dernier séchage" },  // STR_LBL_LAST_DRIED
@@ -35,7 +34,6 @@ const char* const STRINGS[][3] = {
   { "Warte...",                     "Please wait...",               "Patientez..." },  // STR_WAIT
   { "Warte auf Scan...",            "Waiting for scan...",          "Attente du scan..." },  // STR_WAIT_SCAN_SM
   { "unbekannt",                    "unknown",                      "inconnu" },  // STR_UNKNOWN
-  { "nicht lesbar",                 "not readable",                 "illisible" },  // STR_NOT_READABLE
   { "heute",                        "today",                        "aujourd'hui" },  // STR_TODAY
   { "gestern",                      "yesterday",                    "hier" },  // STR_YESTERDAY
   { "vor %d Tagen",                 "%d days ago",                  "il y a %d jours" },  // STR_DAYS_AGO
@@ -64,9 +62,6 @@ const char* const STRINGS[][3] = {
   { "Passwort...",              "Password...",          "Mot de passe..." },  // STR_WIFI_PASS_PLACEHOLDER
   { "Verbinde mit %s...",       "Connecting to %s...",  "Connexion à %s..." },  // STR_WIFI_CONNECTING
   { "Verbunden!",               "Connected!",           "Connecté !" },  // STR_WIFI_SUCCESS
-
-  // Spoolman IP
-  { "Spoolman Server", "Spoolman Server", "Serveur Spoolman" },  // STR_SPOOLMAN_TITLE
 
   // Settings
   { "Einstellungen",               "Settings",                 "Réglages" },  // STR_SETTINGS_TITLE
@@ -256,10 +251,6 @@ const char* const STRINGS[][3] = {
   { LV_SYMBOL_WARNING "  Trotzdem verknüpfen",
     LV_SYMBOL_WARNING "  Link anyway",
     LV_SYMBOL_WARNING "  Lier quand même" },  // STR_BTN_OVERWRITE
-  { "Material stimmt nicht überein", "Material mismatch", "Le matériau ne correspond pas" },  // STR_WARN_B_TITLE
-  { "Tag:      %s\nSpoolman: %s  (#%d)\n\nFalsche ID? Bitte nochmal prüfen.",
-    "Tag:      %s\nSpoolman: %s  (#%d)\n\nWrong ID? Please double-check.",
-    "Tag :      %s\nSpoolman : %s  (#%d)\n\nMauvais ID ? Vérifiez-le." },  // STR_WARN_B_DETAILS
   { "Hersteller wählen  (%d Spulen)", "Choose vendor  (%d spools)",
     "Choisir le fabricant  (%d bobines)" },  // STR_VENDOR_TITLE
   { "Material wählen",                "Choose material",            "Choisir le matériau" },  // STR_MAT_TITLE
@@ -426,12 +417,6 @@ const char* const STRINGS[][3] = {
   { LV_SYMBOL_WARNING "  Spoolman nicht erreichbar",
     LV_SYMBOL_WARNING "  Spoolman not reachable",
     LV_SYMBOL_WARNING "  Spoolman injoignable" },  // STR_SPOOLMAN_FAIL
-  { "Erneut versuchen",
-    "Retry",
-    "Réessayer" },  // STR_SPOOLMAN_RETRY
-  { "Überspringen",
-    "Skip",
-    "Ignorer" },  // STR_SPOOLMAN_SKIP
 
   // More info filament screen
   { "Mehr Info",
@@ -1350,9 +1335,6 @@ const char* const STRINGS[][3] = {
   { "Die Adresse darf nicht leer sein.",
     "The address cannot be empty.",
     "L'adresse ne peut pas être vide." },  // STR_W_HOST_EMPTY
-  { "https wird noch nicht unterstützt. Die Waage spricht nur http.",
-    "https is not supported yet. The scale speaks plain http only.",
-    "https n'est pas encore pris en charge. La balance ne parle que http." },  // STR_W_HOST_HTTPS
   { "Verbinde ...",
     "Connecting ...",
     "Connexion ..." },  // STR_W_HOST_TESTING

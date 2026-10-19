@@ -1,5 +1,4 @@
 #include "ble_devices_screen.h"
-#include "navigation.h"
 #include "app/app_state.h"
 #include "app/deferred_actions.h"
 
@@ -82,8 +81,6 @@ void closeBleDevicesScreen() {
 void closeBleDeviceCard() {
   if (scr_card) { lv_obj_del(scr_card); scr_card = nullptr; }
 }
-
-bool isBleDeviceCardOpen() { return scr_card != nullptr; }
 
 // The card over the list: what the row says, spelled out, and a way out. The
 // actions a device can take (become the printer, later the reader) come with

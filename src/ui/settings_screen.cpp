@@ -10,7 +10,6 @@
 #include "hardware/sd_logger.h"
 #include "lang.h"
 #include "scale_menu.h"
-#include "services/ota_state.h"
 #include "system_screen.h"
 #include "ui_common.h"
 #include "update_badges.h"

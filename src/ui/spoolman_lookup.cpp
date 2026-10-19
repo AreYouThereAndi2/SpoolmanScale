@@ -13,16 +13,7 @@
 #include "hardware/sd_logger.h"
 #include "lang.h"
 
-// From ui/spool_flow.cpp: whether a spool of an inventory list is bound to a
-// tag, through whichever of the tag fields. Handed to services/spool_cache with
-// the inventory the full scan fetches, so the link flow's rule stays the only
-// one. Declared here and not in spool_flow.h, which cannot include ArduinoJson:
-// it is included behind lang.h elsewhere, and the T() macro breaks the
-// library's templates.
-bool spoolHasAnyTag(JsonObjectConst spool);
-
 #include "services/drying_sync.h"
-#include "services/location_state.h"
 #include "services/backend.h"
 #include "services/breadcrumb.h"
 #include "services/backend_api.h"
@@ -31,7 +22,6 @@ bool spoolHasAnyTag(JsonObjectConst spool);
 #include "services/server_reach.h"
 #include "services/spool_cache.h"
 #include "services/spool_tare.h"
-#include "services/spoolman_actions.h"
 #include "services/spoolman_api.h"
 #include "services/tag_field.h"
 #include "services/tag_probe_job.h"
@@ -650,7 +640,6 @@ void querySpoolmanById(int spool_id) {
   sm_filament_name[sizeof(sm_filament_name)-1] = '\0';
 
   // Location - Spoolman gibt location als einfachen String zurück
-  sm_location_id = 0;
   sm_location_name[0] = '\0';
   if (!spool["location"].isNull() && spool["location"].is<const char*>()) {
     String loc_name = spool["location"] | String("");
@@ -730,7 +719,6 @@ void querySpoolmanById(int spool_id) {
 
   applyDriedLabel(lbl_spoolman_dried_val, lbl_dried_sym, sm_last_dried);
 
-  lv_label_set_text(lbl_detail,        strlen(sm_article_nr)    > 0 ? sm_article_nr    : "-");
   lv_label_set_text(lbl_filament_name, strlen(sm_filament_name) > 0 ? sm_filament_name : "-");
 
   applyLastUsed(spool["last_used"] | (const char*)nullptr,
@@ -1160,7 +1148,6 @@ void querySpoolman(const char* tray_uuid, LookupOrigin origin) {
   lv_label_set_text(lbl_spoolman_pct, "");
   lv_label_set_text(lbl_spoolman_dried_val, "");
   if (lbl_dried_sym) lv_obj_add_flag(lbl_dried_sym, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(lbl_detail, "-");
   lv_label_set_text(lbl_filament_name, "-");
   lv_label_set_text(lbl_last_used, "-");
   if (lbl_scale_diff) lv_obj_set_width(lbl_scale_diff, 0);
@@ -1185,7 +1172,7 @@ void querySpoolman(const char* tray_uuid, LookupOrigin origin) {
   sm_material_global[0] = '\0';
   sm_color_global[0] = '\0';
   sm_last_used[0] = '\0';
-  sm_location_name[0] = '\0'; sm_location_id = 0;
+  sm_location_name[0] = '\0';
   sm_status_id = 0;
   sm_found = false;
   sm_archived = false;

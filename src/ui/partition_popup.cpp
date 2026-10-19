@@ -21,8 +21,6 @@
 
 static lv_obj_t *s_pop = nullptr;
 
-void closePartitionHint() { releaseScreen(&s_pop); }
-
 static void laterCb(lv_event_t *e) {
   (void)e;
   logSD("Storage hint: later");

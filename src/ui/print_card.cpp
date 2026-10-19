@@ -226,8 +226,6 @@ void printCardResult(LabelPrintResult result) {
   logSDf("PrintCard: result=%d", (int)result);
 }
 
-bool printCardOpen() { return s_scr != nullptr; }
-
 void printCardLoop() {
   if (!s_scr || !s_close_req) return;
   // lv_obj_del() takes the running countdown animation with the fill.

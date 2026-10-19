@@ -16,7 +16,6 @@
 #include "services/location_state.h"
 #include "services/spoolman_actions.h"
 #include "services/tag_uid.h"
-#include "services/user_options.h"
 #include "services/backend.h"
 #include "services/breadcrumb.h"
 #include "services/http_progress.h"
@@ -250,12 +249,10 @@ void handleMoreInfoDeferredActions() {
                                                  clear ? nullptr : loc_patch_name, 8000), true);
       if (backendWriteOk(code)) {
         if (clear) {
-          sm_location_id = 0;
           sm_location_name[0] = '\0';
         } else {
           strncpy(sm_location_name, loc_patch_name, sizeof(sm_location_name) - 1);
           sm_location_name[sizeof(sm_location_name) - 1] = '\0';
-          sm_location_id = 0;
           // Mark the popup as shown so it does not re-trigger on the next
           // removal.
           g_loc_popup_shown_for_id = sm_id;

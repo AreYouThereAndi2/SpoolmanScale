@@ -8,7 +8,6 @@
 #include <lvgl.h>
 #include <cstring>
 
-#include "app_config.h"
 #include "app/backend_switch.h"
 #include "bambu/bambu_tag.h"
 #include "bambu/material_match.h"
@@ -21,19 +20,17 @@
 #include "services/list_limits.h"
 #include "services/server_reach.h"
 #include "services/spool_cache.h"
-#include "services/spoolman_actions.h"
 #include "services/tag_field.h"
 #include "ui/info_popup.h"
 #include "ui/link_wait_card.h"
 #include "ui/loading_overlay.h"
 #include "ui/main_screen_helpers.h"
 #include "ui/navigation.h"
-#include "ui/spoolman_lookup.h"
 #include "services/spool_tare.h"
 #include "services/spool_extras.h"
 #include "ui/theme.h"
 
-// From ui/spool_flow.cpp, see the same line in spoolman_lookup.cpp: what counts
+// From ui/spool_flow.cpp, see the same line in lookup_scan.cpp: what counts
 // as bound, for the spool cache a download here fills.
 bool spoolHasAnyTag(JsonObjectConst spool);
 

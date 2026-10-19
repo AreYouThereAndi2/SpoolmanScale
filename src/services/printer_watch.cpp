@@ -43,8 +43,6 @@ static int resolvePrinter() {
   return 0;
 }
 
-int printerWatchPrinterId() { return s_printer_id; }
-
 const BbJob* printerWatchPendingJob() { return s_job_pending ? &s_job : nullptr; }
 
 void printerWatchTakeJob() {
@@ -129,10 +127,6 @@ PwOffPlan printerWatchPowerOffWhenCool() {
 }
 
 bool printerWatchCooling() { return s_cooling; }
-void printerWatchCancelCooling() {
-  if (s_cooling) logSD("PrinterWatch: cooldown switch-off cancelled");
-  s_cooling = false;
-}
 int  printerWatchCoolingTemp()   { return s_cool_temp; }
 int  printerWatchCoolingTarget() { return s_cool_target; }
 

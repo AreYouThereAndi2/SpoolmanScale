@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <cstring>
 
-#include "app_config.h"
 #include "services/prefs_store.h"
 #include "services/user_options.h"
 

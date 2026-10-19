@@ -30,7 +30,6 @@
 #include "ui/main_screen_helpers.h"
 #include "ui/more_info_screen.h"
 #include "ui/quick_panel.h"
-#include "ui/settings_screen.h"
 #include "ui/spool_flow.h"
 #include "ui/theme.h"
 #include "ui_common.h"
@@ -59,11 +58,8 @@ void updateDisplay() {
   // Filament name: cleared until Spoolman responds
   lv_label_set_text(lbl_filament_name, "");
 
-  // Colour swatch + hex text, alpha included: the tag's own colour until the
-  // backend answers, which may still tint a clear spool.
-  char tag_hex[SPOOL_COLOR_HEX_MAX];
-  spoolColorFormat(g_tag.color, tag_hex, sizeof(tag_hex));
-  lv_label_set_text(lbl_color, tag_hex[0] ? tag_hex : "-");
+  // Colour swatch: the tag's own colour until the backend answers, which may
+  // still tint a clear spool.
   if (g_tag.color.valid) swatchPaint(lbl_color_swatch, g_tag.color);
 
   // Temp (Zone 3 Row B)
@@ -81,14 +77,6 @@ void updateDisplay() {
   lv_label_set_text(lbl_vendor,
     strlen(g_tag.vendor) > 0 ? g_tag.vendor : (is_bambu ? BAMBU_VENDOR_NAME : "-"));
 
-  // Hidden labels still written for More Info screen compatibility
-  lv_label_set_text(lbl_uid, g_tag.uid_str);
-  lv_label_set_text(lbl_tray_uuid,
-    strlen(g_tag.tray_uuid) == 32 ? g_tag.tray_uuid : (is_bambu ? T(STR_NOT_READABLE) : "-"));
-  lv_label_set_text(lbl_date,
-    strlen(g_tag.production_date) > 4 ? g_tag.production_date : T(STR_UNKNOWN));
-  lv_label_set_text(lbl_detail, sm_article_nr[0] ? sm_article_nr : "-");
-
   // (lbl_raw_info is now used for SM diff display, updated in loop)
 }
 
@@ -103,9 +91,6 @@ void showTagInfoOnDisplay(const TagInfo *ti) {
 
   if (ti->has_color) {
     const SpoolColor c = spoolColorFromRgba(ti->r, ti->g, ti->b, SPOOL_ALPHA_OPAQUE);
-    char hex[SPOOL_COLOR_HEX_MAX];
-    spoolColorFormat(c, hex, sizeof(hex));
-    lv_label_set_text(lbl_color, hex);
     swatchPaint(lbl_color_swatch, c);
   }
 
@@ -322,8 +307,6 @@ void buildUI() {
   lv_obj_set_style_text_font(lbl_hdr_scans, &lv_font_montserrat_ext_12, 0);
   lv_obj_align(lbl_hdr_scans, LV_ALIGN_RIGHT_MID, -8, 0);
 
-  lbl_scan_count = lbl_hdr_scans;
-
   // Thin separator line
   lv_obj_t *sep1 = lv_obj_create(lv_scr_act());
   lv_obj_set_size(sep1, 480, 1);
@@ -401,11 +384,6 @@ void buildUI() {
   lv_obj_set_pos(lbl_filament_name, 244, 69);
   lv_label_set_long_mode(lbl_filament_name, LV_LABEL_LONG_DOT);
   lv_obj_set_width(lbl_filament_name, 228);
-
-  // Hex color: hidden dummy (only shown in More Info screen)
-  lbl_color = lv_label_create(lv_scr_act());
-  lv_label_set_text(lbl_color, "");
-  lv_obj_add_flag(lbl_color, LV_OBJ_FLAG_HIDDEN);
 
   // Row B: Vendor (x=8, y=100) | Temp (x=244, y=100) | More info btn top right
   lv_obj_t *lbl_vendor_cap = lv_label_create(lv_scr_act());
@@ -513,24 +491,6 @@ void buildUI() {
   lv_obj_set_pos(lbl_dried_sym, 456, 162);
   lv_obj_add_flag(lbl_dried_sym, LV_OBJ_FLAG_HIDDEN);
 
-  // Unused labels still needed by updateDisplay / querySpoolman
-  // lbl_uid, lbl_tray_uuid, lbl_detail, lbl_date - hidden dummy labels
-  lbl_uid = lv_label_create(lv_scr_act());
-  lv_label_set_text(lbl_uid, "");
-  lv_obj_add_flag(lbl_uid, LV_OBJ_FLAG_HIDDEN);
-
-  lbl_tray_uuid = lv_label_create(lv_scr_act());
-  lv_label_set_text(lbl_tray_uuid, "");
-  lv_obj_add_flag(lbl_tray_uuid, LV_OBJ_FLAG_HIDDEN);
-
-  lbl_detail = lv_label_create(lv_scr_act());
-  lv_label_set_text(lbl_detail, "");
-  lv_obj_add_flag(lbl_detail, LV_OBJ_FLAG_HIDDEN);
-
-  lbl_date = lv_label_create(lv_scr_act());
-  lv_label_set_text(lbl_date, "");
-  lv_obj_add_flag(lbl_date, LV_OBJ_FLAG_HIDDEN);
-
   // Separator zone 3/4
   lv_obj_t *sep2 = lv_obj_create(lv_scr_act());
   lv_obj_set_size(sep2, 480, 1);
@@ -550,7 +510,7 @@ void buildUI() {
 
   // Backend section - caption. Kept in a global so the text can follow a
   // backend switch without rebuilding the main screen. The product names are
-  // not translated, and STR_LBL_SPOOLMAN is identical in both languages.
+  // not translated.
   lbl_sm_cap = lv_label_create(lv_scr_act());
   { char cap_buf[16]; backendCaption(cap_buf, sizeof(cap_buf));
     lv_label_set_text(lbl_sm_cap, cap_buf); }
@@ -979,6 +939,5 @@ void buildUI() {
   // widths, so this has to run after every label above exists.
   layoutHeaderChips();
 
-  page_main = lv_scr_act();
   // lbl_raw_info points to SM diff label on main screen (see above)
 }

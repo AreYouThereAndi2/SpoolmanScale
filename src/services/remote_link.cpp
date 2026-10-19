@@ -3,7 +3,6 @@
 #include <Arduino.h>
 
 #include "app/app_state.h"
-#include "app_config.h"
 #include "hardware/sd_logger.h"
 #include "services/backend.h"
 #include "services/filaman_api.h"

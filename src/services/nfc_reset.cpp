@@ -76,8 +76,6 @@ bool nfcResetSelfTest() {
   return works;
 }
 
-bool nfcReaderNeededRecovery() { return s_recovery; }
-
 void nfcReaderNoteRecovery() {
   if (s_recovery) return;   // one write, not one per stumble
   s_recovery = true;

@@ -3,7 +3,6 @@
 #include "services/backend_http.h"
 #include "hardware/sd_logger.h"
 #include "http_progress.h"
-#include "tag_uid.h"
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -324,10 +323,6 @@ int spoolmanGetHealthCode(const char* base_url, uint32_t timeout_ms) {
   int code = http.GET();
   http.end();
   return code;
-}
-
-bool spoolmanIsReachable(const char* base_url, uint32_t timeout_ms) {
-  return spoolmanGetHealthCode(base_url, timeout_ms) == 200;
 }
 
 bool spoolmanGetVersion(const char* base_url, char* out_version, size_t out_size, uint32_t timeout_ms) {

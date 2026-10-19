@@ -162,7 +162,6 @@ void patchArchiveSpool() {
   lv_label_set_text(lbl_spoolman_dried_val, "-");
   if (lbl_dried_sym) lv_obj_add_flag(lbl_dried_sym, LV_OBJ_FLAG_HIDDEN);
   lv_label_set_text(lbl_last_used, "-");
-  lv_label_set_text(lbl_detail, "-");
   lv_label_set_text(lbl_filament_name, "-");
   if (lbl_scale_diff)      lv_obj_set_width(lbl_scale_diff, 0);
   if (lbl_spoolman_dried)  lv_label_set_text(lbl_spoolman_dried, "");

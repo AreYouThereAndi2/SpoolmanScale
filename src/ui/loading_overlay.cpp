@@ -21,7 +21,6 @@
 
 static lv_obj_t     *scr_loading   = nullptr;
 static lv_obj_t     *lbl_loading   = nullptr;
-static lv_obj_t     *lbl_bytes     = nullptr;
 static lv_obj_t     *arc_loading   = nullptr;
 static uint16_t      loading_angle = 0;
 static unsigned long loading_last  = 0;
@@ -80,14 +79,6 @@ void loadingOverlayShow(const char* text) {
   lv_obj_set_width(lbl_loading, 290);
   lv_obj_align(lbl_loading, LV_ALIGN_TOP_MID, 0, 92);
 
-  lbl_bytes = lv_label_create(box);
-  lv_label_set_text(lbl_bytes, "");
-  lv_obj_set_style_text_color(lbl_bytes, lv_color_hex(UI_COL_CAPTION), 0);
-  lv_obj_set_style_text_font(lbl_bytes, &lv_font_montserrat_ext_12, 0);
-  lv_obj_set_style_text_align(lbl_bytes, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_width(lbl_bytes, 290);
-  lv_obj_align(lbl_bytes, LV_ALIGN_TOP_MID, 0, 128);
-
   loadingOverlaySetText(text);
 }
 
@@ -116,26 +107,10 @@ void loadingOverlayTick() {
   lv_refr_now(NULL);
 }
 
-void loadingOverlayProgress(size_t bytes_read) {
-  if (!scr_loading) return;
-  // Written before the throttle check so the number is current whenever a
-  // frame does get drawn, and skipped entirely when no frame is due.
-  const unsigned long now = millis();
-  if (now - loading_last < LOADING_TICK_MS) return;
-
-  if (lbl_bytes) {
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%u KB", (unsigned)(bytes_read / 1024));
-    lv_label_set_text(lbl_bytes, buf);
-  }
-  loadingOverlayTick();
-}
-
 void loadingOverlayHide() {
   if (!scr_loading) return;
   lv_obj_del(scr_loading);
   scr_loading = nullptr;
   lbl_loading = nullptr;
-  lbl_bytes   = nullptr;
   arc_loading = nullptr;
 }

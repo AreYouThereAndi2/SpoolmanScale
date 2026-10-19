@@ -65,13 +65,11 @@ void flashLogTick();
 // What is stored right now.
 uint32_t flashLogLines();
 uint32_t flashLogUsedBytes();
-uint32_t flashLogCapacityBytes();
 
 // Hides every line written so far and starts erasing them in the background,
 // a sector per flashLogTick(). Returns at once: the reader stops showing them
 // immediately, the flash is clean a few seconds later.
 void flashLogClear();
-bool flashLogClearBusy();
 
 // Hands every stored line to `emit`, oldest first, already rendered as
 // "[HH:MM:SS] text" the way the card writes it. Returns the number of lines.

@@ -42,7 +42,6 @@ images/images_not_for_github/
 !version.json
 !README.md
 !BUILDING.md
-!REFACTOR_PLAN.md
 !index.html
 !.gitignore
 # This fork: setup and wiring of the workbench terminal additions.

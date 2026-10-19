@@ -18,7 +18,6 @@
 
 void linkWaitCardShow();
 void linkWaitCardHide();
-bool linkWaitCardOpen();
 
 // The worker's byte count, every loop pass. The card adds up the lists that
 // come in while it stands, so its number only ever goes up; 0 leaves the line

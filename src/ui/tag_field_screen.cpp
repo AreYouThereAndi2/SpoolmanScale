@@ -1,5 +1,4 @@
 #include "tag_field_screen.h"
-#include "navigation.h"
 #include "app/app_state.h"
 #include "app/deferred_actions.h"
 
@@ -13,7 +12,6 @@
 // else in this project that needs both.
 #include "services/backend_api.h"
 
-#include "extra_fields_screen.h"
 #include "hardware/sd_logger.h"
 #include "info_popup.h"
 #include "lang.h"

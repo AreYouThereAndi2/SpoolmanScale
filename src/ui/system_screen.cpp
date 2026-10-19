@@ -13,7 +13,6 @@
 #include "lang.h"
 #include "services/nfc_reset.h"
 #include "services/backend.h"
-#include "services/ota_state.h"
 #include "ui_common.h"
 #include "update_badges.h"
 #include "web_screen.h"

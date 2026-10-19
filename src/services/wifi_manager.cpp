@@ -25,10 +25,6 @@ void wifiManagerPrepareScan() {
   delay(100);
 }
 
-int wifiManagerScanNetworks() {
-  return WiFi.scanNetworks();
-}
-
 bool wifiManagerStartScanAsync() {
   return WiFi.scanNetworks(true) == WIFI_SCAN_RUNNING;
 }

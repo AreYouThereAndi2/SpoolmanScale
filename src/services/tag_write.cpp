@@ -67,9 +67,7 @@ static bool      erased_flag = false;
 static TagWriteReport report;
 
 static char      cached_uid[26] = "";
-static char      cached_kind[34] = "";
-// The same statement as a number, because cached_kind is English prose and the
-// web page is translated. 0 nothing, 1 MIFARE Classic read-only, 2 NTAG.
+// The kind of tag on the reader. 0 nothing, 1 MIFARE Classic read-only, 2 NTAG.
 static uint8_t   cached_kindcode = TAG_KIND_NONE;
 static char      cached_content[128] = "";
 static char      cached_raw[512] = "";
@@ -81,7 +79,6 @@ static unsigned long scan_since = 0;
 #define SCAN_WAIT_MS 30000
 
 const char* tagCachedUid()     { return cached_uid; }
-const char* tagCachedKind()    { return cached_kind; }
 const char* tagCachedContent() { return cached_content; }
 const char* tagCachedRaw()     { return cached_raw; }
 const TagInfo* tagCachedInfo() { return &cached_info; }
@@ -1097,7 +1094,7 @@ static void refreshCache(bool force = false) {
   static uint8_t unreadable = 0;   // reads in a row that described nothing
 
   if (!tag_present) {
-    cached_uid[0] = 0; cached_kind[0] = 0; cached_content[0] = 0;
+    cached_uid[0] = 0; cached_content[0] = 0;
     cached_raw[0] = 0;
     cached_bytes = 0;
     cached_kindcode = TAG_KIND_NONE;
@@ -1111,7 +1108,6 @@ static void refreshCache(bool force = false) {
   snprintf(cached_uid, sizeof(cached_uid), "%s", g_tag.uid_str);
 
   if (!is_ntag) {
-    snprintf(cached_kind, sizeof(cached_kind), "MIFARE Classic, read-only");
     cached_kindcode = TAG_KIND_MIFARE;
     cached_content[0] = 0;
     cached_bytes = 0;
@@ -1167,9 +1163,6 @@ static void refreshCache(bool force = false) {
   const uint16_t bytes = tagUserBytes();
   cached_bytes = bytes;
   cached_kindcode = TAG_KIND_NTAG;
-  if (bytes) snprintf(cached_kind, sizeof(cached_kind), "NTAG, writable, %u bytes",
-                      (unsigned)bytes);
-  else       snprintf(cached_kind, sizeof(cached_kind), "NTAG, writable");
 
   // A page read that loses the reader returns a short or empty result, so keep
   // the last good description rather than blanking the page.

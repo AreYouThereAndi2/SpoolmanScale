@@ -39,7 +39,12 @@
 #include "hardware/sd_logger.h"
 #include "lang.h"
 
-// From ui/spool_flow.cpp, see the same line in spoolman_lookup.cpp.
+// From ui/spool_flow.cpp: whether a spool of an inventory list is bound to a
+// tag, through whichever of the tag fields. Handed to services/spool_cache with
+// the inventory the full scan fetches, so the link flow's rule stays the only
+// one. Declared here and not in spool_flow.h, which cannot include ArduinoJson:
+// it is included behind lang.h elsewhere, and the T() macro breaks the
+// library's templates.
 bool spoolHasAnyTag(JsonObjectConst spool);
 
 #include "app/backend_switch.h"
@@ -47,7 +52,6 @@ bool spoolHasAnyTag(JsonObjectConst spool);
 #include "services/backend.h"
 #include "services/backend_api.h"
 #include "services/backend_job.h"
-#include "services/breadcrumb.h"
 #include "services/filaman_api.h"
 #include "services/location_state.h"
 #include "services/spool_cache.h"
@@ -707,7 +711,6 @@ LookupStep lookupResolveActive(const LookupCtx& c, JsonDocument& doc,
 
     applyDriedLabel(lbl_spoolman_dried_val, lbl_dried_sym, sm_last_dried);
 
-    lv_label_set_text(lbl_detail, strlen(sm_article_nr) > 0 ? sm_article_nr : "-");
     lv_label_set_text(lbl_filament_name, strlen(sm_filament_name) > 0 ? sm_filament_name : "-");
 
     // last_used is directly in the spool object (not in extra!)

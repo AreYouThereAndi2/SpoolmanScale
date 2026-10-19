@@ -13,5 +13,3 @@
 // LVGL callback.
 void buildAmsAssignScreen();
 
-// Human readable name of the active mode, for the row in "More options".
-const char* amsModeName();

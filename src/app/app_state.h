@@ -27,7 +27,6 @@ extern bool cfg_first_boot;
 // step restarts the device, and without this the restart would find an SSID
 // and boot past the rest of the setup. Cleared when the setup ends.
 extern bool cfg_setup_resume;
-extern bool spoolman_fail_is_setup;
 
 // True while the user is walking through the first time setup chain
 // (language, WiFi, backend, address, credentials). Screens that appear in
@@ -48,7 +47,6 @@ extern bool wifi_ok;
 extern bool sm_reachable;
 extern bool tag_present;
 
-extern lv_obj_t *scr_main;
 extern lv_obj_t *scr_settings;
 extern lv_obj_t *scr_wifi;
 extern lv_obj_t *scr_backend;
@@ -61,7 +59,6 @@ extern lv_obj_t *scr_tagwrite;   // writing a tag after a link
 extern lv_obj_t *scr_timezone;
 extern lv_obj_t *scr_spoolman_options;
 extern lv_obj_t *scr_spoolman;
-extern lv_obj_t *scr_spoolman_fail;
 extern lv_obj_t *scr_welcome;
 extern lv_obj_t *scr_first_boot;
 extern lv_obj_t *scr_extra_fields;
@@ -89,9 +86,6 @@ extern lv_obj_t *lbl_burger_badge;
 extern lv_obj_t *lbl_system_badge;
 extern lv_obj_t *lbl_fw_badge;
 extern lv_obj_t *lbl_gh_btn_badge;
-extern lv_obj_t *lbl_wifi_info;
-extern lv_obj_t *ta_factor_weight;
-extern lv_obj_t *kb_factor;
 extern lv_obj_t *lbl_factor_result;
 extern lv_obj_t *lbl_factor_cal_weight;
 extern lv_obj_t *scr_wifi_pass;
@@ -163,21 +157,11 @@ extern int sm_tag_conflict_spool;
 // spool. It cannot be moved from here, only named.
 extern int sm_tag_conflict_filament;
 
-// Shorthand for the field the user selected, which is the one most callers
-// mean. Never null.
-const char* smSelectedTagValue();
-
 // How many UIDs the matched spool is bound by, across every tag field. More
 // than one only ever comes from a list field, and that is what makes "unlink"
 // an ambiguous request that has to be asked about.
 int smBoundUidCount();
 
-// How many places hold a binding at all, which is a different question from how
-// many UIDs there are: the same UID in extra.tag and in Spoolman's relation is
-// two sources and one tag. The unlink asks when either count is above one - two
-// UIDs make "only this one or all of them" a real question, two sources make
-// "you are about to clear both" worth saying out loud.
-int smBoundSourceCount();
 extern char sm_article_nr[32];
 extern char sm_filament_name[32];
 extern char sm_material_global[32];
@@ -188,7 +172,6 @@ extern char sm_color_global[16];
 // become a new location on the server.
 #define LOCATION_NAME_MAX 130
 extern char sm_location_name[LOCATION_NAME_MAX];
-extern int sm_location_id;
 // FilaMan spool status, 1..6 (see FILAMAN_STATUS_* in filaman_api.h).
 // 0 means unknown, which is also what Spoolman and BamBuddy always leave here.
 extern int sm_status_id;
@@ -219,7 +202,6 @@ extern char ntag_handled_uid[24];
 void tagLookupForget();
 extern char sm_last_used[32];
 extern int nfc_retry_count;
-extern int nfc_absent_count;
 
 // Fast re-poll state and read statistics (v0.6.1-beta).
 // nfc_fast_polls counts the consecutive short-interval retries inside the
@@ -234,18 +216,12 @@ extern unsigned long nfc_stat_removals;
 extern unsigned long nfc_stat_reinits;
 
 extern lv_obj_t *lbl_status;
-extern lv_obj_t *lbl_uid;
-extern lv_obj_t *lbl_tray_uuid;
 extern lv_obj_t *lbl_material;
-extern lv_obj_t *lbl_color;
 extern lv_obj_t *lbl_filament_name;
 extern lv_obj_t *lbl_color_swatch;
 extern lv_obj_t *lbl_vendor;
 extern lv_obj_t *lbl_temp;
-extern lv_obj_t *lbl_detail;
-extern lv_obj_t *lbl_date;
 extern lv_obj_t *lbl_spoolman_id;
-extern lv_obj_t *lbl_scan_count;
 extern lv_obj_t *lbl_keys;
 extern lv_obj_t *lbl_raw_info;
 extern lv_obj_t *lbl_spoolman_weight;
@@ -316,5 +292,4 @@ extern lv_obj_t *btn_hdr_ams;
 extern lv_obj_t *btn_hdr_nfc;
 extern lv_obj_t *scr_more_info;
 extern int scan_count;
-extern lv_obj_t *page_main;
 extern lv_obj_t *scr_info;

@@ -127,8 +127,6 @@ void linkWaitCardHide() {
   cancel_hit = false;
 }
 
-bool linkWaitCardOpen() { return scr_wait != nullptr; }
-
 void linkWaitCardBytes(size_t bytes) {
   if (!lbl_bytes) return;
   // A smaller count than last time is the next list, started from zero.

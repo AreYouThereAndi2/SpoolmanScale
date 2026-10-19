@@ -23,16 +23,11 @@ void clearTagDisplay() {
   lv_obj_set_style_text_color(lbl_nfc_dot, lv_color_hex(UI_COL_WARN), 0);  // yellow = kein Tag
   lv_label_set_text(lbl_status, T(STR_WAIT_SCAN));
   lv_obj_set_style_text_color(lbl_status, lv_color_hex(UI_COL_WARN), 0);
-  lv_label_set_text(lbl_uid, "-");
-  lv_label_set_text(lbl_tray_uuid, "-");
   lv_label_set_text(lbl_material, "-");
-  lv_label_set_text(lbl_date, "-");
   lv_label_set_text(lbl_spoolman_id, "?");
   lv_obj_set_style_text_color(lbl_spoolman_id, lv_color_hex(UI_COL_WARN), 0);
-  lv_label_set_text(lbl_color, "-");
   lv_label_set_text(lbl_temp, "-");
   lv_label_set_text(lbl_vendor, "-");
-  lv_label_set_text(lbl_detail, "-");
   lv_label_set_text(lbl_filament_name, "");
   lv_label_set_text(lbl_last_used, "-");
   lv_label_set_text(lbl_spoolman_weight, "---");
@@ -58,7 +53,7 @@ void clearTagDisplay() {
   sm_location_name[0] = '\0';
   sm_status_id = 0;
   tag_present = false;
-  nfc_retry_count = 0; nfc_absent_count = 0; nfc_fast_polls = 0;
+  nfc_retry_count = 0; nfc_fast_polls = 0;
   g_tag.uid_str[0] = '\0';
   g_tag.tray_uuid[0] = '\0';
   g_tag.material[0] = '\0';   // CRITICAL: otherwise is_ntag=false remains after Bambu scan

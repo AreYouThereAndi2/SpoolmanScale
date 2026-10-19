@@ -19,7 +19,5 @@
 // it stands.
 void handleTagViewDeferredActions();
 
-bool isTagViewOpen();
-
 // Released asynchronously, so safe from a callback. hideAllOverlays() calls it.
 void closeTagView();

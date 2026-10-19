@@ -11,7 +11,6 @@
 #include "services/bambuddy_device.h"
 #include "services/filaman_api.h"
 #include "services/http_progress.h"
-#include "services/list_limits.h"
 #include "services/device_name.h"
 #include "services/spoolman_api.h"
 #include "services/tag_field.h"
