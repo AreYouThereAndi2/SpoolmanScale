@@ -20,8 +20,8 @@ const char SPOOL_CACHE_BOUND_MARK[] = "~cached~";
 
 // One spool, as much of it as the link flow's filter and its rows read.
 //
-// THE RULE: whatever linkFilterVerdict() in ui/spool_flow.cpp reads has to be
-// in here and has to be written back by spoolCacheToJson(). A field missing
+// THE RULE: whatever linkFilterVerdict() in ui/spool_flow_fetch.cpp reads has
+// to be in here and has to be written back by spoolCacheToJson(). A field missing
 // here makes the kept list filter differently from the downloaded one, and
 // spools vanish from the second list that were in the first.
 //
