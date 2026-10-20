@@ -9,6 +9,7 @@
 #include "app_config.h"
 #include "backend.h"
 #include "auto_weight_state.h"
+#include "auto_zero.h"
 #include "drying_config.h"
 #include "lang.h"
 #include "list_limits.h"
@@ -92,6 +93,7 @@ void loadPrefs() {
   // device that never touched it follows this default.
   g_whole_gram = prefsGetBool("whole_gram", true);
   g_wake_on_load = prefsGetBool("wake_load", true);
+  autoZeroLoad();
   g_snapmaker_tags = prefsGetBool("snapmaker", false);
   g_ble_enabled = prefsGetBool("ble_on", false);
   // Same default and the same reason: a device that was never told otherwise

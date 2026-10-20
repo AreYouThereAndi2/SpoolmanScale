@@ -17,7 +17,7 @@ Inhalt:
 4. [Aufbau in Stufen](#aufbau-in-stufen): 0 Display, 1 Waage, 2 NFC, 3 Gehäuse, 4 Scanner, 5 Etikettendrucker
 5. [Firmware installieren](#firmware-installieren)
 6. [Ersteinrichtung](#ersteinrichtung)
-7. [Bedienen wie am Handy](#bedienen-wie-am-handy)
+7. [Bedienen wie am Handy](#bedienen-wie-am-handy), [Weboberfläche: Waage, Nullpunkt, Sicherung](#weboberfläche-waage-nullpunkt-sicherung)
 8. [Funktionstest nach dem Aufbau](#funktionstest-nach-dem-aufbau)
 9. [BamBuddy mit Spoolman: welches Inventar?](#bambuddy-mit-spoolman-welches-inventar)
 10. [Updates](#updates)
@@ -213,7 +213,13 @@ Ein Gerät ganz ohne Waage (nur NFC)? Dann in Einstellungen → Waage **„Waage
 | „NFC-Reader fehlt (PN532)“ | DIP-Schalter prüfen (1 = ON, 2 = OFF). VCC muss an **5 V** hängen. SDA und SCL nicht vertauscht? |
 | „Kein Modul am I2C-Bus“ | Beim HX711-Aufbau hängt nur der PN532 am Bus: VCC/GND/SDA/SCL am PN532 prüfen. |
 | Tag wird nicht gelesen | Den Tag mittig auflegen. Metall zwischen Tag und Leser schirmt ab. |
-| Leser hängt nach Stunden („NFC-Reader stumm“) | Ohne Reset-Draht bringt nur ein Neustart ihn zurück. Passiert das öfter, ins Log schauen und melden. |
+| Leser hängt nach Stunden („NFC-Reader stumm“) | Ohne Reset-Draht bringt nur ein Neustart ihn zurück. Abhilfe: den optionalen Reset-Draht unten nachrüsten. |
+
+**Optional: Reset-Draht an Pin 8.** Damit holt die Waage einen hängenden Leser selbst zurück, ohne Neustart.
+
+1. USB abziehen. Einen Draht vom Pad **RSTPDN** des PN532 an **Pin 8** der Buchse (GPIO 21) löten. Pin 8 ist nicht am 7-poligen Kabel: einzelne Crimp-Hülse oder direkt an den Kontakt.
+2. Pin 8 ist sonst die optionale RXD-Leitung zum Scanner. Liegt dort schon ein Scanner-Draht, diesen entfernen. Zum Scannen braucht die Waage ihn nicht, nur zum Einstellen von Licht und LED.
+3. USB anstecken. Am Gerät: Einstellungen → System → **NFC-Reset prüfen**. Meldet die Waage „funktioniert“, nutzt sie den Draht ab dem nächsten Start. Vorher treibt sie Pin 8 nie.
 
 ### Stufe 3: Ins Gehäuse
 
@@ -360,6 +366,20 @@ Kurze Hinweise:
 - Die Wisch-Gesten müssen ganz am Rand beginnen, in den äußersten 2 bis 3 mm des Glases. So wird ein Wischen in einer Liste nicht mit Zurück verwechselt.
 - Bei einer Frage, die auf eine Antwort wartet (zum Beispiel nach dem Druck), öffnet sich das Schnellmenü nicht.
 - Fenster und Fragen gleiten jetzt kurz von unten herein, wie eine Karte am Handy.
+
+## Weboberfläche: Waage, Nullpunkt, Sicherung
+
+**Waage** (eigener Reiter, nur wenn eine Waage eingebaut ist):
+
+- Zeigt live, welcher Wandler gefunden wurde (HX711 oder NAU7802), den Rohwert, das Gewicht, die Streuung und den Kalibrierfaktor.
+- Ideal für den ersten Test nach dem Löten: leicht auf die Schale drücken, Rohwert und Gewicht müssen **steigen**. Eine Streuung unter 1 g bei leerer Schale ist gut. Darüber hat meist eine Ader Wackelkontakt.
+- **Nullpunkt nachführen** (ab Werk an): Liegt nichts auf der Schale und ist sie ruhig, holt die Waage kleine Abweichungen bis 2 g nach 10 Sekunden auf 0 g zurück, etwa wegen der Temperatur. Eine aufgelegte Spule wird nie wegtariert. Gespeichert wird höchstens alle 10 Minuten, das schont den Flash.
+
+**Einstellungen → Sichern und wiederherstellen:**
+
+- **Einstellungen herunterladen** speichert alle Einstellungen als eine Datei: Kalibrierung, Backend, Zubehör, Anzeige, Scanner, Drucker.
+- WLAN-Passwort und API-Schlüssel kommen nur mit, wenn das Häkchen gesetzt ist. Die Datei dann sicher aufbewahren.
+- **Einspielen** schreibt die Datei zurück, danach startet die Waage neu. Gerätewerte wie die Firmware-Version oder ob ein HX711 gefunden wurde, misst die Waage selbst neu.
 
 ## Funktionstest nach dem Aufbau
 

@@ -6,6 +6,7 @@
 #include "hardware/pins.h"
 #include "hardware/scale.h"
 #include "hardware/sd_logger.h"
+#include "services/nfc_reset.h"
 #include "services/prefs_store.h"
 
 bool     g_scanner_enabled = false;
@@ -40,6 +41,7 @@ static uint32_t s_last_code_ms = 0;
 bool scannerPinAllowed(int pin, bool is_tx) {
   if (is_tx && pin == -1) return true;
   if (scaleHx711Fitted() && (pin == hw_pins::HX711_SCK || pin == hw_pins::HX711_DOUT)) return false;
+  if (nfcResetOnScannerPin() && pin == hw_pins::PN532_RESET_HX) return false;
   switch (pin) {
     case 12: case 13: case 14: case 21: return true;
     default: return false;

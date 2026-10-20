@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 
+#include "hardware/barcode_scanner.h"
 #include "hardware/nfc.h"
 #include "hardware/pins.h"
 #include "hardware/scale.h"
@@ -10,6 +11,7 @@
 
 // NVS keys. Preferences keys are limited to 15 characters.
 #define KEY_VERIFIED   "rst_ok"
+#define KEY_VERIFIED_HX "rst_ok_hx"
 #define KEY_RECOVERY   "rst_recov"
 #define KEY_NEVER      "rst_never"
 #define KEY_BOOTS      "rst_boots"
@@ -26,6 +28,7 @@
 #define PROBE_SETTLE_MS 100
 
 static bool     s_verified = false;
+static bool     s_verified_hx = false;
 static bool     s_recovery = false;
 static bool     s_never    = false;
 static uint32_t s_boots    = 0;
@@ -33,6 +36,7 @@ static uint32_t s_due_at   = 0;
 
 void nfcResetLoad() {
   s_verified = prefsGetBool(KEY_VERIFIED, false);
+  s_verified_hx = prefsGetBool(KEY_VERIFIED_HX, false);
   s_recovery = prefsGetBool(KEY_RECOVERY, false);
   s_never    = prefsGetBool(KEY_NEVER,    false);
   s_boots    = prefsGetUInt(KEY_BOOTS,   0) + 1;
@@ -41,17 +45,21 @@ void nfcResetLoad() {
 }
 
 int8_t nfcResetPinForBoot() {
-  if (scaleHx711Fitted()) return -1;
+  // With an HX711 the usual pins are its clock and data line: the reader goes
+  // without a reset line unless one was confirmed on pin 8.
+  if (scaleHx711Fitted()) return s_verified_hx ? hw_pins::PN532_RESET_HX : -1;
   return s_verified ? hw_pins::PN532_RESET_WIRE : hw_pins::PN532_RESET_SAFE;
 }
 
-bool nfcResetVerified() { return s_verified; }
+bool nfcResetVerified() { return scaleHx711Fitted() ? s_verified_hx : s_verified; }
+
+bool nfcResetOnScannerPin() { return scaleHx711Fitted() && s_verified_hx; }
 
 bool nfcResetSelfTest() {
-  // The wire's pin is the HX711's data line: holding it low would fight the
-  // chip, and there is no reset wire on it to find.
-  if (scaleHx711Fitted()) return false;
-  const int8_t wire = hw_pins::PN532_RESET_WIRE;
+  // With an HX711 the old wire's pin is its data line, and holding that low
+  // would fight the chip. The candidate there is pin 8.
+  const bool hx = scaleHx711Fitted();
+  const int8_t wire = hx ? hw_pins::PN532_RESET_HX : hw_pins::PN532_RESET_WIRE;
 
   // Open drain: the pin sinks and never sources, so on a device that still has
   // the wire on the module's output there is no contention to speak of.
@@ -69,12 +77,17 @@ bool nfcResetSelfTest() {
   const bool back = nfcHardwareReinit(&version);
 
   const bool works = (!answered_while_held && back);
-  if (works != s_verified) {
-    s_verified = works;
-    prefsPutBool(KEY_VERIFIED, works);
+  bool &verified = hx ? s_verified_hx : s_verified;
+  if (works != verified) {
+    verified = works;
+    prefsPutBool(hx ? KEY_VERIFIED_HX : KEY_VERIFIED, works);
   }
 
-  logSDf("NFC reset probe: held=%s after=%s fw=0x%08lX -> %s",
+  // Pin 8 is the scanner's TX until the wire is confirmed: the probe took it
+  // over, so the UART gets it back.
+  if (hx) scannerBegin();
+
+  logSDf("NFC reset probe on GPIO%d: held=%s after=%s fw=0x%08lX -> %s", (int)wire,
          answered_while_held ? "answers" : "silent",
          back ? "answers" : "silent", (unsigned long)version,
          works ? "line works" : "no effect");

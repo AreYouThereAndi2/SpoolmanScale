@@ -16,6 +16,7 @@ extern const WebPage PAGE_CONFIG;
 extern const WebPage PAGE_TAGS;
 extern const WebPage PAGE_PRINTER;
 extern const WebPage PAGE_THEME;
+extern const WebPage PAGE_SCALE;
 
 const WebPage* const WEB_PAGES[] = {
   &PAGE_STATUS,
@@ -23,6 +24,7 @@ const WebPage* const WEB_PAGES[] = {
   &PAGE_DRYING,
   &PAGE_TAGS,
   &PAGE_PRINTER,
+  &PAGE_SCALE,
   &PAGE_CONFIG,
   &PAGE_THEME,
   &PAGE_LOGS,
