@@ -3526,6 +3526,69 @@ const char* const STRINGS[][3] = {
   { "Vom linken Rand wischen: zurück. Nach oben wischen: schließen.",
     "Swipe from the left edge: back. Swipe up: close.",
     "Glisser du bord gauche : retour. Vers le haut : fermer." },  // STR_QP_HINT
+  { "Waage",
+    "Scale",
+    "Balance" },  // STR_W_NAV_SCALE
+  { "Waage live",
+    "Scale live",
+    "Balance en direct" },  // STR_W_C_SCALE_LIVE
+  { "Leicht auf die Schale drücken: Rohwert und Gewicht müssen steigen. Eine Streuung unter 1 g bei leerer Schale ist gut.",
+    "Press lightly on the platform: the raw value and the weight must go up. A spread below 1 g on an empty platform is good.",
+    "Appuyez légèrement sur le plateau : la valeur brute et le poids doivent monter. Une dispersion sous 1 g à vide est bonne." },  // STR_W_SCALE_LIVE_HINT
+  { "Wandler",
+    "Converter",
+    "Convertisseur" },  // STR_W_SCALE_ADC
+  { "Rohwert",
+    "Raw value",
+    "Valeur brute" },  // STR_W_SCALE_RAW
+  { "Gewicht",
+    "Weight",
+    "Poids" },  // STR_W_SCALE_WEIGHT
+  { "Streuung (Spitze-Spitze)",
+    "Spread (peak to peak)",
+    "Dispersion (crête à crête)" },  // STR_W_SCALE_SPREAD
+  { "Kalibrierfaktor",
+    "Calibration factor",
+    "Facteur d'étalonnage" },  // STR_W_SCALE_CAL
+  { "Nullpunkt (Rohwert)",
+    "Zero point (raw)",
+    "Zéro (valeur brute)" },  // STR_W_SCALE_ZERO
+  { "keiner gefunden",
+    "none found",
+    "aucun trouvé" },  // STR_W_SCALE_NONE
+  { "Nullpunkt nachführen",
+    "Zero tracking",
+    "Suivi du zéro" },  // STR_W_C_AUTO_ZERO
+  { "Nullpunkt automatisch nachführen",
+    "Track the zero point automatically",
+    "Suivre le zéro automatiquement" },  // STR_W_AUTO_ZERO
+  { "Liegt nichts auf der Schale und sie ist ruhig, zieht die Waage kleine Abweichungen (bis 2 g) nach 10 Sekunden auf 0 g zurück. Gespeichert wird höchstens alle 10 Minuten.",
+    "With nothing on the platform and the reading steady, the scale pulls small deviations (up to 2 g) back to 0 g after 10 seconds. It is stored at most every 10 minutes.",
+    "Plateau vide et stable : la balance ramène les petits écarts (jusqu'à 2 g) à 0 g après 10 secondes. Enregistré au plus toutes les 10 minutes." },  // STR_W_AUTO_ZERO_HINT
+  { "Sichern und wiederherstellen",
+    "Backup and restore",
+    "Sauvegarde et restauration" },  // STR_W_C_BACKUP
+  { "Alle Einstellungen dieser Waage als eine Datei: Kalibrierung, Backend, Zubehör, Anzeige. Nach einem Neuflashen oder für eine zweite Waage wieder einspielen.",
+    "Every setting of this scale as one file: calibration, backend, accessories, display. Load it back after a reflash or into a second scale.",
+    "Tous les réglages de cette balance dans un fichier : étalonnage, serveur, accessoires, affichage. À recharger après un reflash ou sur une deuxième balance." },  // STR_W_BACKUP_HINT
+  { "Mit WLAN-Passwort und API-Schlüsseln",
+    "Include Wi-Fi password and API keys",
+    "Avec mot de passe Wi-Fi et clés API" },  // STR_W_BACKUP_SECRETS
+  { "Einstellungen herunterladen",
+    "Download settings",
+    "Télécharger les réglages" },  // STR_W_BACKUP_SAVE
+  { "Sicherung einspielen",
+    "Load a backup",
+    "Charger une sauvegarde" },  // STR_W_BACKUP_LOAD
+  { "Einspielen",
+    "Load",
+    "Charger" },  // STR_W_BACKUP_RESTORE
+  { "%d Einstellungen übernommen. Sie gelten nach dem Neustart.",
+    "%d settings loaded. They apply after a restart.",
+    "%d réglages chargés. Ils s'appliquent après redémarrage." },  // STR_W_BACKUP_DONE
+  { "Das ist keine Sicherung dieser Waage.",
+    "This is not a backup of this scale.",
+    "Ce n'est pas une sauvegarde de cette balance." },  // STR_W_BACKUP_BAD
 };
 
 StringID tagWriteResultString(uint8_t code) {

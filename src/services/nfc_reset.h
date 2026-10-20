@@ -28,6 +28,10 @@ int8_t nfcResetPinForBoot();
 
 bool nfcResetVerified();
 
+// The reset wire confirmed on pin 8 (HX711 builds): that pin is then the
+// reader's, and the scanner goes without its optional TX line.
+bool nfcResetOnScannerPin();
+
 // Drives the candidate line open drain for a few milliseconds and asks the
 // reader whether it noticed, then puts it back. Open drain only sinks, so on
 // unmodified hardware it cannot fight the module's output - which is the whole

@@ -10,6 +10,7 @@
 
 #include "app_config.h"
 #include "bambu/bambu_catalog_sync.h"
+#include "services/auto_zero.h"
 #include "services/drying_sync.h"
 #include "services/backend_http.h"
 #include "app/app_boot.h"
@@ -1333,6 +1334,7 @@ void appLoop() {
     // spread says nothing about the wiring. Reported as zero until it fills,
     // which keeps the sustain timer from arming on the way up.
     diagnosticsNoteSample(scale_weight_g, scale_filter_full ? (hi - lo) : 0.0f);
+    autoZeroNote(scale_weight_g, hi - lo, scale_filter_full, tag_present);
 
     // A load appearing on the pad counts as activity, so the panel
     // comes back without having to touch it first.
