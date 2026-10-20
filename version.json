@@ -1,9 +1,9 @@
 {
-  "stable": "v0.9.1",
-  "stable_sha256": "9fae6c57a69d9356d985dafa87ac774db806fcb9bee4393a32d0712327875684",
-  "prerelease": "v0.9.1",
-  "prerelease_sha256": "9fae6c57a69d9356d985dafa87ac774db806fcb9bee4393a32d0712327875684",
+  "stable": "v0.10.0",
+  "stable_sha256": "6f1322a6e2c7ada90156ba01f2e4fb52e6a165412334481365581085ba3f215c",
+  "prerelease": "v0.10.0",
+  "prerelease_sha256": "6f1322a6e2c7ada90156ba01f2e4fb52e6a165412334481365581085ba3f215c",
   "url": "https://github.com/AreYouThereAndi2/SpoolmanScale/releases/latest",
-  "prerelease_size": 3171664,
-  "stable_size": 3171664
+  "prerelease_size": 3229424,
+  "stable_size": 3229424
 }
