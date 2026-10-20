@@ -182,7 +182,7 @@ static bool copyListBuild(JsonDocument& doc, bool archived, const char* material
               !bambuSubtypeMatches(fname_sub, subkw)) continue;
         }
         // No colour of its own (multi-colour) is no reason to drop a
-        // spool, see linkFilterVerdict() in spool_flow.cpp.
+        // spool, see linkFilterVerdict() in spool_flow_fetch.cpp.
         if (g_tag.color_hex[0] == '#') {
           const char* col = spool["filament"]["color_hex"] | "";
           if (col[0] == '#') col++;

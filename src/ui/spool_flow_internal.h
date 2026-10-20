@@ -10,7 +10,11 @@
 //  finished the way a copy is. What they share is declared here; the rest
 //  stays static in its own file.
 //
-//  Included by those two files only, and in front of lang.h: it pulls in
+//  The link flow itself stands in several files as well, one per part of it
+//  (see the top of spool_flow.cpp), and what those share among themselves is
+//  declared here too.
+//
+//  Included by those files only, and in front of lang.h: it pulls in
 //  ArduinoJson, whose templates do not survive the T() macro.
 // ============================================================
 
@@ -65,13 +69,6 @@ struct UnlinkedSpool {
 
 // ---- in spool_flow.cpp -------------------------------------------------------
 
-// Under a spool list that is kept in the cache: when it was loaded, and a
-// button that loads it again. A list the cache does not hold keeps its full
-// height.
-#define LINK_LIST_H        264
-#define LINK_STRIP_H        36
-void listReloadStrip(lv_obj_t* scr, time_t at, uint32_t age_ms, lv_event_cb_t on_reload);
-
 extern UnlinkedSpool* link_spools;
 extern int            link_spool_count;
 extern int            link_spools_capacity;
@@ -99,19 +96,157 @@ void copyLookFromRow(CopyLook& look, const UnlinkedSpool& s);
 
 bool nameStartsWithMaterial(const char* name, const char* material);
 void joinMaterialName(const char* material, const char* name, char* out, size_t out_size);
-void addListMoreInfo(lv_obj_t* list, StringID str_id);
+// "New from tag" on the copy entry opens the popup of spool_flow_newtag.cpp.
+extern bool newtag_open_pending;
+
+// The link flow's own state, for its other files. Each is described where it
+// is defined.
+extern bool      link_cu_ok;
+extern lv_obj_t *scr_link_entry, *scr_link_id, *scr_link_warn_a, *scr_link_warn_b;
+extern lv_obj_t *scr_link_vendor, *scr_link_mat, *scr_link_mat_sub, *scr_link_spools;
+extern lv_obj_t *scr_link_confirm;
+extern lv_obj_t *lbl_link_id_display, *lbl_link_id_status;
+extern char link_selected_vendor[32];
+extern char link_selected_material[8];
+extern char link_selected_material_full[32];
+extern char link_list_vendor[32];
+extern char link_list_mat[8];
+extern char link_list_mat_full[32];
+extern bool link_stage3_shown;
+extern bool link_flow_is_bambu;
+extern bool copy_flow_via_list;
+extern bool id_popup_is_bambu;
+extern bool id_popup_is_copy;
+extern int  copy_id_lookup_pending;
+extern int  link_id_lookup_pending;
+extern bool link_id_lookup_is_bambu;
+extern bool link_material_ignored;
+extern bool link_list_reloadable;
+extern bool link_list_changed_note;
+extern bool show_id_input_pending;
+extern bool show_id_input_rebuild;
+extern bool id_input_open;
+
+// Parked by the flow's buttons for handleSpoolFlowDeferredActions().
+extern bool link_patch_pending;
+extern int  link_patch_id;
+extern bool link_patch_bambu;
+extern bool link_list_fetch_pending;
+extern int  link_row_refresh_pending;
+extern bool link_reload_pending;
+extern bool newtag_create_pending;
+
+// Stepping between the link lists (vendor, material, sub-material, spools) is
+// parked and carried out by the loop. A row or back button used to delete the
+// list it sat on and build the next one in the same callback; done
+// asynchronously instead, the old list would still be in the 96 kB pool while
+// the new one is built, and the spool list is cut to leave 3 kB free - not
+// enough for a material list on top. So the loop deletes the old list first,
+// synchronously, and builds the next one into the room that frees.
+enum LinkNav {
+  LNAV_NONE = 0,
+  LNAV_SPOOLS_BACK,    // spool list -> material (sub) list or entry popup
+  LNAV_MAT_BACK,       // material list -> vendor list
+  LNAV_MAT_ROW,        // material list -> sub-material list
+  LNAV_MATSUB_BACK,    // sub-material list -> material list
+  LNAV_MATSUB_ROW,     // sub-material list -> spool list
+  LNAV_VENDOR_ROW      // vendor list -> material list
+};
+extern LinkNav link_nav_pending;
+extern char    link_nav_vendor[32];
+
+// What a spool holds in its tag fields, see the definitions.
+bool spoolHasAnyTag(JsonObjectConst spool);
+void linkFillTagValues(UnlinkedSpool& s, JsonObjectConst spool);
+bool linkSpoolSkip(const UnlinkedSpool& s);
+const char* const* linkTargetValues(int spool_id);
+const char* linkTargetBase(int spool_id);
+
+// ---- in spool_flow_fetch.cpp -------------------------------------------------
+
+// What opens once the link list is in, see linkFetchRun().
+enum LinkFetchNext : uint8_t {
+  LF_NEXT_NONE = 0,
+  LF_NEXT_DIRECT_LIST,   // Flow A, a Bambu tag: the list itself
+  LF_NEXT_VENDOR_LIST,   // Flow B: the three step picker
+  LF_NEXT_RELOAD,        // the list on screen, built again at its filter level
+  LF_NEXT_COPY_VENDOR    // the copy flow through the picker
+};
+void linkFetchRun(bool is_bambu, const char* material_filter, bool archived_only,
+                  LinkFetchNext next);
+void linkFetchTick();
+void linkReloadSpoolList();
+
+// A row out of the cache, read again before it is used, see linkRefreshRow().
+enum LinkRowRefresh : uint8_t {
+  LINK_ROW_OK = 0,     // read, the row is true again
+  LINK_ROW_CHANGED,    // not what the list said: gone, archived, bound meanwhile
+  LINK_ROW_NETWORK,    // no answer worth acting on, so nothing is known
+};
+LinkRowRefresh linkRefreshRow(int idx);
+
 void linkPickerReset();
 void linkPickerForCopy(bool archived);
 void linkPickerClose();
 // Shows the picker's spool list again if it is there, hidden behind a question.
 void linkPickerShowList();
+
+// ---- in spool_flow_patch.cpp -------------------------------------------------
+
 // The link write and everything after it, see doLinkPatch(). True when the
 // tag was written.
 bool doLinkPatchUid(int spool_id, bool is_bambu, const char* link_uuid);
+void closeLinkOverlays();
+void armLinkFollowUps(int spool_id, bool is_bambu);
+extern int  tagwrite_after_link_id;
+extern int  secondtag_after_link_id;
+extern bool nativemissing_pending;
+
+// A link that Spoolman refused because the tag is on another spool.
+extern lv_obj_t *scr_tag_move;
+extern bool      tagmove_ask_pending;
+extern bool      tagmove_close_pending;
+extern bool      tagmove_yes_pending;
+extern int       s_move_spool_id;
+extern int       s_move_from_id;
+// What the popup shows of each spool: id, vendor, material, name, and the
+// colour as a swatch. Fetched when the question is about to be asked, so the
+// user decides between two spools they can recognise, not between two ids.
+struct SpoolSummary { char text[72]; char color[SPOOL_COLOR_HEX_MAX]; };
+extern SpoolSummary s_move_from_sum, s_move_to_sum;
+void fetchSpoolSummary(int spool_id, SpoolSummary &out);
+void showTagMovePopup();
+void runTagMove();
+
+// A link made from outside, waited for this long, see s_remote_link_ms.
+extern unsigned long s_remote_link_ms;
+#define REMOTE_LINK_EXPECT_MS  20000UL
+
+// ---- in spool_flow_id.cpp ----------------------------------------------------
+
+lv_obj_t* buildLinkOverlay();
+
+// ---- in spool_flow_list.cpp --------------------------------------------------
+
+// Under a spool list that is kept in the cache: when it was loaded, and a
+// button that loads it again. A list the cache does not hold keeps its full
+// height.
+#define LINK_LIST_H        264
+#define LINK_STRIP_H        36
+void listReloadStrip(lv_obj_t* scr, time_t at, uint32_t age_ms, lv_event_cb_t on_reload);
+
+void addListMoreInfo(lv_obj_t* list, StringID str_id);
+// What a tap on a row of the spool list leads to, once the row is true.
+void linkRowChosen(int idx);
+
+// ---- in spool_flow_picker.cpp ------------------------------------------------
+
 // The X of a screen without a header: top right, "out to the main screen".
 void flowCloseButton(lv_obj_t* parent, lv_event_cb_t cb);
-// "New from tag" on the copy entry opens the popup of spool_flow.cpp.
-extern bool newtag_open_pending;
+
+// ---- in spool_flow_newtag.cpp ------------------------------------------------
+
+extern lv_obj_t *scr_newtag;
 
 // ---- in copy_flow.cpp and copy_confirm_popup.cpp --------------------------------------------------------
 

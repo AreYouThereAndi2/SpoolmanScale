@@ -9,8 +9,8 @@
 
 // The link list: DONE when it came out of the cache and is built, PENDING
 // while the backend worker fetches it (the loop carries on, see
-// linkFetchTick() in spool_flow.cpp), FAILED when there is none to show - the
-// popup explains, the picker stays shut.
+// linkFetchTick() in spool_flow_fetch.cpp), FAILED when there is none to
+// show - the popup explains, the picker stays shut.
 enum LinkFetch : uint8_t { LINK_FETCH_FAILED, LINK_FETCH_DONE, LINK_FETCH_PENDING };
 LinkFetch fetchAllSpoolsForLink(bool is_bambu, const char* material_filter, bool archived_only = false);
 void showLinkEntryPopup(bool is_bambu);

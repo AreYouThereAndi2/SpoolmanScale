@@ -560,7 +560,7 @@ void fetchAndFillLocationList() {
   lv_obj_t *btn_none = lv_btn_create(list);
   // An exhausted LVGL pool comes back as NULL here, and LVGL 8.3 asserts
   // nothing on the way - the next style call would write through it and take
-  // the device down with a panic. See the same guard in spool_flow.cpp.
+  // the device down with a panic. See the same guard in spool_flow_list.cpp.
   if (!btn_none) { logSD("LOC: LVGL pool exhausted, no rows built"); return; }
   lv_obj_set_size(btn_none, 370, 44);
   lv_obj_set_style_bg_color(btn_none, lv_color_hex(UI_COL_CHIP), 0);
