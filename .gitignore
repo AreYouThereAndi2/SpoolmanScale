@@ -46,3 +46,5 @@ images/images_not_for_github/
 !.gitignore
 # This fork: setup and wiring of the workbench terminal additions.
 !WERKBANK.md
+!werkbank/
+!werkbank/**
