@@ -12,7 +12,7 @@ Eine Stunde Vorbereitung spart später die Fehlersuche. Alles abhaken, bevor der
 
 - [ ] WT32-SC01 Plus mit dem 7-poligen I/O-Kabel
 - [ ] HX711-Platine und Wägezelle (oder NAU7802)
-- [ ] 3,3-V-Regler (AMS1117-3.3 oder AP2112-3.3), für HX711 und Scanner
+- [ ] 3,3-V-Regler mit **festen** 3,3 V (AMS1117-3.3-Modul, z. B. Fasizi „4,75–12 V auf 3,3 V, 800 mA“), für HX711 und Scanner, siehe [Der 3,3-V-Regler](#der-33-v-regler)
 - [ ] PN532 V3, DIP-Schalter schon auf **1 = ON, 2 = OFF**
 - [ ] optional: GM861-Scanner, USB-C-Einbaukabel, NTAG215-Aufkleber, PM240
 - [ ] ein USB-C-**Datenkabel** (mit einem reinen Ladekabel klappt das Flashen nicht)
@@ -48,7 +48,7 @@ Die vollständige Teileliste mit Links steht in [BUILDING.md](../BUILDING.md#par
 |---|---|---|
 | Display + Rechner | WT32-SC01 Plus (ESP32-S3, 3,5 Zoll, mit 7-poligem I/O-Kabel) | 0 |
 | USB-C-Kabel | ein **Datenkabel**, kein reines Ladekabel | 0 |
-| 3,3-V-Spannungsregler | kleines AMS1117-3.3- oder AP2112-3.3-Modul | 1 (HX711), 4 |
+| 3,3-V-Spannungsregler | Modul mit festen 3,3 V: AMS1117-3.3 (z. B. Fasizi, 4,75–12 V Eingang, 800 mA) oder AP2112-3.3 | 1 (HX711), 4 |
 | Waagen-ADC | **HX711**-Platine (im Set mit der Wägezelle) *oder* NAU7802 | 1 |
 | Wägezelle | Biegebalken 5 oder 10 kg (10 kg reicht bis zu sehr schweren Spulen) | 1 |
 | NFC-Leser | PN532 „NFC Module V3“ (rote Platine mit zwei DIP-Schaltern) | 2 |
@@ -65,6 +65,22 @@ Die vollständige Teileliste mit Links steht in [BUILDING.md](../BUILDING.md#par
 Alles hängt an **einer Buchse**: dem **I/O-Stecker** auf der Rückseite des WT32-SC01 Plus. Dort steckt das mitgelieferte **7-polige Kabel**, **links bündig** in der 8-poligen Buchse. Der achte Kontakt (ganz rechts) bleibt frei, er wird nur für eine Option beim Scanner gebraucht.
 
 Die Buchse hat **nur 5 V**, keine 3,3 V. Was 3,3 V braucht (HX711, GM861), hängt an einem kleinen **3,3-V-Regler**, den du an Pin 1 und 2 anschließt.
+
+### Der 3,3-V-Regler
+
+Ein kleines Modul mit **festen 3,3 V**, z. B. das AMS1117-3.3-Modul von Fasizi („4,75–12 V auf 3,3 V, 800 mA“, 10 Stück). Ein Regler versorgt HX711 und Scanner zusammen.
+
+| Regler | geht an |
+|---|---|
+| **IN** (auch VIN) | Pin 1, rot (5 V) |
+| **GND** | Pin 2, schwarz |
+| **OUT** (auch 3V3, VOUT) | HX711 VCC (und VDD), GM861 VCC |
+
+- **IN und OUT nicht vertauschen.** Die Beschriftung steht auf der Platine. Hat das Modul GND auf beiden Seiten, reicht ein GND-Draht.
+- **Vor dem ersten Verbraucher messen:** nur IN und GND anschließen, USB an, OUT gegen GND messen. Es müssen **3,25 bis 3,35 V** sein (3,2 bis 3,4 V sind auch in Ordnung). Erst dann HX711 und Scanner anschließen.
+- **Warum fest und linear:** Es gibt kein Poti, das sich verstellen kann, und kein Schaltrauschen. Rauschen auf der Versorgung würde der HX711 als zappelndes Gewicht anzeigen.
+- **Last:** Scanner höchstens 70 mA, HX711 etwa 1,5 mA, zusammen rund 75 mA. Der Regler schafft 800 mA und wird nur handwarm. Einen Kühlkörper braucht er nicht.
+- **Nur ein einstellbarer Regler da** (z. B. MP1584): geht auch. Ihn aber **vorher allein** mit dem Multimeter auf 3,3 V einstellen, das Poti mit einem Tropfen Lack sichern und einen 100-µF-Kondensator an OUT gegen GND setzen. Über 3,6 V nimmt der ESP32-S3 Schaden.
 
 **Mit HX711** (deine Teile):
 
@@ -125,7 +141,7 @@ Oben erscheint jetzt **„Kein Modul am I2C-Bus“**. Das ist richtig, es ist ja
 ### Stufe 1: Waage mit HX711 und Wägezelle
 
 1. **USB abziehen.**
-2. **3,3-V-Regler anschließen**, noch ohne etwas dahinter: **IN** an Pin 1 (rot, 5 V), **GND** an Pin 2 (schwarz). USB anstecken und am Ausgang messen (OUT gegen GND): **3,2 bis 3,4 V**? Wieder abziehen.
+2. **3,3-V-Regler anschließen** ([so geht's](#der-33-v-regler)), noch ohne etwas dahinter: **IN** an Pin 1 (rot, 5 V), **GND** an Pin 2 (schwarz). USB anstecken und am Ausgang messen (OUT gegen GND): **3,2 bis 3,4 V**? Wieder abziehen.
 3. **Wägezelle an den HX711.** Die Adern sind meist so belegt, die Beschriftung der Platine zählt:
 
    | Ader der Wägezelle | HX711 |
