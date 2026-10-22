@@ -19,6 +19,7 @@ For the project overview, features, and flashing instructions, see the [README](
 | NFC Reader | PN532 | [AliExpress](https://a.aliexpress.com/_ExScN8M) |
 | Scale ADC | NAU7802 (Adafruit) | [AliExpress](https://a.aliexpress.com/_EvlFNj2) |
 | Scale ADC, alternative | HX711 board (often sold with the load cell); needs a 3.3 V regulator, see [HX711](#hx711-instead-of-the-nau7802) | - |
+| 3.3 V Regulator (HX711, GM861) | fixed 3.3 V module, AMS1117-3.3 type, 4.75–12 V in, 800 mA | [Amazon](https://amzn.eu/d/0a04NA3e) |
 | Load Cell | YZC-133 2 kg beam cell (5 kg works too) | [AliExpress](https://a.aliexpress.com/_EuhhVF2) |
 | Connector Cables | STEMMA QT / JST cables | [AliExpress](https://a.aliexpress.com/_Ezjg6fQ) |
 | Connector Cables (recommended) | Micro JST 1.0 SH 5-pin – easier assembly | [Amazon](https://amzn.eu/d/0aKJ4Va9) |
