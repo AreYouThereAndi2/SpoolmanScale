@@ -35,7 +35,7 @@ static ScaleAdc s_adc = ADC_NONE;
 #define HX_ALIVE_MS        1000
 
 static portMUX_TYPE s_hx_mux = portMUX_INITIALIZER_UNLOCKED;
-static int8_t s_hx_fitted = -1;     // -1 not read from the preferences yet
+static int8_t s_hx_fitted = 1;     // -1 not read from the preferences yet
 static uint32_t s_hx_ready_ms = 0;
 static int32_t s_hx_last = 0;
 
