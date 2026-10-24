@@ -30,7 +30,7 @@ static ScaleAdc s_adc = ADC_NONE;
 // than 60 us powers the chip down, so the pulses must not be interrupted.
 #define HX_KEY             "hx711"
 // Up to 400 ms settling after power-up, then one conversion at 10 per second.
-#define HX_FIND_MS         700
+#define HX_FIND_MS         1500
 // Without a finished conversion for this long the HX711 counts as gone.
 #define HX_ALIVE_MS        1000
 
@@ -69,10 +69,10 @@ static int32_t hxShiftIn() {
   portENTER_CRITICAL(&s_hx_mux);
   for (int i = 0; i < 25; i++) {
     digitalWrite(hw_pins::HX711_SCK, HIGH);
-    delayMicroseconds(1);
+    delayMicroseconds(5);
     if (i < 24) v = (v << 1) | (digitalRead(hw_pins::HX711_DOUT) ? 1 : 0);
     digitalWrite(hw_pins::HX711_SCK, LOW);
-    delayMicroseconds(1);
+    delayMicroseconds(5);
   }
   portEXIT_CRITICAL(&s_hx_mux);
   if (v & 0x800000) v |= 0xFF000000;   // 24 bit two's complement
@@ -92,7 +92,7 @@ static bool hxFind(void (*wait_cb)()) {
       continue;
     }
     const int32_t raw = hxShiftIn();
-    delayMicroseconds(5);
+    delayMicroseconds(50);
     if (digitalRead(hw_pins::HX711_DOUT) != HIGH) return false;
     if (raw == 0 || raw == -1) return false;
     s_hx_last = raw;
