@@ -61,12 +61,12 @@ static char          s_reported_tag[40] = "";
 // One request at a time. The loop fills the slot and wakes the task, the task
 // runs the call and marks the slot done, the loop picks the answer up on a
 // later pass. Neither side touches a slot the other one owns.
-enum BbKind : uint8_t { BBK_HEARTBEAT, BBK_WEIGHT };
-enum BbSlot : uint8_t { BBS_IDLE, BBS_PENDING, BBS_DONE };
+enum BbReportKind : uint8_t { BBK_HEARTBEAT, BBK_WEIGHT };
+enum BbReportSlot : uint8_t { BBS_IDLE, BBS_PENDING, BBS_DONE };
 
-struct BbJob {
-  volatile BbSlot slot;
-  BbKind   kind;
+struct BbReport {
+  volatile BbReportSlot slot;
+  BbReportKind   kind;
   // in
   char     base[96];
   char     key[96];
@@ -83,10 +83,10 @@ struct BbJob {
   uint32_t cost_ms;
 };
 
-static BbJob       s_job;
+static BbReport       s_job;
 static TaskHandle_t s_task = nullptr;
 
-static void runJob(BbJob& j) {
+static void runJob(BbReport& j) {
   const uint32_t t0 = millis();
   j.cmd[0] = '\0';
   j.write_spool_id = 0;
@@ -239,7 +239,7 @@ void bambuddyDeviceTick() {
 
   // --- answers from the report task ---------------------------
   if (s_job.slot == BBS_DONE) {
-    const BbKind kind = s_job.kind;
+    const BbReportKind kind = s_job.kind;
     const int code = s_job.code;
     const uint32_t cost = s_job.cost_ms;
     char cmd[40];
