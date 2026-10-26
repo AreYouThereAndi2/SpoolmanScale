@@ -24,6 +24,18 @@ int32_t scaleHardwareReadRaw();
 // Zero on a healthy build, and always zero with a NAU7802.
 uint32_t scaleRejectedSamples();
 
+// Fresh conversions for window_ms (the HX711 delivers ten a second), as their
+// mean and peak-to-peak spread. For tare and calibration, which used to take
+// the one sample that happened to be there when the button was pressed: on a
+// wandering signal that decides between a good factor and a refused one.
+// Blocks for the window. False when fewer than three conversions arrived.
+bool scaleHardwareSampleRaw(uint32_t window_ms, int32_t* mean,
+                            int32_t* spread, int* count);
+
+// What a tare button stores as the zero point: the mean of one second of
+// conversions, or the single current sample when too few arrive.
+int32_t scaleHardwareTareReading();
+
 // An HX711 was found on this device, now or on an earlier boot. Its pins are
 // then the scale's: the PN532 gets no reset line and the reset probe is off.
 bool scaleHx711Fitted();

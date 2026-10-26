@@ -53,6 +53,7 @@ static volatile uint32_t s_hx_ready_ms = 0;
 static int32_t  s_hx_hist[3];
 static uint8_t  s_hx_have = 0;
 static volatile int32_t  s_hx_last = 0;
+static volatile int32_t  s_hx_newest = 0;    // the last conversion kept, unfiltered
 static volatile uint32_t s_hx_seq = 0;      // conversions accepted so far
 static uint32_t s_hx_seq_taken = 0;         // what scaleHardwareAvailable() has handed out
 static volatile uint32_t s_hx_rejected = 0;
@@ -145,6 +146,7 @@ static HxPoll hxPoll() {
     s_hx_hist[1] = s_hx_hist[2];
     s_hx_hist[2] = raw;
   }
+  s_hx_newest = raw;
   s_hx_last = (s_hx_have < 3) ? raw
                               : hxMedian3(s_hx_hist[0], s_hx_hist[1], s_hx_hist[2]);
   s_hx_seq++;
@@ -275,6 +277,49 @@ int32_t scaleHardwareReadRaw() {
 }
 
 uint32_t scaleRejectedSamples() { return s_hx_rejected; }
+
+bool scaleHardwareSampleRaw(uint32_t window_ms, int32_t* mean,
+                            int32_t* spread, int* count) {
+  int64_t sum = 0;
+  int32_t lo = INT32_MAX, hi = INT32_MIN;
+  int n = 0;
+  uint32_t seq = s_hx_seq;
+  const uint32_t t0 = millis();
+  while (millis() - t0 < window_ms) {
+    int32_t v = 0;
+    bool fresh = false;
+    if (s_adc == ADC_HX711) {
+      hxPoll();
+      if (s_hx_seq != seq) {
+        seq = s_hx_seq;
+        v = s_hx_newest;     // the conversion itself, not the median of three
+        fresh = true;
+      }
+    } else if (s_adc == ADC_NAU7802 && nauPresent() && nau.available()) {
+      v = nau.read();
+      fresh = true;
+    }
+    if (fresh) {
+      sum += v;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+      n++;
+    }
+    delay(2);
+  }
+  if (count) *count = n;
+  if (n < 3) return false;
+  if (mean) *mean = (int32_t)(sum / n);
+  if (spread) *spread = hi - lo;
+  return true;
+}
+
+int32_t scaleHardwareTareReading() {
+  int32_t mean = 0, spread = 0;
+  int n = 0;
+  if (scaleHardwareSampleRaw(1000, &mean, &spread, &n)) return mean;
+  return scaleHardwareReadRaw();
+}
 
 const char* scaleHardwareName() {
   switch (s_adc) {

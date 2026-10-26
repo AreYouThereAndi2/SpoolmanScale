@@ -223,7 +223,7 @@ static void tare() {
     logSD("TARE (quick panel): scale not ready");
     return;
   }
-  const int32_t raw = scaleHardwareReadRaw();
+  const int32_t raw = scaleHardwareTareReading();
   saveTareOffset(raw);
   scale_weight_g = 0.0f;
   resetScaleFilter();

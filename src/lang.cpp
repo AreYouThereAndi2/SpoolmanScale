@@ -1927,9 +1927,12 @@ const char* const STRINGS[][3] = {
     LV_SYMBOL_OK "  Calibration reset",
     LV_SYMBOL_OK "  Étalonnage réinitialisé" },  // STR_CAL_RESET_DONE
   { "Referenz: 10 - 20000 g", "Reference: 10 - 20000 g", "Référence : 10 - 20000 g" },  // STR_CAL_RANGE_ERR
-  { LV_SYMBOL_WARNING "  Messwert unplausibel, nicht gespeichert",
-    LV_SYMBOL_WARNING "  Reading implausible, not saved",
-    LV_SYMBOL_WARNING "  Mesure invraisemblable, non enregistrée" },  // STR_CAL_IMPLAUSIBLE
+  { LV_SYMBOL_WARNING "  Unplausibel: %d Zähler für %.0f g",
+    LV_SYMBOL_WARNING "  Implausible: %d counts for %.0f g",
+    LV_SYMBOL_WARNING "  Incohérent : %d pts pour %.0f g" },  // STR_CAL_IMPLAUSIBLE
+  { LV_SYMBOL_WARNING "  Waage unruhig (Streuung %d von %d)",
+    LV_SYMBOL_WARNING "  Scale unsteady (spread %d of %d)",
+    LV_SYMBOL_WARNING "  Balance instable (écart %d sur %d)" },  // STR_CAL_UNSTABLE
   { "I2C-Bus",          "I2C bus",    "Bus I2C" },  // STR_W_R_I2C
   { "Bus neu abfragen", "Rescan bus", "Réinterroger le bus" },  // STR_W_RESCAN
 

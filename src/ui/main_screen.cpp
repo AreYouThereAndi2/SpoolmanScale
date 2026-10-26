@@ -660,7 +660,7 @@ void buildUI() {
       // Presence as well as scale_ready: an ADC that left the bus reads back as
       // all ones, and tare would store -1 as the zero point.
       if (scale_ready && scaleHardwarePresent()) {
-        int32_t raw = scaleHardwareReadRaw();
+        int32_t raw = scaleHardwareTareReading();
         saveTareOffset(raw);
         scale_weight_g = 0.0f;
         resetScaleFilter();
