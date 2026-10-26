@@ -1,6 +1,6 @@
 #pragma once
 
-#define FW_VERSION  "v0.10.2"
+#define FW_VERSION  "v0.10.3"
 #define DONATION_URL "ko-fi.com/formfollowsfunction"
 
 // Backlight PWM duty on GPIO45, 8 bit, straight through to LovyanGFX. Not a
@@ -85,6 +85,14 @@
 // anything, and nobody puts 50 kg on a filament scale.
 #define CAL_KNOWN_MIN_G      10.0f
 #define CAL_KNOWN_MAX_G   20000.0f
+// Tare and calibration take the mean of the conversions of this window. If
+// the peak-to-peak spread within it is more than CAL_SPREAD_MAX_RATIO of the
+// step the weight made (and above the floor CAL_SPREAD_MIN_COUNTS, so a
+// perfectly quiet signal is never refused), the scale is too unsteady to
+// calibrate and says so with the numbers.
+#define CAL_SAMPLE_MS             1500
+#define CAL_SPREAD_MAX_RATIO      0.2f
+#define CAL_SPREAD_MIN_COUNTS     200
 
 // Remote link, triggered from the FilaMan web UI. The window matches the 60
 // seconds the FilaMan frontend polls for a result, so both sides give up at

@@ -182,6 +182,8 @@ Oben erscheint jetzt **„Kein Modul am I2C-Bus“**. Das ist richtig, es ist ja
 | „Wägezelle verpolt (A+/A−)“ oder Werte sinken beim Drücken | Weiß und grün an A+/A− tauschen, oder die Zelle umdrehen (Pfeil nach unten). |
 | „Wägezelle unruhig“ | Eine Ader hat Wackelkontakt, oder die Zelle berührt das Gehäuse. Lötstellen prüfen, den Balken frei schweben lassen. |
 | „Waage nicht kalibriert“ | Kalibrierung wie oben machen. |
+| Beim Kalibrieren „Waage unruhig (Streuung X von Y)“ | Die Waage mittelt 1,5 Sekunden lang. Schwankt der Rohwert in dieser Zeit um mehr als ein Fünftel des Sprungs durch das Gewicht, rechnet sie nicht. Erst die Ursache beseitigen (siehe „Wenn das Gewicht wandert“), Gewicht ruhig auflegen, Hände weg, dann noch einmal. |
+| Beim Kalibrieren „Unplausibel: X Zähler für Y g“ | Der Rohwert hat sich durch das Gewicht kaum geändert (unter 1 Zähler je Gramm) oder unglaublich stark. Sinkt oder steigt der Rohwert auf der Seite Waage beim Auflegen gar nicht, ist die Wägezelle nicht richtig angeschlossen. Vor dem Auflegen **Tara** drücken, Gewicht auflegen, erst dann den Wert eingeben und „Berechnen“. |
 
 **Wenn das Gewicht wandert (Drift):**
 

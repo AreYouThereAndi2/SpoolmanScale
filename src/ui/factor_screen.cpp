@@ -242,14 +242,19 @@ void buildFactorScreen() {
         if (!lbl_factor_result) return;
         // Presence asked as well as scale_ready: an ADC that left the bus
         // reads back as all ones, and tare would store -1 as the zero point.
-        if (scale_ready && scaleHardwarePresent()) {
-          int32_t raw = scaleHardwareReadRaw();
+        int32_t raw = 0, spread = 0;
+        int n = 0;
+        // The mean of the conversions of the next 1.5 s, not the one sample
+        // that is there when the key is pressed.
+        if (scale_ready && scaleHardwarePresent() &&
+            scaleHardwareSampleRaw(CAL_SAMPLE_MS, &raw, &spread, &n)) {
           saveTareOffset(raw);
           scale_weight_g = 0.0f;
           resetScaleFilter();
           lv_label_set_text(lbl_factor_result, T(STR_TARE_OK));
           if (lbl_scale_weight) lv_label_set_text(lbl_scale_weight, "0 g");
-          Serial.println("Tare (calibration screen) executed");
+          Serial.printf("Tare (calibration screen): zero=%d spread=%d n=%d\n",
+                        (int)raw, (int)spread, n);
         } else {
           lv_label_set_text(lbl_factor_result, T(STR_TARE_NOT_READY));
         }
@@ -325,17 +330,36 @@ void buildFactorScreen() {
     } else if (known_g < CAL_KNOWN_MIN_G || known_g > CAL_KNOWN_MAX_G) {
       lv_label_set_text(lbl_factor_result, T(STR_CAL_RANGE_ERR));
     } else {
-      int32_t raw = scaleHardwareReadRaw();
-      float factor = (float)(raw - zero_offset) / known_g;
+      int32_t raw = 0, spread = 0;
+      int n = 0;
+      if (!scaleHardwareSampleRaw(CAL_SAMPLE_MS, &raw, &spread, &n)) {
+        lv_label_set_text(lbl_factor_result, T(STR_TARE_NOT_READY));
+        return;
+      }
+      const int32_t delta = raw - zero_offset;
+      float factor = (float)delta / known_g;
+      // A signal that wanders by a fifth of what the weight moved it cannot
+      // be calibrated against: any factor from it would be a guess, and the
+      // refusal further down would only say "implausible" without why.
+      if (spread > CAL_SPREAD_MIN_COUNTS && (float)spread > fabsf((float)delta) * CAL_SPREAD_MAX_RATIO) {
+        Serial.printf("Calibration refused, unsteady: mean=%d zero=%d spread=%d n=%d known=%.1f\n",
+                      (int)raw, (int)zero_offset, (int)spread, n, known_g);
+        char buf[80];
+        snprintf(buf, sizeof(buf), T(STR_CAL_UNSTABLE), (int)spread, (int)abs(delta));
+        lv_label_set_text(lbl_factor_result, buf);
+        return;
+      }
       // The last line of defence. A reading the bus never delivered is -1, and
       // if tare stored -1 too the difference is zero: the factor collapses and
       // every later weight explodes. Refusing here costs a retry; storing it
       // costs a device that has to be re-flashed to be usable again.
       if (!isfinite(factor) ||
           fabsf(factor) < CAL_FACTOR_MIN || fabsf(factor) > CAL_FACTOR_MAX) {
-        Serial.printf("Calibration refused: raw=%d zero=%d known=%.1f factor=%.6f\n",
-                      raw, zero_offset, known_g, factor);
-        lv_label_set_text(lbl_factor_result, T(STR_CAL_IMPLAUSIBLE));
+        Serial.printf("Calibration refused: raw=%d zero=%d known=%.1f factor=%.6f spread=%d n=%d\n",
+                      raw, zero_offset, known_g, factor, (int)spread, n);
+        char buf[80];
+        snprintf(buf, sizeof(buf), T(STR_CAL_IMPLAUSIBLE), (int)delta, known_g);
+        lv_label_set_text(lbl_factor_result, buf);
       } else {
         saveCalFactor(factor);
         char buf[64];
