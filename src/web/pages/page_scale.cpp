@@ -106,7 +106,7 @@ static String body() {
          "const now=Date.now();SLH.push({t:now,r:d.raw});"
          "while(SLH[0].t<now-1200000)SLH.shift();"
          "const k=slSlope();"
-         "slSet('sl-drift',k===null?'-':(d.cal>0?(k/d.cal).toFixed(2)+' g/min  (':'(')+Math.round(k)+'/min)');"
+         "slSet('sl-drift',k===null?'-':(d.cald?(k/d.cal).toFixed(2)+' g/min  (':'(')+Math.round(k)+'/min)');"
          "slChart();}).catch(()=>{});}"
          "slTick();setInterval(slTick,500);"
          "$('az').addEventListener('change',()=>{"
@@ -138,6 +138,8 @@ static void routes(WebServer &srv) {
     j += scale_filter_full ? F("true") : F("false");
     j += F(",\"spread\":");
     j += String(hi - lo, 3);
+    j += F(",\"cald\":");
+    j += cal_factor != CAL_FACTOR_DEFAULT ? F("true") : F("false");
     j += F(",\"cal\":");
     j += String(cal_factor, 4);
     j += F(",\"zero\":");

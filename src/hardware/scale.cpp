@@ -228,7 +228,15 @@ bool scaleHardwareBegin(TwoWire* wire, void (*calibration_wait_cb)()) {
 bool scaleHardwarePresent() {
   if (s_adc == ADC_HX711 || (s_adc == ADC_NONE && scaleHx711Fitted())) {
     if (s_adc == ADC_NONE) hxPins();
-    return hxReady() || millis() - s_hx_ready_ms < HX_ALIVE_MS;
+    // A stalled loop is not a silent chip. Nobody looked at the line while a
+    // slow HTTP call held the loop (the field log shows "HX711 stopped
+    // answering" one second after such a call), so after a gap the clock
+    // starts again here instead of counting the stall against the chip.
+    static uint32_t last_call_ms = 0;
+    const uint32_t now = millis();
+    if (now - last_call_ms > HX_ALIVE_MS) s_hx_ready_ms = now;
+    last_call_ms = now;
+    return hxReady() || now - s_hx_ready_ms < HX_ALIVE_MS;
   }
   return nauPresent();
 }

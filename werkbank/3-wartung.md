@@ -31,6 +31,18 @@ Hilft das nicht, bitte schicken:
 3. **Die Werte der Waage:** Weboberfläche → **Waage**. Sie zeigen Wandler, Rohwert, Streuung und Kalibrierung.
 4. Bei Verdrahtungsfragen ein Foto der Lötstellen und des I/O-Kabels.
 
+**Die Oberfläche ruckelt oder hängt?** Im Log (Weboberfläche → **Log**) nach diesen Zeilen suchen:
+
+| Zeile im Log | Bedeutung |
+|---|---|
+| `BamBuddy: POST ... -> transport error -11` | BamBuddy hat nicht rechtzeitig geantwortet (Zeitüberschreitung). |
+| `BamBuddy: POST ... -> transport error -1` | Die Verbindung zu BamBuddy kam nicht zustande. |
+| `Scale: HX711 stopped answering` kurz nach so einer Zeile | Die Schleife stand still, nicht der Wandler. Ab v0.10.2 wird das nicht mehr als Ausfall gezählt. |
+
+Bis v0.10.1 liefen Herzschlag und Gewichtsmeldung an BamBuddy in der Hauptschleife. Jede erfolglose Meldung hielt Anzeige und Touch bis zu 5 Sekunden an, bei wanderndem Gewicht jede Sekunde. Ab v0.10.2 laufen sie in einem eigenen Task, mit kurzer Zeitgrenze und wachsendem Abstand bei Fehlern. Erscheinen die Zeilen weiterhin, ist BamBuddy selbst das Problem (Rechner schläft, Container überlastet, falscher Port): `http://<Adresse>:8000/health` im Browser öffnen und die Antwortzeit beobachten.
+
+Bleibt es träge, in den Einstellungen die Protokollstufe auf **verbose** stellen, zwei Minuten bedienen und das Log schicken. Die Zeilen `[verbose] perf:` und `[verbose] slow: max=... in=...` nennen den langsamsten Teil der Hauptschleife.
+
 Dazu passend: Weboberfläche → Einstellungen → **Sichern und wiederherstellen**. Vor größeren Änderungen eine Sicherung ziehen, dann ist nach einem Neuflashen alles in einer Minute zurück.
 
 ## Einen Release machen

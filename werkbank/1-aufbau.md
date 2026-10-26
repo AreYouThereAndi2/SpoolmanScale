@@ -185,6 +185,8 @@ Oben erscheint jetzt **„Kein Modul am I2C-Bus“**. Das ist richtig, es ist ja
 
 **Wenn das Gewicht wandert (Drift):**
 
+**Zuerst kalibrieren.** Steht auf der Seite Waage beim Kalibrierfaktor **1.0000**, ist die Waage nicht kalibriert und zeigt Rohzähler als „Gramm“: 100 Zähler Rauschen sind dann „100 g“, und der Drift erscheint riesig. Mit dem Faktor kommen Gramm heraus (beim HX711 mit 3,3 V etwa 200 bis 400 Zähler je Gramm). Die Zeile „Drift“ zeigt bis dahin nur Zähler pro Minute.
+
 Weboberfläche → **Waage**, Schale leer lassen und zuschauen. Die Seite zeichnet den Rohwert der letzten 20 Minuten als Kurve und zeigt in der Zeile **„Drift (letzte Minute)“** (erst nach etwa 30 Sekunden) in g pro Minute, wie schnell er läuft. Die Kurve sagt, woran es liegt:
 
 | Die Kurve … | Ursache und Abhilfe |
