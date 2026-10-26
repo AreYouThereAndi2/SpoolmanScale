@@ -19,6 +19,10 @@ bool scaleHardwarePresent();
 
 bool scaleHardwareAvailable();
 int32_t scaleHardwareReadRaw();
+// HX711 conversions thrown away since boot: a line stuck high or low, a clock
+// that did not finish, or an input at full scale (open bridge, overload).
+// Zero on a healthy build, and always zero with a NAU7802.
+uint32_t scaleRejectedSamples();
 
 // An HX711 was found on this device, now or on an earlier boot. Its pins are
 // then the scale's: the PN532 gets no reset line and the reset probe is off.

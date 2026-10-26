@@ -101,6 +101,7 @@ The firmware looks for a NAU7802 on I2C first and, without one, for an HX711 on 
 
 - **Power the HX711 from 3.3 V**, through a small regulator (AMS1117-3.3 or AP2112-3.3: IN to pin 1, GND to pin 2). At 5 V its DT output would put 5 V on GPIO14, and the ESP32-S3 is not 5 V tolerant. The GM861 scanner can share the regulator.
 - HX711 VCC (and VDD, if the board has both) to the regulator's OUT, GND to pin 2, SCK to pin 5, DT to pin 7.
+- **Drift:** give the HX711 10 to 15 minutes to warm up before taring, keep the load cell away from the display's heat, and put 100 µF and 100 nF across the HX711's VCC and GND. The web interface's **Scale** page plots the raw value over 20 minutes and shows the drift in g/min and the number of rejected readings (a healthy scale stays at 0).
 - Load cell: red E+, black E−, white A−, green A+ (the board's labels count). If the scale reports the load cell reversed, swap white and green.
 - Calibrate as with the NAU7802; the numbers differ, the procedure does not.
 

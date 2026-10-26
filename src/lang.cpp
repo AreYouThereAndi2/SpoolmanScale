@@ -3547,6 +3547,12 @@ const char* const STRINGS[][3] = {
   { "Streuung (Spitze-Spitze)",
     "Spread (peak to peak)",
     "Dispersion (crête à crête)" },  // STR_W_SCALE_SPREAD
+  { "Drift (letzte Minute)",
+    "Drift (last minute)",
+    "Dérive (dernière minute)" },  // STR_W_SCALE_DRIFT
+  { "Verworfene Messwerte",
+    "Rejected readings",
+    "Mesures rejetées" },  // STR_W_SCALE_REJECTED
   { "Kalibrierfaktor",
     "Calibration factor",
     "Facteur d'étalonnage" },  // STR_W_SCALE_CAL

@@ -48,7 +48,10 @@ int8_t nfcResetPinForBoot() {
   // With an HX711 the usual pins are its clock and data line: the reader goes
   // without a reset line unless one was confirmed on pin 8.
   if (scaleHx711Fitted()) return s_verified_hx ? hw_pins::PN532_RESET_HX : -1;
-  return s_verified ? hw_pins::PN532_RESET_WIRE : hw_pins::PN532_RESET_SAFE;
+  // No confirmed wire, no reset line. Pin 12 used to stand in here, but on a
+  // first boot with an HX711 that is its clock: the reader's start-up pulse
+  // sent the chip to sleep before it was ever looked for.
+  return s_verified ? hw_pins::PN532_RESET_WIRE : -1;
 }
 
 bool nfcResetVerified() { return scaleHx711Fitted() ? s_verified_hx : s_verified; }
