@@ -46,9 +46,19 @@ static String body() {
   row(h, "sl-raw", STR_W_SCALE_RAW);
   row(h, "sl-g", STR_W_SCALE_WEIGHT);
   row(h, "sl-pp", STR_W_SCALE_SPREAD);
+  row(h, "sl-drift", STR_W_SCALE_DRIFT);
+  row(h, "sl-rej", STR_W_SCALE_REJECTED);
   row(h, "sl-cal", STR_W_SCALE_CAL);
   row(h, "sl-zero", STR_W_SCALE_ZERO);
-  h += F("</table></div>"
+  // The raw value over the last twenty minutes. Warm-up drift is a curve that
+  // flattens out, a loose connection is a step, interference is a fuzz.
+  h += F("</table>"
+         "<svg id='sl-chart' viewBox='0 0 300 60' preserveAspectRatio='none' "
+         "style='width:100%;height:90px;margin-top:12px;background:var(--ink-4);"
+         "border-radius:6px'><polyline id='sl-line' fill='none' "
+         "stroke='var(--accent)' stroke-width='1.5' "
+         "vector-effect='non-scaling-stroke' points=''/></svg>"
+         "<p class='hint' id='sl-range'></p></div>"
          "<div class='card wide'><h2>");
   h += T(STR_W_C_AUTO_ZERO);
   h += F("</h2><div class='field'><label class='check'><span class='switch'>"
@@ -63,8 +73,25 @@ static String body() {
   h += webShellJsStrings();
   h += F("const SL={none:");
   h += jsStr(T(STR_W_SCALE_NONE));
+  h += F(",raw:");
+  h += jsStr(T(STR_W_SCALE_RAW));
   h += F("};"
+         "const SLH=[];"
          "function slSet(id,v){const e=$(id);if(e)e.textContent=v;}"
+         // Least squares over the last minute: raw counts per minute.
+         "function slSlope(){"
+         "const end=SLH[SLH.length-1].t,p=SLH.filter(x=>x.t>=end-60000);"
+         "if(p.length<20||end-p[0].t<30000)return null;"
+         "let n=p.length,sx=0,sy=0,sxx=0,sxy=0;"
+         "for(const x of p){const t=(x.t-p[0].t)/60000;sx+=t;sy+=x.r;sxx+=t*t;sxy+=t*x.r;}"
+         "const den=n*sxx-sx*sx;return den?(n*sxy-sx*sy)/den:null;}"
+         "function slChart(){"
+         "if(SLH.length<2)return;"
+         "let lo=SLH[0].r,hi=lo;for(const x of SLH){if(x.r<lo)lo=x.r;if(x.r>hi)hi=x.r;}"
+         "const t0=SLH[0].t,dt=SLH[SLH.length-1].t-t0||1,dr=hi-lo||1;"
+         "$('sl-line').setAttribute('points',SLH.map(x=>"
+         "((x.t-t0)/dt*300).toFixed(1)+','+(57-(x.r-lo)/dr*54).toFixed(1)).join(' '));"
+         "slSet('sl-range',SL.raw+' '+lo+' ... '+hi+' ('+Math.round(dt/60000)+' min)');}"
          "function slTick(){"
          "if(document.hidden)return;"
          "fetch('/api/scale/live',{cache:'no-store'}).then(r=>r.json()).then(d=>{"
@@ -72,8 +99,15 @@ static String body() {
          "slSet('sl-raw',d.ready?d.raw:'-');"
          "slSet('sl-g',d.ready?d.g.toFixed(1)+' g':'-');"
          "slSet('sl-pp',d.full?d.spread.toFixed(2)+' g':'-');"
+         "slSet('sl-rej',d.rej);"
          "slSet('sl-cal',d.cal.toFixed(4));"
-         "slSet('sl-zero',d.zero);}).catch(()=>{});}"
+         "slSet('sl-zero',d.zero);"
+         "if(!d.ready)return;"
+         "const now=Date.now();SLH.push({t:now,r:d.raw});"
+         "while(SLH[0].t<now-1200000)SLH.shift();"
+         "const k=slSlope();"
+         "slSet('sl-drift',k===null?'-':(d.cald?(k/d.cal).toFixed(2)+' g/min  (':'(')+Math.round(k)+'/min)');"
+         "slChart();}).catch(()=>{});}"
          "slTick();setInterval(slTick,500);"
          "$('az').addEventListener('change',()=>{"
          "const want=$('az').checked;"
@@ -104,10 +138,14 @@ static void routes(WebServer &srv) {
     j += scale_filter_full ? F("true") : F("false");
     j += F(",\"spread\":");
     j += String(hi - lo, 3);
+    j += F(",\"cald\":");
+    j += cal_factor != CAL_FACTOR_DEFAULT ? F("true") : F("false");
     j += F(",\"cal\":");
     j += String(cal_factor, 4);
     j += F(",\"zero\":");
     j += String(zero_offset);
+    j += F(",\"rej\":");
+    j += String(scaleRejectedSamples());
     j += F("}");
     srv.send(200, "application/json", j);
   });

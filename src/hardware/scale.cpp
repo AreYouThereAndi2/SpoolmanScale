@@ -28,16 +28,34 @@ static ScaleAdc s_adc = ADC_NONE;
 // the board's RATE pin). 24 clock pulses shift it out MSB first, a 25th
 // selects channel A at gain 128 for the next one. A clock held high for more
 // than 60 us powers the chip down, so the pulses must not be interrupted.
+//
+// Checked against bogde/HX711, the library most guides point to. The wire
+// protocol is the same; this driver does not use it because it blocks until
+// the chip is ready and hands back whatever came out, with no way to tell a
+// sample from a glitch. Two things were taken over from it: DOUT is a plain
+// input while the pulses run, and the clock is not interrupted.
 #define HX_KEY             "hx711"
 // Up to 400 ms settling after power-up, then one conversion at 10 per second.
 #define HX_FIND_MS         1500
 // Without a finished conversion for this long the HX711 counts as gone.
 #define HX_ALIVE_MS        1000
+// High and low time of one clock pulse. The chip wants 0.2 us to 50 us.
+#define HX_PULSE_US        5
+// After the 25th pulse DOUT rises within a few us.
+#define HX_RELEASE_US      50
 
 static portMUX_TYPE s_hx_mux = portMUX_INITIALIZER_UNLOCKED;
-static int8_t s_hx_fitted = 1;     // -1 not read from the preferences yet
-static uint32_t s_hx_ready_ms = 0;
-static int32_t s_hx_last = 0;
+static int8_t s_hx_fitted = -1;     // -1 not read from the preferences yet
+static volatile uint32_t s_hx_ready_ms = 0;
+// The last three plausible conversions; the median of them is what the scale
+// sees. A single wrong bit is worth millions of counts, and a moving average
+// downstream would carry it for seconds.
+static int32_t  s_hx_hist[3];
+static uint8_t  s_hx_have = 0;
+static volatile int32_t  s_hx_last = 0;
+static volatile uint32_t s_hx_seq = 0;      // conversions accepted so far
+static uint32_t s_hx_seq_taken = 0;         // what scaleHardwareAvailable() has handed out
+static volatile uint32_t s_hx_rejected = 0;
 
 bool scaleHx711Fitted() {
   if (s_hx_fitted < 0) s_hx_fitted = prefsGetBool(HX_KEY, false) ? 1 : 0;
@@ -64,41 +82,92 @@ static bool hxReady() {
   return true;
 }
 
-static int32_t hxShiftIn() {
-  uint32_t v = 0;
-  portENTER_CRITICAL(&s_hx_mux);
-  for (int i = 0; i < 25; i++) {
-    digitalWrite(hw_pins::HX711_SCK, HIGH);
-    delayMicroseconds(5);
-    if (i < 24) v = (v << 1) | (digitalRead(hw_pins::HX711_DOUT) ? 1 : 0);
-    digitalWrite(hw_pins::HX711_SCK, LOW);
-    delayMicroseconds(5);
-  }
-  portEXIT_CRITICAL(&s_hx_mux);
-  if (v & 0x800000) v |= 0xFF000000;   // 24 bit two's complement
-  return (int32_t)v;
+enum HxPoll : uint8_t {
+  HX_NONE,        // nothing ready
+  HX_GOOD,        // a conversion, kept
+  HX_SATURATED,   // the chip answered, but the input is open or overloaded
+  HX_BAD          // the line does not behave like an HX711's
+};
+
+static int32_t hxMedian3(int32_t a, int32_t b, int32_t c) {
+  if (a > b) { const int32_t t = a; a = b; b = t; }
+  if (b > c) b = c;
+  return a > b ? a : b;
 }
 
-// Two conversions that look like an HX711's. A line that is merely held low
-// (an old build's reset wire on EXT_IO5 reads low) shifts out zeros and stays
-// low after the read; a real HX711 raises DOUT as soon as the 25th pulse ends.
+// Takes one conversion if one is waiting. Looking, clocking and judging are
+// one step, so no second caller (the main loop, the live page, the BamBuddy
+// reporter) can clock out a chip that is already converting the next one.
+static HxPoll hxPoll() {
+  uint32_t v = 0;
+  bool high_after = false;
+  portENTER_CRITICAL(&s_hx_mux);
+  if (digitalRead(hw_pins::HX711_DOUT) != LOW) {
+    portEXIT_CRITICAL(&s_hx_mux);
+    return HX_NONE;
+  }
+  // The pull-up is for telling an absent chip from a present one. While the
+  // chip drives the line it only distorts it: bogde/HX711 notes that values
+  // between 0x20000 and 0x30000 read wrong with DOUT pulled up.
+  pinMode(hw_pins::HX711_DOUT, INPUT);
+  for (int i = 0; i < 25; i++) {
+    digitalWrite(hw_pins::HX711_SCK, HIGH);
+    delayMicroseconds(HX_PULSE_US);
+    if (i < 24) v = (v << 1) | (digitalRead(hw_pins::HX711_DOUT) ? 1 : 0);
+    digitalWrite(hw_pins::HX711_SCK, LOW);
+    delayMicroseconds(HX_PULSE_US);
+  }
+  delayMicroseconds(HX_RELEASE_US);
+  high_after = digitalRead(hw_pins::HX711_DOUT) == HIGH;
+  pinMode(hw_pins::HX711_DOUT, INPUT_PULLUP);
+  portEXIT_CRITICAL(&s_hx_mux);
+
+  s_hx_ready_ms = millis();
+  // A real HX711 raises DOUT as soon as the 25th pulse ends. A line that is
+  // merely held low (an old build's reset wire on EXT_IO5) shifts out zeros
+  // and stays low; one that is high all the time (chip asleep, wire loose)
+  // shifts out ones.
+  if (!high_after || v == 0 || v == 0xFFFFFF) {
+    s_hx_rejected++;
+    return HX_BAD;
+  }
+  // Full scale either way: the bridge is open, shorted or overloaded.
+  if (v == 0x7FFFFF || v == 0x800000) {
+    s_hx_rejected++;
+    return HX_SATURATED;
+  }
+  const int32_t raw = (v & 0x800000) ? (int32_t)(v | 0xFF000000u) : (int32_t)v;
+
+  if (s_hx_have < 3) {
+    s_hx_hist[s_hx_have++] = raw;
+  } else {
+    s_hx_hist[0] = s_hx_hist[1];
+    s_hx_hist[1] = s_hx_hist[2];
+    s_hx_hist[2] = raw;
+  }
+  s_hx_last = (s_hx_have < 3) ? raw
+                              : hxMedian3(s_hx_hist[0], s_hx_hist[1], s_hx_hist[2]);
+  s_hx_seq++;
+  return HX_GOOD;
+}
+
+// Two conversions that look like an HX711's. A chip with an open input still
+// counts: it is there, and the live page shows what is wrong with it.
 static bool hxFind(void (*wait_cb)()) {
   hxPins();
-  int good = 0;
+  s_hx_have = 0;
+  int seen = 0;
   const uint32_t t0 = millis();
-  while (good < 2 && millis() - t0 < HX_FIND_MS) {
-    if (!hxReady()) {
-      if (wait_cb) wait_cb(); else delay(10);
+  while (seen < 2 && millis() - t0 < HX_FIND_MS) {
+    const HxPoll r = hxPoll();
+    if (r == HX_GOOD || r == HX_SATURATED) {
+      seen++;
       continue;
     }
-    const int32_t raw = hxShiftIn();
-    delayMicroseconds(50);
-    if (digitalRead(hw_pins::HX711_DOUT) != HIGH) return false;
-    if (raw == 0 || raw == -1) return false;
-    s_hx_last = raw;
-    good++;
+    // Nothing ready yet, or a glitch while the chip is still settling.
+    if (wait_cb) wait_cb(); else delay(10);
   }
-  return good == 2;
+  return seen == 2;
 }
 
 // ---- both ----------------------------------------------------------------
@@ -159,7 +228,15 @@ bool scaleHardwareBegin(TwoWire* wire, void (*calibration_wait_cb)()) {
 bool scaleHardwarePresent() {
   if (s_adc == ADC_HX711 || (s_adc == ADC_NONE && scaleHx711Fitted())) {
     if (s_adc == ADC_NONE) hxPins();
-    return hxReady() || millis() - s_hx_ready_ms < HX_ALIVE_MS;
+    // A stalled loop is not a silent chip. Nobody looked at the line while a
+    // slow HTTP call held the loop (the field log shows "HX711 stopped
+    // answering" one second after such a call), so after a gap the clock
+    // starts again here instead of counting the stall against the chip.
+    static uint32_t last_call_ms = 0;
+    const uint32_t now = millis();
+    if (now - last_call_ms > HX_ALIVE_MS) s_hx_ready_ms = now;
+    last_call_ms = now;
+    return hxReady() || now - s_hx_ready_ms < HX_ALIVE_MS;
   }
   return nauPresent();
 }
@@ -176,7 +253,11 @@ bool scaleHardwareAvailable() {
     // Something else may have raised the clock (the PN532 library pulses its
     // reset pin, which was this one before the HX711 was known).
     digitalWrite(hw_pins::HX711_SCK, LOW);
-    return hxReady();
+    hxPoll();
+    // One answer per conversion, whoever clocked it out.
+    if (s_hx_seq == s_hx_seq_taken) return false;
+    s_hx_seq_taken = s_hx_seq;
+    return true;
   }
   return nauPresent() && nau.available();
 }
@@ -187,11 +268,13 @@ bool scaleHardwareAvailable() {
 // last one is answered otherwise, as the NAU7802 would.
 int32_t scaleHardwareReadRaw() {
   if (s_adc == ADC_HX711) {
-    if (hxReady()) s_hx_last = hxShiftIn();
+    hxPoll();
     return s_hx_last;
   }
   return nau.read();
 }
+
+uint32_t scaleRejectedSamples() { return s_hx_rejected; }
 
 const char* scaleHardwareName() {
   switch (s_adc) {

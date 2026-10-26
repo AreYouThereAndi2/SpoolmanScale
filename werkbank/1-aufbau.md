@@ -183,6 +183,22 @@ Oben erscheint jetzt **„Kein Modul am I2C-Bus“**. Das ist richtig, es ist ja
 | „Wägezelle unruhig“ | Eine Ader hat Wackelkontakt, oder die Zelle berührt das Gehäuse. Lötstellen prüfen, den Balken frei schweben lassen. |
 | „Waage nicht kalibriert“ | Kalibrierung wie oben machen. |
 
+**Wenn das Gewicht wandert (Drift):**
+
+**Zuerst kalibrieren.** Steht auf der Seite Waage beim Kalibrierfaktor **1.0000**, ist die Waage nicht kalibriert und zeigt Rohzähler als „Gramm“: 100 Zähler Rauschen sind dann „100 g“, und der Drift erscheint riesig. Mit dem Faktor kommen Gramm heraus (beim HX711 mit 3,3 V etwa 200 bis 400 Zähler je Gramm). Die Zeile „Drift“ zeigt bis dahin nur Zähler pro Minute.
+
+Weboberfläche → **Waage**, Schale leer lassen und zuschauen. Die Seite zeichnet den Rohwert der letzten 20 Minuten als Kurve und zeigt in der Zeile **„Drift (letzte Minute)“** (erst nach etwa 30 Sekunden) in g pro Minute, wie schnell er läuft. Die Kurve sagt, woran es liegt:
+
+| Die Kurve … | Ursache und Abhilfe |
+|---|---|
+| läuft in **eine Richtung und wird flacher** | Aufwärmen: Wägezelle und HX711 erwärmen sich in den ersten 10 bis 15 Minuten. Normal. Erst danach tarieren und kalibrieren. |
+| läuft **dauernd weiter in eine Richtung** | Wärme von außen: Das Display wird warm. Sitzt die Wägezelle direkt daneben oder unter der Sonne, hat der Balken eine ungleiche Temperatur. Zelle thermisch vom Display trennen, Gehäuse nicht in Sonne oder Zugluft stellen. |
+| macht **Sprünge** (Stufen) | Mechanisch: Die Zelle berührt das Gehäuse oder die Schale, ein Kabel zieht am Balken, eine Schraube sitzt locker. Die vier Adern der Zelle mit Heißkleber oder Klebeband entlasten. |
+| ist **unruhig** und „Verworfene Messwerte“ steigen | Elektrisch: SCK-/DT-Draht kurz halten (unter 20 cm), VCC und GND des HX711 mit **100 µF und 100 nF** direkt an den Pins stützen, Lötstellen prüfen. |
+| wandert nur, wenn die Waage **liest, scannt oder WLAN nutzt** | Die Versorgung bricht ein oder der PN532 stört: HX711 und Zellenkabel weit weg von der PN532-Antenne legen, Adern der Zelle verdrillen, die 100 µF am Regler-Ausgang nicht weglassen. |
+
+Läuft sie nach 15 Minuten weiter als etwa ein Gramm pro Minute, ist es kein Aufwärmen mehr. Die Seite „Waage“ als Screenshot und die Zeilen `Scale:` aus dem Log schicken, dann lässt sich die Ursache eingrenzen. **„Verworfene Messwerte“** zählt Messungen, die die Waage aussortiert hat (Leitung hängt auf High oder Low, Eingang offen). Auf einer gesunden Waage bleibt die Zahl bei 0.
+
 Ein Gerät ganz ohne Waage (nur NFC)? Dann in Einstellungen → Waage **„Waage vorhanden“** ausschalten, die Meldung verschwindet.
 
 <details>

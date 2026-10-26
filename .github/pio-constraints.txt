@@ -1,0 +1,4 @@
+# Read through UV_CONSTRAINT by the platform's virtualenv setup (see the build
+# jobs in .github/workflows). Lift when pioarduino ships a platform whose
+# engines check accepts 6.2.0.post1.
+pioarduino==6.2.0

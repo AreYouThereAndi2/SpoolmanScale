@@ -7,6 +7,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # The platform's build scripts live in a virtualenv of their own and pull
+    # the "pioarduino" package into it. 6.2.0.post1, published on 2026-10-26,
+    # reads as a pre-release to the platform's own ">=6.2.0" check, so the
+    # second pass of every fresh build died with IncompatiblePlatform. uv
+    # reads this file when it installs into that virtualenv.
+    env:
+      UV_CONSTRAINT: ${{ github.workspace }}/.github/pio-constraints.txt
     permissions:
       contents: write
     strategy:

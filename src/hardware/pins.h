@@ -25,7 +25,6 @@ constexpr int8_t I2C_EXT_SCL = 11;   // PN532 + NAU7802 bus
 // a measurement on this very device says the wire was moved - see
 // services/nfc_reset.h.
 constexpr int8_t PN532_RESET_WIRE = 14;   // EXT_IO5, connector pin 7, brown
-constexpr int8_t PN532_RESET_SAFE = 12;   // EXT_IO3, pin 5, no build ever wired it
 
 // The PN532's IRQ line is not wired, and in I2C mode the library never reads
 // it: isready() answers from the bus, and the branch that would call
