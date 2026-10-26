@@ -27,7 +27,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install PlatformIO
-        run: pip install --upgrade platformio
+        # Pinned: 6.2.0.post1 (PEP 440) reads as the pre-release 6.2.0-post.1 to
+        # PlatformIO's own check, and the platform in platformio.ini needs
+        # >=6.2.0, so the second pass of the build removed it and failed.
+        run: pip install platformio==6.2.0
       - name: Build ${{ matrix.env }}
         run: pio run -e ${{ matrix.env }}
       - name: Refuse a binary an installed device could not take
