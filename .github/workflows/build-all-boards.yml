@@ -7,6 +7,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # The platform's build scripts live in a virtualenv of their own and pull
+    # the "pioarduino" package into it. 6.2.0.post1, published on 2026-10-26,
+    # reads as a pre-release to the platform's own ">=6.2.0" check, so the
+    # second pass of every fresh build died with IncompatiblePlatform. uv
+    # reads this file when it installs into that virtualenv.
+    env:
+      UV_CONSTRAINT: ${{ github.workspace }}/.github/pio-constraints.txt
     permissions:
       contents: write
     strategy:
@@ -27,10 +34,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install PlatformIO
-        # Pinned: 6.2.0.post1 (PEP 440) reads as the pre-release 6.2.0-post.1 to
-        # PlatformIO's own check, and the platform in platformio.ini needs
-        # >=6.2.0, so the second pass of the build removed it and failed.
-        run: pip install platformio==6.2.0
+        run: pip install --upgrade platformio
       - name: Build ${{ matrix.env }}
         run: pio run -e ${{ matrix.env }}
       - name: Refuse a binary an installed device could not take
