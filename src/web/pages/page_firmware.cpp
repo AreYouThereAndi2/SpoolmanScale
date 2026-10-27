@@ -253,6 +253,17 @@ static String body() {
   h += F("</button><span id='ghmsg' class='msg'></span></div>"
          "<pre id='ghn' class='notes'></pre><p class='note'>");
   h += T(STR_W_FW_GH_HINT);
+  // Going back to an older build, or sideways to a specific one. The web
+  // flasher only ever offers the newest, so this is the way back.
+  h += F("</p><h3 style='margin:18px 0 8px;font-size:14px'>");
+  h += T(STR_W_FW_PICK);
+  h += F("</h3><div class='inrow'><select id='ghpk' style='flex:1 1 180px;min-width:0' disabled></select>"
+         "<button class='quiet' id='ghpl' onclick='ghList()'>");
+  h += T(STR_W_FW_PICK_LOAD);
+  h += F("</button><button id='ghpg' onclick='ghPick()' disabled>");
+  h += T(STR_W_FW_PICK_GO);
+  h += F("</button></div><p class='note'>");
+  h += T(STR_W_FW_PICK_NOTE);
   h += F("</p></div></div>");
 
   h += F("<style>.notes{display:none;max-height:340px;overflow:auto;"
@@ -299,6 +310,8 @@ static String body() {
   h += F(",upfail:");     h += jsStr(T(STR_W_FW_FAIL));
   h += F(",toobig:");     h += jsStr(T(STR_W_FW_TOOBIG));
   h += F(",ghbig:");      h += jsStr(T(STR_GH_OTA_TOO_BIG));
+  h += F(",pknow:");      h += jsStr(T(STR_W_FW_PICK_NOW));
+  h += F(",pkpre:");      h += jsStr(T(STR_W_FW_PICK_PRE));
   h += F("};"
          "function ghSay(t,bad){var m=document.getElementById('ghmsg');"
          "m.className=bad?'msg bad':'msg';m.textContent=t;}"
@@ -457,14 +470,41 @@ static String body() {
          // The device is unreachable from the moment it starts downloading
          // until it has rebooted, so the first poll waits rather than
          // reporting a healthy install as a failure.
-         "function ghInstall(){"
+         "var PICK=-1;"
+         "function ghInstall(){PICK=-1;"
          "var tag=document.getElementById('ghlt').textContent;"
          "if(OLDER){rModal(true,G.downgrade.replace('{v}',tag),"
          "G.downwarn.replace('{v}',tag).replace('{i}',INSTALLED)+' '+G.keep);return;}"
          "rModal(true,G.confirm.replace('{v}',tag),G.keep);}"
+         // The picker. Versions are newer-than-installed by the tag's numbers,
+         // which is how the page already tells "older" for the latest one.
+         "function vnum(t){return (t||'').replace(/^v/,'').split(/[.-]/).map(function(x){return parseInt(x,10)||0;});}"
+         "function vcmp(a,b){a=vnum(a);b=vnum(b);for(var i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)-(b[i]||0);}return 0;}"
+         "var REL=[];"
+         "function ghList(){"
+         "var b=document.getElementById('ghpl'),sel=document.getElementById('ghpk');"
+         "b.disabled=true;var again=false;"
+         "fetch('/api/ota/releases',{cache:'no-store'}).then(r=>{"
+         "if(r.status===202){again=true;setTimeout(ghList,1000);return null;}return r.json();})"
+         ".then(d=>{if(!d)return;if(!d.ok){ghSay(ghErr(d),true);return;}"
+         "REL=d.releases;sel.innerHTML='';"
+         "REL.forEach(function(x){var o=document.createElement('option');o.value=x.i;"
+         "o.textContent=x.tag+(x.pub?'  \u00b7  '+fmtDate(x.pub):'')+(x.pre?'  \u00b7  '+G.pkpre:'')"
+         "+(x.tag===INSTALLED?'  \u00b7  '+G.pknow:'');"
+         "if(x.big)o.disabled=true;sel.appendChild(o);});"
+         "sel.disabled=false;document.getElementById('ghpg').disabled=false;"
+         "ghSay('',false);})"
+         ".catch(()=>ghSay(G.fail,true))"
+         ".finally(()=>{if(!again)b.disabled=false;});}"
+         "function ghPick(){"
+         "var sel=document.getElementById('ghpk'),x=REL[sel.selectedIndex];"
+         "if(!x)return;PICK=x.i;"
+         "if(vcmp(x.tag,INSTALLED)<0){rModal(true,G.downgrade.replace('{v}',x.tag),"
+         "G.downwarn.replace('{v}',x.tag).replace('{i}',INSTALLED)+' '+G.keep);return;}"
+         "rModal(true,G.confirm.replace('{v}',x.tag),G.keep);}"
          "function ghGo(){"
          "rModal(false,G.installing,G.keep);"
-         "fetch('/api/ota/install',{method:'POST'}).then(r=>r.json()).then(d=>{"
+         "fetch('/api/ota/install'+(PICK>=0?'?i='+PICK:''),{method:'POST'}).then(r=>r.json()).then(d=>{"
          // A refusal closes the box again and says why on the card, rather
          // than leaving a spinner over a device that is not doing anything.
          "if(!d.ok){document.getElementById('rbox').style.display='none';"
@@ -609,6 +649,33 @@ static void routes(WebServer &srv) {
     }
     srv.send(202, "application/json", "{\"ok\":true,\"pending\":true}");
   });
+  // The list behind the version picker: the last few releases, fetched by the
+  // worker like the notes. Asked again until it answers.
+  srv.on("/api/ota/releases", HTTP_GET, [&srv]() {
+    if (!webRequire(srv, GATE_MAINT, T(STR_W_NAV_FIRMWARE))) return;
+    if (webJobState() == WJS_DONE && webJobKind() == WJ_GH_LIST) {
+      const WebJobResult& r = webJobResult();
+      String reply = r.ok ? r.body
+                          : "{\"ok\":false,\"error\":\"" + jsonEsc(r.err) + "\"}";
+      webJobTake();
+      srv.send(200, "application/json", reply);
+      return;
+    }
+    if (webJobState() == WJS_RUNNING) {
+      srv.send(202, "application/json", "{\"ok\":true,\"pending\":true}");
+      return;
+    }
+    if (webJobState() == WJS_DONE) webJobTake();   // somebody else's leftover
+    if (!wifi_ok) {
+      srv.send(200, "application/json", "{\"ok\":false,\"error\":\"nowifi\"}");
+      return;
+    }
+    if (otaBusy() || !webJobStart(WJ_GH_LIST, nullptr, false)) {
+      srv.send(200, "application/json", "{\"ok\":false,\"error\":\"busy\"}");
+      return;
+    }
+    srv.send(202, "application/json", "{\"ok\":true,\"pending\":true}");
+  });
   routesTail(srv);
 }
 
@@ -672,9 +739,9 @@ static void ghCheckFinish(WebServer &srv) {
 }
 
 static void routesTail(WebServer &srv) {
-  // Installs what the last check found. The tag is never taken from the
-  // request: it goes straight into a download URL, and the only version this
-  // page ever offers is the one it just showed.
+  // Installs what the last check found, or a release the picker listed. The
+  // tag is never taken from the request: it goes straight into a download
+  // URL, and the only versions this page offers are ones the device fetched.
   srv.on("/api/ota/install", HTTP_POST, [&srv]() {
     if (!webRequire(srv, GATE_MAINT, T(STR_W_NAV_FIRMWARE))) return;
     if (!wifi_ok) {
@@ -683,6 +750,25 @@ static void routesTail(WebServer &srv) {
     }
     if (otaBusy()) {
       srv.send(200, "application/json", "{\"ok\":false,\"error\":\"busy\"}");
+      return;
+    }
+    // "i" picks one of the releases the picker listed, by position. It is
+    // still never a tag from the request: the list is the device's own.
+    if (srv.hasArg("i")) {
+      const int i = srv.arg("i").toInt();
+      if (i < 0 || i >= g_gh_release_count) {
+        srv.send(200, "application/json", "{\"ok\":false,\"error\":\"nocheck\"}");
+        return;
+      }
+      const GithubReleaseItem& it = g_gh_releases[i];
+      if (!partitionImageFits(it.image_size)) {
+        srv.send(200, "application/json", "{\"ok\":false,\"error\":\"toobig\"}");
+        return;
+      }
+      strncpy(gh_web_flash_tag, it.tag, sizeof(gh_web_flash_tag) - 1);
+      gh_web_flash_tag[sizeof(gh_web_flash_tag) - 1] = '\0';
+      gh_web_flash_pending = true;
+      srv.send(200, "application/json", "{\"ok\":true}");
       return;
     }
     if (gh_latest_version[0] == '\0') {

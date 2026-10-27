@@ -49,6 +49,23 @@ struct GithubRelease {
 bool githubReleaseByTag(const char *tag, GithubRelease &out,
                         char *err, size_t err_len);
 
+// The most recent releases, newest first, for a page that offers going back to
+// an older build. Five: each costs about nine kilobytes of answer, and the list
+// has to fit beside a TLS connection on the heap that is there.
+#define GH_LIST_MAX 5
+struct GithubReleaseItem {
+  char     tag[24];
+  char     published[11];   // YYYY-MM-DD
+  bool     prerelease;
+  uint32_t image_size;      // the firmware asset's size, 0 when it lists none
+};
+// What the last listing found. A page installs one of these by its position,
+// never by a tag of its own: the tag goes straight into a download address.
+extern GithubReleaseItem g_gh_releases[GH_LIST_MAX];
+extern int               g_gh_release_count;
+// Fills g_gh_releases; true when at least one release was read.
+bool githubListReleases(char *err, size_t err_len);
+
 // done and total in bytes; total is 0 when the server sent no Content-Length.
 typedef void (*OtaProgressFn)(uint32_t done, uint32_t total);
 

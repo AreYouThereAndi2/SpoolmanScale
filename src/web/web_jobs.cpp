@@ -1,4 +1,5 @@
 #include "web_jobs.h"
+#include "services/partition_layout.h"
 
 #include <ArduinoJson.h>
 #include <string.h>
@@ -101,6 +102,23 @@ static void runGhCheck() {
                              s_res.err, sizeof(s_res.err), &s_res.image_size);
 }
 
+static void runGhList() {
+  if (!githubListReleases(s_res.err, sizeof(s_res.err))) { s_res.ok = false; return; }
+  String& out = s_res.body;
+  out.reserve(640);
+  out = "{\"ok\":true,\"releases\":[";
+  for (int i = 0; i < g_gh_release_count; i++) {
+    const GithubReleaseItem& it = g_gh_releases[i];
+    if (i) out += ",";
+    out += "{\"i\":" + String(i) + ",\"tag\":\"" + jsonEsc(it.tag) +
+           "\",\"pub\":\"" + jsonEsc(it.published) +
+           "\",\"pre\":" + (it.prerelease ? "true" : "false") +
+           ",\"big\":" + (partitionImageFits(it.image_size) ? "false" : "true") + "}";
+  }
+  out += "]}";
+  s_res.ok = true;
+}
+
 static void runGhNotes() {
   GithubRelease rel;
   if (!githubReleaseByTag(s_arg, rel, s_res.err, sizeof(s_res.err))) {
@@ -137,6 +155,7 @@ static void webJobTask(void* arg) {
     case WJ_SPOOLS:    runSpools();   break;
     case WJ_GH_CHECK:  runGhCheck();  break;
     case WJ_GH_NOTES:  runGhNotes();  break;
+    case WJ_GH_LIST:   runGhList();   break;
     case WJ_BAMBU_CATALOG: runBambuCatalog(); break;
     case WJ_NET_PROBE: netProbeRun(s_arg, s_res.body); s_res.ok = true; break;
     default: break;

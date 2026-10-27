@@ -1599,6 +1599,24 @@ const char* const STRINGS[][3] = {
   { "Der Kanal ist derselbe wie am Gerät. Das Image wird vom Gerät geladen, nicht vom Browser.",
     "The channel is the same setting as on the device. The image is fetched by the device, not by this browser.",
     "Le canal est le même réglage que sur l'appareil. C'est l'appareil qui télécharge le firmware, pas ce navigateur." },  // STR_W_FW_GH_HINT
+  { "Andere Version",
+    "Another version",
+    "Autre version" },  // STR_W_FW_PICK
+  { "Liste laden",
+    "Load list",
+    "Charger la liste" },  // STR_W_FW_PICK_LOAD
+  { "Diese Version installieren",
+    "Install this version",
+    "Installer cette version" },  // STR_W_FW_PICK_GO
+  { "Hier lässt sich auch eine ältere Version wählen, um zurückzugehen. Kalibrierung und Einstellungen bleiben erhalten. Der Web-Flasher bietet immer nur die neueste Version an.",
+    "An older version can be chosen here too, to go back. Calibration and settings are kept. The web flasher only ever offers the newest version.",
+    "On peut aussi choisir ici une version plus ancienne pour revenir en arrière. L'étalonnage et les réglages sont conservés. Le web flasher ne propose toujours que la dernière version." },  // STR_W_FW_PICK_NOTE
+  { "installiert",
+    "installed",
+    "installée" },  // STR_W_FW_PICK_NOW
+  { "Vorabversion",
+    "pre-release",
+    "préversion" },  // STR_W_FW_PICK_PRE
   { "Veröffentlicht",
     "Released",
     "Publiée le" },  // STR_W_FW_RELEASED
