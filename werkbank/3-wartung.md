@@ -31,6 +31,8 @@ Hilft das nicht, bitte schicken:
 3. **Die Werte der Waage:** Weboberfläche → **Waage**. Sie zeigen Wandler, Rohwert, Streuung und Kalibrierung.
 4. Bei Verdrahtungsfragen ein Foto der Lötstellen und des I/O-Kabels.
 
+**Was die Waage gerade tut:** Wartet sie auf das Netzwerk, erscheint unten rechts ein Lade-Ring, und in der Weboberfläche läuft ein Balken am oberen Rand, sobald eine Anfrage länger als eine Viertelsekunde dauert. Der Knopf **Log** unten rechts (auf jeder Seite außer „Logs“) öffnet ein Textfeld mit dem Live-Log der Waage. Mehr Zeilen gibt es mit der Protokollstufe „verbose“ auf der Seite Logs.
+
 **Die Oberfläche ruckelt oder hängt?** Im Log (Weboberfläche → **Log**) nach diesen Zeilen suchen:
 
 | Zeile im Log | Bedeutung |

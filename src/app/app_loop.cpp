@@ -702,6 +702,7 @@ void appLoop() {
   // never returns cannot leave the screen waiting on it.
   // The web worker holds a TLS connection of its own at times; two handshakes
   // at once want more internal heap than there is.
+  otaGithubCheckTick();
   if (gh_check_pending) {
     if (!updateCheckBusy() && webJobState() != WJS_RUNNING) {
       gh_check_pending = false;

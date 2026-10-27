@@ -301,6 +301,35 @@ static const char APP_CSS[] PROGMEM =
       ".btab:hover{background:var(--quiet-hover)}"
       ".btab.on{background:var(--btn);color:var(--accent);"
       "border-color:var(--accent-line);opacity:1;cursor:default}"
+      // A bar across the top while the page waits on the scale: any request
+      // that takes longer than a quarter second runs it (see APP_JS). The
+      // scale answers one request at a time and some take seconds; a page
+      // that shows nothing in that time looks stuck.
+      "#act{position:fixed;left:0;top:0;width:100%;height:3px;overflow:hidden;"
+      "opacity:0;pointer-events:none;transition:opacity .2s;z-index:999}"
+      "#act.on{opacity:1}"
+      "#act i{display:block;height:100%;width:35%;background:var(--accent);"
+      "animation:actmv 1.1s ease-in-out infinite}"
+      "@keyframes actmv{0%{margin-left:-35%}100%{margin-left:100%}}"
+      // The live log drawer: a small button bottom right, and the panel it
+      // opens over the page. Same tokens as the cards, so it follows the theme.
+      "#lgb{position:fixed;right:12px;bottom:12px;z-index:998;padding:6px 12px;"
+      "font-size:12px;border-radius:14px;background:var(--surface);"
+      "color:var(--ink-3);border:1px solid var(--line);cursor:pointer}"
+      "#lgb:hover{color:var(--accent);border-color:var(--accent-line)}"
+      "#lgp{position:fixed;right:12px;bottom:12px;z-index:998;width:min(560px,calc(100vw - 24px));"
+      "background:var(--surface);border:1px solid var(--line);border-radius:10px;"
+      "box-shadow:0 6px 24px rgba(0,0,0,.35);display:none;flex-direction:column}"
+      "#lgp.on{display:flex}"
+      "#lgh{display:flex;align-items:center;justify-content:space-between;"
+      "padding:8px 12px;color:var(--ink-3);font-size:12px;"
+      "border-bottom:1px solid var(--line-soft)}"
+      "#lgh button{background:none;border:0;color:var(--ink-3);font-size:18px;"
+      "line-height:1;cursor:pointer;padding:0 4px}"
+      "#lgh button:hover{color:var(--accent)}"
+      "#lgt{margin:0;padding:8px 12px;height:min(240px,40vh);overflow:auto;"
+      "font:11.5px/1.5 var(--mono);color:var(--ink-2);white-space:pre-wrap;"
+      "word-break:break-word;background:var(--ground);border-radius:0 0 10px 10px}"
 ;
 
 const char* webStaticVersion() { return FW_VERSION; }
@@ -322,6 +351,60 @@ static const char APP_JS[] PROGMEM =
   "var WS={ok:'OK',err:'Error'};\n"
 
   "function $(i){return document.getElementById(i);}\n"
+
+  // The activity bar. Every request through fetch() is counted; when one is
+  // still open after a quarter of a second the bar at the top runs until the
+  // last one is done. Quick answers never show it. The log drawer below
+  // fetches through the original, so its own polling does not light it.
+  "var F0=window.fetch;\n"
+  "(function(){var n=0,t=0,bar=null;"
+  "if(!F0)return;"
+  "function show(on){"
+  "if(!bar){if(!document.body)return;"
+  "bar=document.createElement('div');bar.id='act';bar.innerHTML='<i></i>';"
+  "document.body.appendChild(bar);}"
+  "bar.className=on?'on':'';}"
+  "function done(){n--;if(n<=0){n=0;if(t){clearTimeout(t);t=0;}show(false);}}"
+  "window.fetch=function(){n++;"
+  "if(!t)t=setTimeout(function(){t=0;if(n>0)show(true);},250);"
+  "return F0.apply(this,arguments).then(function(r){done();return r;},"
+  "function(e){done();throw e;});};"
+  "})();\n"
+
+  // The live log drawer, on every page but the log page itself (which has the
+  // same view built in). Closed it costs nothing: the polling starts when it
+  // opens and stops when it closes or the tab is hidden. It reads the session
+  // log the Logs page reads, only the lines new since the last answer.
+  "(function(){var seq=0,open=false,busy=false,tm=0,pre=null,panel=null,btn=null;\n"
+  "function lines(t){return t?t.split('\\n'):[];}\n"
+  "function poll(first){if(!open||busy||document.hidden||!F0)return;busy=true;"
+  "F0('/api/log/session?since='+(first?0:seq),{cache:'no-store'})"
+  ".then(function(r){seq=parseInt(r.headers.get('X-Log-Seq')||seq);"
+  "var rst=r.headers.get('X-Log-Reset')==='1';"
+  "return r.text().then(function(t){return{t:t,rst:rst};});})"
+  ".then(function(d){var atEnd=pre.scrollTop+pre.clientHeight>=pre.scrollHeight-24;"
+  "if(d.rst||first)pre.textContent='';"
+  "if(d.t){pre.textContent+=d.t;var a=lines(pre.textContent);"
+  "if(a.length>400)pre.textContent=a.slice(a.length-300).join('\\n');}"
+  "if(atEnd||first)pre.scrollTop=pre.scrollHeight;})"
+  ".catch(function(){}).then(function(){busy=false;});}\n"
+  "function setOpen(on){open=on;panel.className=on?'on':'';btn.style.display=on?'none':'';"
+  "try{localStorage.setItem('lgopen',on?'1':'0');}catch(e){}"
+  "if(tm){clearInterval(tm);tm=0;}"
+  "if(on){poll(true);tm=setInterval(function(){poll(false);},1500);}}\n"
+  "function build(){if(!document.body||document.getElementById('sl'))return;"
+  "btn=document.createElement('button');btn.id='lgb';btn.type='button';btn.textContent='Log';"
+  "panel=document.createElement('div');panel.id='lgp';"
+  "panel.innerHTML='<div id=\"lgh\"><span>Log</span><button type=\"button\" id=\"lgx\">\\u00d7</button></div>"
+  "<pre id=\"lgt\"></pre>';"
+  "document.body.appendChild(btn);document.body.appendChild(panel);"
+  "pre=document.getElementById('lgt');"
+  "btn.addEventListener('click',function(){setOpen(true);});"
+  "document.getElementById('lgx').addEventListener('click',function(){setOpen(false);});"
+  "var was=false;try{was=localStorage.getItem('lgopen')==='1';}catch(e){}"
+  "if(was)setOpen(true);}\n"
+  "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();\n"
+  "})();\n"
 
   // One message line, for every page. ms omitted leaves the text standing,
   // which is what a host test result or a rejected name wants; after() lets a
