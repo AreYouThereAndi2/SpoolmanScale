@@ -218,7 +218,9 @@ jobs:
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
+          # Spelled out: a tag called "main" (there is one) wins over the branch
+          # for a bare "main", and origin/main is then never created.
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
           # -f discards the working tree, which by now holds a rewritten
           # version.json. Without it the checkout refuses whenever that file
           # differs between the tagged commit and main - which is exactly what
