@@ -19,10 +19,16 @@
 #include "ui/theme.h"
 #include "ui/ui_common.h"
 
-#define QP_H          206    // the panel's height; what slides
+// The panel rests UI_RADIUS_BOX above the glass, so its top corners are out of
+// sight. Everything inside is placed from QP_TOP, the first visible row: before
+// that offset the status line sat on the very edge of the screen.
+#define QP_TOP        UI_RADIUS_BOX
+#define QP_VISIBLE_H  198    // what shows below the top edge
+#define QP_H          (QP_TOP + QP_VISIBLE_H)   // the panel's height; what slides
 #define QP_SLIDE_MS   180
+#define QP_MARGIN     14     // left and right, for every row
 #define QP_TILE_W     108
-#define QP_TILE_H     62
+#define QP_TILE_H     66
 
 // What a button asked for, run from quickPanelTick() after the panel is gone.
 enum QpAction : uint8_t { QP_NONE, QP_TARE, QP_AMS, QP_INFO, QP_SETTINGS };
@@ -76,23 +82,43 @@ static lv_obj_t* tile(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, const char* 
   lv_obj_set_style_bg_color(b, lv_color_hex(UI_COL_ROW_PRESS_FILL), LV_STATE_PRESSED);
   lv_obj_set_style_border_width(b, 0, 0);
   lv_obj_add_event_cb(b, onTile, LV_EVENT_CLICKED, (void*)(uintptr_t)action);
+  // Icon over label as one block, centred in the tile from the fonts' own line
+  // heights. Fixed offsets from the top and bottom left the two a few pixels
+  // apart or touching, depending on the font.
+  const lv_coord_t ih = lv_font_get_line_height(UI_FONT_TITLE);
+  const lv_coord_t lh = lv_font_get_line_height(UI_FONT_SMALL);
+  const lv_coord_t gap_il = 3;
+  const lv_coord_t top = (QP_TILE_H - (ih + gap_il + lh)) / 2;
   lv_obj_t* ic = lv_label_create(b);
   lv_label_set_text(ic, icon);
   lv_obj_set_style_text_font(ic, UI_FONT_TITLE, 0);
   lv_obj_set_style_text_color(ic, lv_color_hex(UI_COL_ACCENT), 0);
-  lv_obj_align(ic, LV_ALIGN_TOP_MID, 0, 6);
+  lv_obj_align(ic, LV_ALIGN_TOP_MID, 0, top);
+  // The label in the normal size, or the caption size when a translation would
+  // not fit the tile ("Einstellungen" is the long one); cut as a last resort.
+  const lv_coord_t label_w = QP_TILE_W - 8;
+  const lv_font_t* lf = UI_FONT_SMALL;
+  lv_point_t lsz;
+  lv_txt_get_size(&lsz, T(label), lf, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  if (lsz.x > label_w) lf = UI_FONT_CAPTION;
   lv_obj_t* lb = lv_label_create(b);
   lv_label_set_text(lb, T(label));
-  lv_obj_set_style_text_font(lb, UI_FONT_SMALL, 0);
+  lv_label_set_long_mode(lb, LV_LABEL_LONG_DOT);
+  lv_obj_set_size(lb, label_w, lh);
+  lv_obj_set_style_text_align(lb, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_font(lb, lf, 0);
   lv_obj_set_style_text_color(lb, lv_color_hex(UI_COL_INK), 0);
-  lv_obj_align(lb, LV_ALIGN_BOTTOM_MID, 0, -6);
+  lv_obj_align(lb, LV_ALIGN_TOP_MID, 0,
+               top + ih + gap_il + (lh - lv_font_get_line_height(lf)) / 2);
   return b;
 }
 
 static lv_obj_t* line(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, lv_coord_t w,
                       const lv_font_t* font, uint32_t color) {
   lv_obj_t* l = lv_label_create(parent);
-  lv_obj_set_width(l, w);
+  // A fixed one-line height: with the height left to the content, LONG_DOT
+  // wrapped a long address onto a second line instead of cutting it.
+  lv_obj_set_size(l, w, lv_font_get_line_height(font));
   lv_obj_set_pos(l, x, y);
   lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_font(l, font, 0);
@@ -127,28 +153,59 @@ void quickPanelOpen() {
   lv_obj_set_style_pad_all(s_panel, 0, 0);
   lv_obj_clear_flag(s_panel, LV_OBJ_FLAG_SCROLLABLE);
 
-  // Wi-Fi and the backend at a glance.
+  // Wi-Fi and the backend at a glance. One row, the two texts side by side
+  // inside the same margins as everything below.
   char buf[96];
-  lv_obj_t* wifi = line(s_panel, 14, 12, 220, UI_FONT_SMALL, UI_COL_INK);
+  const lv_coord_t status_y = QP_TOP + 12;
+  // The two texts share the row by what each needs, not by a fixed split: a
+  // fixed 200 px cut the address off a short SSID's line while the other side
+  // had room to spare. Whichever is too long for its share ends in "...".
+  char wbuf[96], bbuf[96];
   if (WiFi.isConnected())
-    snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI "  %s  %s", WiFi.SSID().c_str(),
+    snprintf(wbuf, sizeof(wbuf), LV_SYMBOL_WIFI "  %s  %s", WiFi.SSID().c_str(),
              WiFi.localIP().toString().c_str());
   else
-    snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI "  %s", T(STR_NO_WIFI));
-  lv_label_set_text(wifi, buf);
-  lv_obj_t* be = line(s_panel, 246, 12, 220, UI_FONT_SMALL, UI_COL_INK_2);
-  snprintf(buf, sizeof(buf), LV_SYMBOL_DRIVE "  %s  %s", backendName(), backendHost());
-  lv_label_set_text(be, buf);
+    snprintf(wbuf, sizeof(wbuf), LV_SYMBOL_WIFI "  %s", T(STR_NO_WIFI));
+  snprintf(bbuf, sizeof(bbuf), LV_SYMBOL_DRIVE " %s %s", backendName(), backendHost());
+  lv_point_t wsz, bsz;
+  lv_txt_get_size(&wsz, wbuf, UI_FONT_SMALL, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  lv_txt_get_size(&bsz, bbuf, UI_FONT_SMALL, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  const lv_coord_t avail = LV_HOR_RES - 2 * QP_MARGIN, row_gap = 10, min_part = 90;
+  lv_coord_t wifi_w = wsz.x + 2, be_w = bsz.x + 2;      // + the rounding of the measure
+  if (wifi_w + be_w + row_gap > avail) {
+    // The longer one gives way, down to a floor.
+    if (wifi_w >= be_w) wifi_w = avail - row_gap - be_w;
+    else                be_w = avail - row_gap - wifi_w;
+    if (wifi_w < min_part) { wifi_w = min_part; be_w = avail - row_gap - wifi_w; }
+    if (be_w < min_part)   { be_w = min_part;   wifi_w = avail - row_gap - be_w; }
+  }
+  lv_obj_t* wifi = line(s_panel, QP_MARGIN, status_y, wifi_w, UI_FONT_SMALL, UI_COL_INK);
+  lv_label_set_text(wifi, wbuf);
+  lv_obj_t* be = line(s_panel, LV_HOR_RES - QP_MARGIN - be_w, status_y, be_w, UI_FONT_SMALL,
+                      UI_COL_INK_2);
+  lv_label_set_text(be, bbuf);
   lv_obj_set_style_text_align(be, LV_TEXT_ALIGN_RIGHT, 0);
 
-  // The brightness, as the display settings set it.
+  // The brightness, as the display settings set it. The two symbols and the
+  // slider share one centre line; the right symbol is aligned to the margin
+  // rather than placed by a guessed x.
+  const lv_coord_t row_cy = QP_TOP + 52;
+  const lv_coord_t sym_h = lv_font_get_line_height(LV_FONT_DEFAULT);
+  const lv_coord_t slider_h = 16, sym_gap = 14;
   lv_obj_t* dim = lv_label_create(s_panel);
   lv_label_set_text(dim, LV_SYMBOL_EYE_CLOSE);
   lv_obj_set_style_text_color(dim, lv_color_hex(UI_COL_CAPTION), 0);
-  lv_obj_set_pos(dim, 18, 48);
+  lv_obj_set_pos(dim, QP_MARGIN, row_cy - sym_h / 2);
+  lv_obj_t* bright = lv_label_create(s_panel);
+  lv_label_set_text(bright, LV_SYMBOL_EYE_OPEN);
+  lv_obj_set_style_text_color(bright, lv_color_hex(UI_COL_CAPTION), 0);
+  lv_obj_align(bright, LV_ALIGN_TOP_RIGHT, -QP_MARGIN, row_cy - sym_h / 2);
+  lv_obj_update_layout(s_panel);
+  const lv_coord_t sl_x0 = QP_MARGIN + lv_obj_get_width(dim) + sym_gap;
+  const lv_coord_t sl_x1 = LV_HOR_RES - QP_MARGIN - lv_obj_get_width(bright) - sym_gap;
   lv_obj_t* slider = lv_slider_create(s_panel);
-  lv_obj_set_size(slider, 372, 16);
-  lv_obj_set_pos(slider, 54, 52);
+  lv_obj_set_size(slider, sl_x1 - sl_x0, slider_h);
+  lv_obj_set_pos(slider, sl_x0, row_cy - slider_h / 2);
   lv_slider_set_range(slider, BRIGHT_MIN, BRIGHT_MAX);
   lv_slider_set_value(slider, bright_normal, LV_ANIM_OFF);
   lv_obj_set_style_bg_color(slider, lv_color_hex(UI_COL_LINE), LV_PART_MAIN);
@@ -162,25 +219,26 @@ void quickPanelOpen() {
   lv_obj_add_event_cb(slider, [](lv_event_t* e) {
     prefsPutUChar("bright", (uint8_t)lv_slider_get_value(lv_event_get_target(e)));
   }, LV_EVENT_RELEASED, nullptr);
-  lv_obj_t* bright = lv_label_create(s_panel);
-  lv_label_set_text(bright, LV_SYMBOL_EYE_OPEN);
-  lv_obj_set_style_text_color(bright, lv_color_hex(UI_COL_CAPTION), 0);
-  lv_obj_set_pos(bright, 440, 48);
 
-  // What is done most often, one tap each.
-  const lv_coord_t ty = 88, gap = (LV_HOR_RES - 4 * QP_TILE_W) / 5;
-  tile(s_panel, gap, ty, LV_SYMBOL_DOWNLOAD, STR_QP_TARE, QP_TARE);
-  tile(s_panel, 2 * gap + QP_TILE_W, ty, LV_SYMBOL_LIST, STR_QP_AMS, QP_AMS);
-  tile(s_panel, 3 * gap + 2 * QP_TILE_W, ty, LV_SYMBOL_EYE_OPEN, STR_QP_INFO, QP_INFO);
-  tile(s_panel, 4 * gap + 3 * QP_TILE_W, ty, LV_SYMBOL_SETTINGS, STR_QP_SETTINGS, QP_SETTINGS);
+  // What is done most often, one tap each. Four tiles with equal outer margins
+  // and equal gaps: the old (width - 4 tiles) / 5 left three pixels over, all on
+  // the right.
+  const lv_coord_t ty = QP_TOP + 72;
+  const lv_coord_t tile_gap = (LV_HOR_RES - 2 * QP_MARGIN - 4 * QP_TILE_W) / 3;
+  const lv_coord_t tile_x0 = (LV_HOR_RES - (4 * QP_TILE_W + 3 * tile_gap)) / 2;
+  tile(s_panel, tile_x0, ty, LV_SYMBOL_DOWNLOAD, STR_QP_TARE, QP_TARE);
+  tile(s_panel, tile_x0 + (QP_TILE_W + tile_gap), ty, LV_SYMBOL_LIST, STR_QP_AMS, QP_AMS);
+  tile(s_panel, tile_x0 + 2 * (QP_TILE_W + tile_gap), ty, LV_SYMBOL_EYE_OPEN, STR_QP_INFO, QP_INFO);
+  tile(s_panel, tile_x0 + 3 * (QP_TILE_W + tile_gap), ty, LV_SYMBOL_SETTINGS, STR_QP_SETTINGS, QP_SETTINGS);
 
   // The handle, and what the edges do: found once, used from then on.
-  lv_obj_t* hint = line(s_panel, 14, QP_H - 40, LV_HOR_RES - 28, UI_FONT_CAPTION, UI_COL_CAPTION);
+  lv_obj_t* hint = line(s_panel, QP_MARGIN, ty + QP_TILE_H + 12, LV_HOR_RES - 2 * QP_MARGIN,
+                        UI_FONT_CAPTION, UI_COL_CAPTION);
   lv_label_set_text(hint, T(STR_QP_HINT));
   lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_t* grip = lv_obj_create(s_panel);
   lv_obj_set_size(grip, 44, 5);
-  lv_obj_align(grip, LV_ALIGN_BOTTOM_MID, 0, -8);
+  lv_obj_align(grip, LV_ALIGN_BOTTOM_MID, 0, -9);
   lv_obj_set_style_radius(grip, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_border_width(grip, 0, 0);
   lv_obj_set_style_bg_color(grip, lv_color_hex(UI_COL_INK_FAINT), 0);
