@@ -8,6 +8,7 @@ Updates, Fehlersuche, Releases und offene Punkte.
 
 - **An der Waage:** Einstellungen → System → Firmware Update → **Update über GitHub**. Die Waage holt den neuesten Release aus diesem Fork und prüft die Prüfsumme vor dem Neustart.
 - **Im Browser:** Weboberfläche → Firmware. Dort stehen auch die Release-Notes, und man kann eine `.bin` selbst hochladen.
+- **Zurück auf eine frühere Version:** Weboberfläche → Firmware → Karte „GitHub“ → **Andere Version** → „Liste laden“ → Version wählen → „Diese Version installieren“. Die Liste zeigt die letzten fünf Veröffentlichungen. Kalibrierung und Einstellungen bleiben erhalten. Der Web Flasher bietet immer nur die neueste Version an. Ohne WLAN geht es auch mit der Datei `SpoolmanScale_<Version>.bin` aus dem Release, die oben auf der Seite hochgeladen wird.
 - Die Waage zeigt einen Punkt, wenn es eine neue Version gibt. Sie liest dafür `https://areyouthereandi2.github.io/SpoolmanScale/version.json`.
 
 > Kein Update aus dem Original-Repo (Niko11111) einspielen: Es würde die Funktionen dieses Forks entfernen.

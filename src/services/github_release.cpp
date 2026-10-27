@@ -41,6 +41,67 @@ void githubTrust(WiFiClientSecure &client) {
   client.setCACertBundle(x509_crt_bundle_start, x509_crt_bundle_end - x509_crt_bundle_start);
 }
 
+GithubReleaseItem g_gh_releases[GH_LIST_MAX];
+int               g_gh_release_count = 0;
+
+bool githubListReleases(char *err, size_t err_len) {
+  g_gh_release_count = 0;
+  if (err && err_len) err[0] = '\0';
+
+  WiFiClientSecure client;
+  githubTrust(client);
+  HTTPClient http;
+  String url = "https://api.github.com/repos/" GH_REPO "/releases?per_page=" + String(GH_LIST_MAX);
+  http.begin(client, url);
+  http.addHeader("User-Agent", "SpoolmanScale-ESP32");
+  http.setTimeout(8000);
+  int code = http.GET();
+  Serial.printf("GitHub API (list): %d\n", code);
+  if (code != 200) {
+    if (err && err_len) snprintf(err, err_len, "HTTP %d", code);
+    http.end();
+    return false;
+  }
+  String payload = http.getString();
+  http.end();
+
+  JsonDocument filter;
+  JsonObject f = filter.to<JsonArray>().add<JsonObject>();
+  f["tag_name"] = true;
+  f["published_at"] = true;
+  f["draft"] = true;
+  f["prerelease"] = true;
+  f["assets"][0]["name"] = true;
+  f["assets"][0]["size"] = true;
+
+  JsonDocument doc;
+  DeserializationError jerr = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
+  if (jerr) {
+    if (err && err_len) snprintf(err, err_len, "JSON %s", jerr.c_str());
+    return false;
+  }
+  for (JsonVariant v : doc.as<JsonArray>()) {
+    if (g_gh_release_count >= GH_LIST_MAX) break;
+    JsonObject rel = v.as<JsonObject>();
+    if (rel["draft"] | false) continue;
+    const char* t = rel["tag_name"] | "";
+    if (t[0] == '\0') continue;
+    GithubReleaseItem& it = g_gh_releases[g_gh_release_count++];
+    strncpy(it.tag, t, sizeof(it.tag) - 1);
+    it.tag[sizeof(it.tag) - 1] = '\0';
+    // "2026-10-27T00:00:00Z": the date is the first ten characters.
+    strncpy(it.published, rel["published_at"] | "", sizeof(it.published) - 1);
+    it.published[sizeof(it.published) - 1] = '\0';
+    it.prerelease = rel["prerelease"] | false;
+    it.image_size = imageSizeOf(rel);
+  }
+  if (g_gh_release_count == 0) {
+    if (err && err_len) snprintf(err, err_len, "no release");
+    return false;
+  }
+  return true;
+}
+
 bool githubLatestTag(bool prerelease, char *tag, size_t tag_len,
                      char *published, size_t pub_len,
                      char *err, size_t err_len, uint32_t *image_size) {
