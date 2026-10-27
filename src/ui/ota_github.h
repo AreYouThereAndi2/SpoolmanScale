@@ -9,6 +9,8 @@ void buildOtaGithubScreen();
 // from the loop up to ten seconds later. Called wherever the screen goes.
 void otaGithubForgetLabels();
 void doGithubOtaCheck();
+// Once a loop pass: collects the result of the check that runs in its own task.
+void otaGithubCheckTick();
 void doGithubOtaFlash(const char* version);
 
 // The full-screen cover shown while an image is written: icon, bar, byte

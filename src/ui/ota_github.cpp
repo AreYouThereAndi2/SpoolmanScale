@@ -27,6 +27,10 @@ static lv_obj_t *lbl_gh_installed   = nullptr;
 static lv_obj_t *lbl_gh_latest      = nullptr;
 static lv_obj_t *btn_gh_update      = nullptr;
 static lv_obj_t *lbl_gh_update_btn  = nullptr;
+// The spinner in the check button, and whether the check task is out. The
+// spinner turns because the loop is free: the check no longer holds it.
+static lv_obj_t *spin_gh_check      = nullptr;
+static bool      s_manual_check     = false;
 
 void otaGithubForgetLabels() {
   lbl_gh_status     = nullptr;
@@ -34,6 +38,7 @@ void otaGithubForgetLabels() {
   lbl_gh_latest     = nullptr;
   btn_gh_update     = nullptr;
   lbl_gh_update_btn = nullptr;
+  spin_gh_check     = nullptr;
 }
 
 // The download overlay. File scope so the progress callback can reach it - it
@@ -149,37 +154,20 @@ bool otaGithubScreenVisible() {
          !lv_obj_has_flag(scr_ota_github, LV_OBJ_FLAG_HIDDEN);
 }
 
-void doGithubOtaCheck() {
+static void checkSpinner(bool on) {
+  if (!spin_gh_check) return;
+  if (on) lv_obj_clear_flag(spin_gh_check, LV_OBJ_FLAG_HIDDEN);
+  else    lv_obj_add_flag(spin_gh_check, LV_OBJ_FLAG_HIDDEN);
+}
+
+// What a finished check shows: the status line, the two version lines and the
+// state of the update button. Shared by the check that ran in its task and the
+// inline one the low-memory fallback still runs.
+static void applyCheckResult(bool found, const char* tag, const char* cerr,
+                             uint32_t image_size) {
   if (!lbl_gh_status) return;
-
-  if (!wifi_ok) {
-    char buf[64]; copyT(buf, sizeof(buf), STR_GH_OTA_NO_WIFI); buf[sizeof(buf)-1]=0;
-    lv_label_set_text(lbl_gh_status, buf);
-    lv_obj_set_style_text_color(lbl_gh_status, lv_color_hex(UI_COL_BAD_TEXT), 0);
-    return;
-  }
-
-  char buf[64]; copyT(buf, sizeof(buf), STR_GH_OTA_CHECKING); buf[sizeof(buf)-1]=0;
-  lv_label_set_text(lbl_gh_status, buf);
-  lv_obj_set_style_text_color(lbl_gh_status, lv_color_hex(UI_COL_CAPTION), 0);
-  lv_timer_handler();
-
-  // The background check holds its own TLS connection, and two handshakes want
-  // roughly 40 kB each. Rather than open a second one, hand this off to the
-  // loop and let it come back once the task is done - the screen already says
-  // "checking", so nothing looks stuck.
-  if (updateCheckBusy()) {
-    gh_check_pending = true;
-    gh_check_wait_since = millis();
-    logSD("OTA check: deferred, background check running");
-    return;
-  }
-
-  char tag[40] = "", cerr[80] = "";
-  uint32_t image_size = 0;
-  if (!githubLatestTag(gh_prerelease, tag, sizeof(tag), nullptr, 0,
-                       cerr, sizeof(cerr), &image_size)) {
-    lv_label_set_text(lbl_gh_status, cerr[0] ? cerr : T(STR_GH_OTA_FLASH_FAIL));
+  if (!found) {
+    lv_label_set_text(lbl_gh_status, (cerr && cerr[0]) ? cerr : T(STR_GH_OTA_FLASH_FAIL));
     lv_obj_set_style_text_color(lbl_gh_status, lv_color_hex(UI_COL_BAD_TEXT), 0);
     return;
   }
@@ -252,6 +240,67 @@ void doGithubOtaCheck() {
     update_available = !gh_found_older;
     showUpdateBadges(!gh_found_older);
   }
+}
+
+void doGithubOtaCheck() {
+  if (!lbl_gh_status) return;
+  // One at a time: a second press while the first is out only waits.
+  if (s_manual_check) return;
+
+  if (!wifi_ok) {
+    char buf[64]; copyT(buf, sizeof(buf), STR_GH_OTA_NO_WIFI); buf[sizeof(buf)-1]=0;
+    lv_label_set_text(lbl_gh_status, buf);
+    lv_obj_set_style_text_color(lbl_gh_status, lv_color_hex(UI_COL_BAD_TEXT), 0);
+    return;
+  }
+
+  char buf[64]; copyT(buf, sizeof(buf), STR_GH_OTA_CHECKING); buf[sizeof(buf)-1]=0;
+  lv_label_set_text(lbl_gh_status, buf);
+  lv_obj_set_style_text_color(lbl_gh_status, lv_color_hex(UI_COL_CAPTION), 0);
+  lv_timer_handler();
+
+  // The background check holds its own TLS connection, and two handshakes want
+  // roughly 40 kB each. Rather than open a second one, hand this off to the
+  // loop and let it come back once the task is done - the screen already says
+  // "checking", so nothing looks stuck.
+  if (updateCheckBusy()) {
+    gh_check_pending = true;
+    gh_check_wait_since = millis();
+    logSD("OTA check: deferred, background check running");
+    return;
+  }
+
+  // In a task of its own: the handshake and the request take seconds, and on
+  // the loop task that was seconds of a screen that did not answer. Here the
+  // spinner turns and the result is picked up by otaGithubCheckTick().
+  if (updateCheckManualStart(gh_prerelease)) {
+    s_manual_check = true;
+    checkSpinner(true);
+    logSD("OTA check: started in the background");
+    return;
+  }
+
+  // No task to be had (low memory): the old way, blocking, as before.
+  char tag[40] = "", cerr[80] = "";
+  uint32_t image_size = 0;
+  const bool found = githubLatestTag(gh_prerelease, tag, sizeof(tag), nullptr, 0,
+                                     cerr, sizeof(cerr), &image_size);
+  applyCheckResult(found, tag, cerr, image_size);
+}
+
+// From the loop, once a pass. Picks up the result of the check task.
+void otaGithubCheckTick() {
+  if (!s_manual_check) return;
+  bool found = false;
+  char tag[40] = "", cerr[80] = "";
+  uint32_t image_size = 0;
+  if (!updateCheckManualTake(&found, tag, sizeof(tag), cerr, sizeof(cerr), &image_size)) return;
+  s_manual_check = false;
+  checkSpinner(false);
+  logSDf("OTA check: %s %s", found ? "found" : "failed", found ? tag : cerr);
+  // The screen may have been left in the meantime; the labels are then gone and
+  // there is nobody to tell.
+  applyCheckResult(found, tag, cerr, image_size);
 }
 
 void doGithubOtaFlash(const char* version) {
@@ -346,6 +395,17 @@ void buildOtaGithubScreen() {
     gh_check_pending = true;
     gh_check_wait_since = millis();
   }, LV_EVENT_CLICKED, NULL);
+  // A loading ring at the left edge of the button, shown while the check is
+  // out. LVGL's own spinner: it turns by itself as long as the loop runs.
+  spin_gh_check = lv_spinner_create(btn_check, 1000, 70);
+  lv_obj_set_size(spin_gh_check, 24, 24);
+  lv_obj_align(spin_gh_check, LV_ALIGN_LEFT_MID, 12, 0);
+  lv_obj_set_style_arc_width(spin_gh_check, 3, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(spin_gh_check, 3, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(spin_gh_check, lv_color_hex(UI_COL_LINE), LV_PART_MAIN);
+  lv_obj_set_style_arc_color(spin_gh_check, lv_color_hex(UI_COL_ACCENT), LV_PART_INDICATOR);
+  lv_obj_clear_flag(spin_gh_check, LV_OBJ_FLAG_CLICKABLE);
+  if (!s_manual_check) lv_obj_add_flag(spin_gh_check, LV_OBJ_FLAG_HIDDEN);
   lv_obj_t *lbl_check = lv_label_create(btn_check);
   char buf_check[48]; copyT(buf_check, sizeof(buf_check), STR_GH_OTA_CHECK_BTN); buf_check[sizeof(buf_check)-1]=0;
   lv_label_set_text(lbl_check, buf_check);

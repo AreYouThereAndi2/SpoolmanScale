@@ -194,6 +194,27 @@ void updateCheckTask(void* arg) {
   vTaskDelete(NULL);
 }
 
+// ---- the manual check -----------------------------------------------------
+struct ManualCheck {
+  volatile uint8_t state;     // 0 idle, 1 running, 2 finished
+  bool     prerelease;
+  bool     ok;
+  char     tag[40];
+  char     err[80];
+  uint32_t size;
+};
+ManualCheck s_mc = {};
+
+void manualCheckTask(void*) {
+  s_mc.ok = githubLatestTag(s_mc.prerelease, s_mc.tag, sizeof(s_mc.tag), nullptr, 0,
+                            s_mc.err, sizeof(s_mc.err), &s_mc.size);
+  Serial.printf("[upd] manual check %s, task stack low water mark: %u bytes free\n",
+                s_mc.ok ? "ok" : "failed", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+  s_mc.state = 2;               // last: the loop reads the rest after it
+  s_task_running = false;
+  vTaskDelete(NULL);
+}
+
 void maybeStartCheck() {
   if (!s_scheduled) return;
   if (!g_upd_autocheck) return;
@@ -241,6 +262,41 @@ void maybeStartCheck() {
 }  // namespace
 
 bool updateCheckBusy() { return s_task_running; }
+
+bool updateCheckManualStart(bool prerelease) {
+  if (s_task_running || s_mc.state == 1) return false;
+  if (gh_flash_active || otaWebUploadActive()) return false;
+  if (ESP.getFreeHeap() < MIN_FREE_HEAP) return false;
+  s_mc.state = 1;
+  s_mc.prerelease = prerelease;
+  s_mc.ok = false;
+  s_mc.tag[0] = '\0';
+  s_mc.err[0] = '\0';
+  s_mc.size = 0;
+  // Set before the task exists, as for the daily check: the guard also keeps
+  // the background check from opening a second TLS connection beside it.
+  s_task_running = true;
+  BaseType_t ok = xTaskCreatePinnedToCore(manualCheckTask, "updman", TASK_STACK_BYTES,
+                                          nullptr, TASK_PRIORITY, nullptr, TASK_CORE);
+  if (ok != pdPASS) {
+    s_task_running = false;
+    s_mc.state = 0;
+    Serial.println("[upd] manual check task creation failed");
+    return false;
+  }
+  return true;
+}
+
+bool updateCheckManualTake(bool* okp, char* tag, size_t tag_len, char* err,
+                           size_t err_len, uint32_t* image_size) {
+  if (s_mc.state != 2) return false;
+  if (okp) *okp = s_mc.ok;
+  if (tag && tag_len) { strncpy(tag, s_mc.tag, tag_len - 1); tag[tag_len - 1] = '\0'; }
+  if (err && err_len) { strncpy(err, s_mc.err, err_len - 1); err[err_len - 1] = '\0'; }
+  if (image_size) *image_size = s_mc.size;
+  s_mc.state = 0;
+  return true;
+}
 
 // Restores the badge from what the last check found, without going near the
 // network. Comparing rather than trusting a stored flag means it corrects
