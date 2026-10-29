@@ -39,5 +39,20 @@ int32_t scaleHardwareTareReading();
 // An HX711 was found on this device, now or on an earlier boot. Its pins are
 // then the scale's: the PN532 gets no reset line and the reset probe is off.
 bool scaleHx711Fitted();
+// Which chip the scale looks for. Automatic is the normal case: the NAU7802
+// is probed on the bus, then the HX711 on its two pins. The other two exist for
+// a build where that fails - an HX711 that starts slowly, say - and skip the
+// probe of the other chip entirely. Read at start; a change applies after the
+// next restart, because the reader's reset pin depends on it.
+enum ScaleAdcChoice : uint8_t { SCALE_ADC_AUTO = 0, SCALE_ADC_HX711 = 1, SCALE_ADC_NAU7802 = 2 };
+ScaleAdcChoice scaleAdcChoice();        // the one in force since the last start
+ScaleAdcChoice scaleAdcChoiceSaved();   // what the settings say now
+void scaleAdcSetChoice(ScaleAdcChoice c);
+// How long the start-up search waits for the HX711's first conversions.
+#define HX_FIND_MS_DEFAULT 1500
+#define HX_FIND_MS_MIN      500
+#define HX_FIND_MS_MAX     5000
+uint16_t scaleHxFindMs();
+void scaleHxSetFindMs(uint16_t ms);
 // "NAU7802", "HX711" or "-" for logs and the status page.
 const char* scaleHardwareName();

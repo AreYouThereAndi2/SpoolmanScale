@@ -3592,6 +3592,30 @@ const char* const STRINGS[][3] = {
   { "Liegt nichts auf der Schale und sie ist ruhig, zieht die Waage kleine Abweichungen (bis 2 g) nach 10 Sekunden auf 0 g zurück. Gespeichert wird höchstens alle 10 Minuten.",
     "With nothing on the platform and the reading steady, the scale pulls small deviations (up to 2 g) back to 0 g after 10 seconds. It is stored at most every 10 minutes.",
     "Plateau vide et stable : la balance ramène les petits écarts (jusqu'à 2 g) à 0 g après 10 secondes. Enregistré au plus toutes les 10 minutes." },  // STR_W_AUTO_ZERO_HINT
+  { "Waagen-Chip",
+    "Scale chip",
+    "Puce de la balance" },  // STR_W_C_SCALE_ADC
+  { "Automatisch erkennen (empfohlen)",
+    "Detect automatically (recommended)",
+    "Détection automatique (recommandé)" },  // STR_W_SCALE_ADC_AUTO
+  { "HX711 fest vorgeben",
+    "Force HX711",
+    "Forcer le HX711" },  // STR_W_SCALE_ADC_HX
+  { "NAU7802 fest vorgeben",
+    "Force NAU7802",
+    "Forcer le NAU7802" },  // STR_W_SCALE_ADC_NAU
+  { "Normalerweise erkennt die Waage den Chip selbst. Nur wenn das scheitert, hier den Chip fest vorgeben. Die Einstellung gilt ab dem nächsten Start.",
+    "Normally the scale finds the chip by itself. Only if that fails, name the chip here. The setting applies from the next start.",
+    "En général la balance trouve la puce toute seule. Ne la forcer ici que si cela échoue. Le réglage s'applique au prochain démarrage." },  // STR_W_SCALE_ADC_HINT
+  { "Wartezeit der HX711-Suche (ms)",
+    "HX711 search wait (ms)",
+    "Attente de la recherche HX711 (ms)" },  // STR_W_SCALE_FIND
+  { "So lange wartet die Waage beim Start auf die ersten Messwerte des HX711. Standard 1500, erlaubt 500 bis 5000. Länger hilft, wenn der HX711 nach dem Einschalten langsam anläuft.",
+    "How long the scale waits at start for the HX711's first readings. Default 1500, allowed 500 to 5000. Longer helps when the HX711 is slow to start.",
+    "Durée d'attente des premières mesures du HX711 au démarrage. Par défaut 1500, de 500 à 5000. Plus long aide si le HX711 démarre lentement." },  // STR_W_SCALE_FIND_HINT
+  { "Seit dem Start gilt",
+    "In force since start",
+    "En vigueur depuis le démarrage" },  // STR_W_SCALE_ADC_ACTIVE
   { "Sichern und wiederherstellen",
     "Backup and restore",
     "Sauvegarde et restauration" },  // STR_W_C_BACKUP
