@@ -68,7 +68,44 @@ static String body() {
   h += T(STR_W_AUTO_ZERO);
   h += F("</label><span class='hint'>");
   h += T(STR_W_AUTO_ZERO_HINT);
-  h += F("</span><span class='msg' id='az-s'></span></div></div></div>"
+  h += F("</span><span class='msg' id='az-s'></span></div></div>");
+
+  // Which chip the scale looks for, and how long it waits for an HX711. The
+  // automatic mode is the normal case; the rest is for a build where the
+  // search fails and the day of experimenting with the wait.
+  const ScaleAdcChoice saved = scaleAdcChoiceSaved();
+  h += F("<div class='card wide'><h2>");
+  h += T(STR_W_C_SCALE_ADC);
+  h += F("</h2><div class='field'><label>");
+  h += T(STR_W_SCALE_ADC);
+  h += F("</label><select id='adc'>");
+  static const int kOpt[] = {STR_W_SCALE_ADC_AUTO, STR_W_SCALE_ADC_HX, STR_W_SCALE_ADC_NAU};
+  for (int i = 0; i < 3; i++) {
+    h += F("<option value='");
+    h += String(i);
+    h += F("'");
+    if ((int)saved == i) h += F(" selected");
+    h += F(">");
+    h += T(kOpt[i]);
+    h += F("</option>");
+  }
+  h += F("</select><span class='hint'>");
+  h += T(STR_W_SCALE_ADC_HINT);
+  h += F("</span></div><div class='field'><label>");
+  h += T(STR_W_SCALE_FIND);
+  h += F("</label><input id='adcms' type='number' min='");
+  h += String(HX_FIND_MS_MIN);
+  h += F("' max='");
+  h += String(HX_FIND_MS_MAX);
+  h += F("' step='100' value='");
+  h += String((int)scaleHxFindMs());
+  h += F("'><span class='hint'>");
+  h += T(STR_W_SCALE_FIND_HINT);
+  h += F("</span></div><div class='inrow'><button id='adcs'>");
+  h += T(STR_W_SAVE);
+  h += F("</button><button class='quiet' id='adcr' style='display:none'>");
+  h += T(STR_W_RESTART);
+  h += F("</button><span class='msg' id='adc-s'></span></div></div></div>"
          "<script>");
   h += webShellJsStrings();
   h += F("const SL={none:");
@@ -109,6 +146,11 @@ static String body() {
          "slSet('sl-drift',k===null?'-':(d.cald?(k/d.cal).toFixed(2)+' g/min  (':'(')+Math.round(k)+'/min)');"
          "slChart();}).catch(()=>{});}"
          "slTick();setInterval(slTick,500);"
+         "$('adcs').addEventListener('click',()=>{"
+         "post('/api/scale/adc',$('adc').value+','+$('adcms').value).then(r=>{"
+         "flash('adc-s',r.ok?WS.ok:WS.err,!r.ok,6000);"
+         "if(r.ok)$('adcr').style.display='';});});"
+         "$('adcr').addEventListener('click',()=>{post('/api/restart','');});"
          "$('az').addEventListener('change',()=>{"
          "const want=$('az').checked;"
          "post('/api/scale/autozero',want?'1':'0').then(r=>{"
@@ -148,6 +190,24 @@ static void routes(WebServer &srv) {
     j += String(scaleRejectedSamples());
     j += F("}");
     srv.send(200, "application/json", j);
+  });
+
+  // "<choice>,<wait in ms>". Takes effect at the next start.
+  srv.on("/api/scale/adc", HTTP_POST, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_SCALE))) return;
+    const String body = srv.arg("plain");
+    const int comma = body.indexOf(',');
+    const int choice = body.toInt();
+    const int ms = comma < 0 ? HX_FIND_MS_DEFAULT : body.substring(comma + 1).toInt();
+    if (choice < 0 || choice > 2 || comma < 0) {
+      srv.send(200, "application/json", "{\"ok\":false}");
+      return;
+    }
+    scaleAdcSetChoice((ScaleAdcChoice)choice);
+    scaleHxSetFindMs((uint16_t)ms);
+    logSDf("Web: scale chip -> %s, HX711 search wait %u ms (from next start)",
+           choice == 1 ? "HX711" : choice == 2 ? "NAU7802" : "auto", (unsigned)scaleHxFindMs());
+    srv.send(200, "application/json", "{\"ok\":true}");
   });
 
   srv.on("/api/scale/autozero", HTTP_POST, [&srv]() {

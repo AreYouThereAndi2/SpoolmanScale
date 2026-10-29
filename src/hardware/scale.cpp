@@ -36,7 +36,9 @@ static ScaleAdc s_adc = ADC_NONE;
 // input while the pulses run, and the clock is not interrupted.
 #define HX_KEY             "hx711"
 // Up to 400 ms settling after power-up, then one conversion at 10 per second.
-#define HX_FIND_MS         1500
+// How long the search waits is a setting (HX_FIND_KEY), 1500 ms unless changed.
+#define HX_FIND_KEY        "hx_find_ms"
+#define ADC_CHOICE_KEY     "scale_adc"
 // Without a finished conversion for this long the HX711 counts as gone.
 #define HX_ALIVE_MS        1000
 // High and low time of one clock pulse. The chip wants 0.2 us to 50 us.
@@ -46,6 +48,7 @@ static ScaleAdc s_adc = ADC_NONE;
 
 static portMUX_TYPE s_hx_mux = portMUX_INITIALIZER_UNLOCKED;
 static int8_t s_hx_fitted = -1;     // -1 not read from the preferences yet
+static int8_t s_choice = -1;        // ScaleAdcChoice, -1 not read yet
 static volatile uint32_t s_hx_ready_ms = 0;
 // The last three plausible conversions; the median of them is what the scale
 // sees. A single wrong bit is worth millions of counts, and a moving average
@@ -58,12 +61,49 @@ static volatile uint32_t s_hx_seq = 0;      // conversions accepted so far
 static uint32_t s_hx_seq_taken = 0;         // what scaleHardwareAvailable() has handed out
 static volatile uint32_t s_hx_rejected = 0;
 
+ScaleAdcChoice scaleAdcChoice() {
+  if (s_choice < 0) {
+    const int c = prefsGetInt(ADC_CHOICE_KEY, SCALE_ADC_AUTO);
+    s_choice = (c == SCALE_ADC_HX711 || c == SCALE_ADC_NAU7802) ? c : SCALE_ADC_AUTO;
+  }
+  return (ScaleAdcChoice)s_choice;
+}
+
+ScaleAdcChoice scaleAdcChoiceSaved() {
+  const int c = prefsGetInt(ADC_CHOICE_KEY, SCALE_ADC_AUTO);
+  return (c == SCALE_ADC_HX711 || c == SCALE_ADC_NAU7802) ? (ScaleAdcChoice)c : SCALE_ADC_AUTO;
+}
+
+void scaleAdcSetChoice(ScaleAdcChoice c) {
+  prefsPutInt(ADC_CHOICE_KEY, (int)c);
+  // s_choice and s_hx_fitted stay as they are until the next start: the
+  // reader's reset pin was picked from them at boot.
+}
+
+uint16_t scaleHxFindMs() {
+  const uint32_t v = prefsGetUInt(HX_FIND_KEY, HX_FIND_MS_DEFAULT);
+  if (v < HX_FIND_MS_MIN) return HX_FIND_MS_MIN;
+  if (v > HX_FIND_MS_MAX) return HX_FIND_MS_MAX;
+  return (uint16_t)v;
+}
+
+void scaleHxSetFindMs(uint16_t ms) {
+  if (ms < HX_FIND_MS_MIN) ms = HX_FIND_MS_MIN;
+  if (ms > HX_FIND_MS_MAX) ms = HX_FIND_MS_MAX;
+  prefsPutUInt(HX_FIND_KEY, ms);
+}
+
 bool scaleHx711Fitted() {
+  // A chip named in the settings is the answer, whatever an earlier boot found.
+  if (scaleAdcChoice() == SCALE_ADC_HX711) return true;
+  if (scaleAdcChoice() == SCALE_ADC_NAU7802) return false;
   if (s_hx_fitted < 0) s_hx_fitted = prefsGetBool(HX_KEY, false) ? 1 : 0;
   return s_hx_fitted == 1;
 }
 
 static void hxRemember(bool fitted) {
+  // Only automatic detection remembers; a named chip is already the answer.
+  if (scaleAdcChoice() != SCALE_ADC_AUTO) return;
   if (scaleHx711Fitted() == fitted) return;
   s_hx_fitted = fitted ? 1 : 0;
   prefsPutBool(HX_KEY, fitted);
@@ -160,7 +200,8 @@ static bool hxFind(void (*wait_cb)()) {
   s_hx_have = 0;
   int seen = 0;
   const uint32_t t0 = millis();
-  while (seen < 2 && millis() - t0 < HX_FIND_MS) {
+  const uint32_t find_ms = scaleHxFindMs();
+  while (seen < 2 && millis() - t0 < find_ms) {
     const HxPoll r = hxPoll();
     if (r == HX_GOOD || r == HX_SATURATED) {
       seen++;
@@ -210,19 +251,21 @@ bool scaleHardwareBegin(TwoWire* wire, void (*calibration_wait_cb)()) {
   // Asked separately so the two failure modes can be told apart. begin() also
   // returns false for a chip that answers and then refuses to start, and the
   // caller prints a different line for each.
-  if (nauPresent()) {
+  const ScaleAdcChoice choice = scaleAdcChoice();
+  if (choice != SCALE_ADC_HX711 && nauPresent()) {
     if (!nauBegin(calibration_wait_cb)) return false;
     s_adc = ADC_NAU7802;
     hxRemember(false);
     return true;
   }
-  if (hxFind(calibration_wait_cb)) {
+  if (choice != SCALE_ADC_NAU7802 && hxFind(calibration_wait_cb)) {
     s_adc = ADC_HX711;
     s_hx_ready_ms = millis();
     hxRemember(true);
     return true;
   }
-  Serial.printf("Neither a NAU7802 on 0x%02X nor an HX711 on GPIO%d/%d\n",
+  Serial.printf("No scale chip found (setting: %s; NAU7802 on 0x%02X, HX711 on GPIO%d/%d)\n",
+                choice == SCALE_ADC_HX711 ? "HX711" : choice == SCALE_ADC_NAU7802 ? "NAU7802" : "auto",
                 I2C_ADDR_NAU7802, hw_pins::HX711_SCK, hw_pins::HX711_DOUT);
   return false;
 }

@@ -201,6 +201,8 @@ Weboberfläche → **Waage**, Schale leer lassen und zuschauen. Die Seite zeichn
 
 Läuft sie nach 15 Minuten weiter als etwa ein Gramm pro Minute, ist es kein Aufwärmen mehr. Die Seite „Waage“ als Screenshot und die Zeilen `Scale:` aus dem Log schicken, dann lässt sich die Ursache eingrenzen. **„Verworfene Messwerte“** zählt Messungen, die die Waage aussortiert hat (Leitung hängt auf High oder Low, Eingang offen). Auf einer gesunden Waage bleibt die Zahl bei 0.
 
+**Findet die Waage den Chip nicht, obwohl alles richtig angeschlossen ist?** Weboberfläche → **Waage** → Karte **Waagen-Chip**. Normalerweise bleibt dort „Automatisch erkennen“. Läuft ein HX711 nach dem Einschalten langsam an, die **Wartezeit** erhöhen (Standard 1500 ms, bis 5000 ms). Hilft das nicht, den Chip **fest vorgeben** („HX711 fest vorgeben“): Die Waage sucht dann nur noch diesen Chip, nimmt ihn auch ohne bisherigen Fund als vorhanden an und lässt die Pins 5 und 7 für ihn frei. Speichern und neu starten, die Einstellung gilt ab dem nächsten Start. Wieder auf „Automatisch“ stellen, sobald es läuft.
+
 Ein Gerät ganz ohne Waage (nur NFC)? Dann in Einstellungen → Waage **„Waage vorhanden“** ausschalten, die Meldung verschwindet.
 
 <details>
