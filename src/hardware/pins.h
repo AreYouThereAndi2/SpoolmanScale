@@ -48,6 +48,11 @@ constexpr int8_t HX711_DOUT = 14;   // EXT_IO5, connector pin 7
 // need. Like the old wire it is only used once a probe has confirmed it.
 constexpr int8_t PN532_RESET_HX = 21;   // EXT_IO6, connector pin 8
 
+// The debug connector's ESP_TXD and ESP_RXD (pins 3 and 4). The firmware's
+// console is USB, so the scanner may use them; see scannerPinAllowed().
+constexpr int8_t UART0_TX = 43;
+constexpr int8_t UART0_RX = 44;
+
 constexpr int8_t TOUCH_SDA = 6;      // FT6336U internal board bus
 constexpr int8_t TOUCH_SCL = 5;      // FT6336U internal board bus
 constexpr int8_t TOUCH_INT = 7;      // FT6336U INT for wake-up

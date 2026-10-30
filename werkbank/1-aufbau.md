@@ -252,7 +252,7 @@ Ein Gerät ganz ohne Waage (nur NFC)? Dann in Einstellungen → Waage **„Waage
 **Optional: Reset-Draht an Pin 8.** Damit holt die Waage einen hängenden Leser selbst zurück, ohne Neustart.
 
 1. USB abziehen. Einen Draht vom Pad **RSTPDN** des PN532 an **Pin 8** der Buchse (GPIO 21) löten. Pin 8 ist nicht am 7-poligen Kabel: einzelne Crimp-Hülse oder direkt an den Kontakt.
-2. Pin 8 ist sonst die optionale RXD-Leitung zum Scanner. Liegt dort schon ein Scanner-Draht, diesen entfernen. Zum Scannen braucht die Waage ihn nicht, nur zum Einstellen von Licht und LED.
+2. Pin 8 ist sonst die optionale RXD-Leitung zum Scanner. Liegt dort schon ein Scanner-Draht, diesen entfernen. Zum Scannen braucht die Waage ihn nicht, nur zum Einstellen von Licht und LED. Soll das Licht steuerbar bleiben, den Scanner an die Debug-Buchse legen (siehe Stufe 4).
 3. USB anstecken. Am Gerät: Einstellungen → System → **NFC-Reset prüfen**. Meldet die Waage „funktioniert“, nutzt sie den Draht ab dem nächsten Start. Vorher treibt sie Pin 8 nie.
 
 ### Stufe 3: Ins Gehäuse
@@ -285,6 +285,8 @@ Der GM861 im Edelstahlgehäuse hat ein Kabel mit UART und USB. **Die Farben der 
 VCC kommt an **OUT des 3,3-V-Reglers** aus Stufe 1. Mit NAU7802-Aufbau gibt es den Regler noch nicht: dann jetzt einen anschließen, **IN** an Pin 1 (rot, 5 V), **GND** an Pin 2 (schwarz).
 
 RXD ist nur nötig, wenn die Waage dem Scanner etwas sagen soll: Licht und grüne LED aus der Weboberfläche einstellen. Pin 8 ist nicht am 7-poligen Kabel, dafür einen einzelnen Draht an den achten Kontakt der Buchse (z. B. mit einer einzelnen JST-Crimp-Hülse).
+
+**Scanner an der Debug-Buchse (ab v0.10.7).** Das Board hat neben der Erweiterungsbuchse eine 7-polige Debug-Buchse. Ihre Pins 3 und 4 sind ESP_TXD (GPIO 43) und ESP_RXD (GPIO 44). Die Firmware belegt sie nicht, die Konsole läuft über USB. Hängt der Scanner dort (Scanner-TXD an Pin 4, Scanner-RXD an Pin 3), bleiben Pin 6 und Pin 8 der Erweiterungsbuchse frei: Pin 8 kann den NFC-Reset tragen, und das Licht des Scanners lässt sich trotzdem aus der Weboberfläche steuern. In der Weboberfläche unter Einstellungen → Barcode-Scanner **RX-Pin GPIO 44** und **TX-Pin GPIO 43** einstellen. Welcher Pin der Buchse Pin 1 ist, ergibt eine Messung bei eingeschaltetem USB: Pin 1 hat etwa 5 V, Pin 2 etwa 3,3 V, Pin 7 ist GND. Das Datenblatt (Panlee ZX3D50CE02S) und die eigene Platine können sich unterscheiden.
 
 **Schritt für Schritt:**
 

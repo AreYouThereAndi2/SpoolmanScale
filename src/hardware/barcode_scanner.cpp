@@ -44,6 +44,11 @@ bool scannerPinAllowed(int pin, bool is_tx) {
   if (nfcResetOnScannerPin() && pin == hw_pins::PN532_RESET_HX) return false;
   switch (pin) {
     case 12: case 13: case 14: case 21: return true;
+    // TXD0 and RXD0 on the board's debug connector. Nothing else uses them:
+    // the console is the USB port (ARDUINO_USB_CDC_ON_BOOT), so a scanner can
+    // live there and leave the extension connector's pins to the HX711 and
+    // the reader's reset wire.
+    case hw_pins::UART0_TX: case hw_pins::UART0_RX: return true;
     default: return false;
   }
 }

@@ -93,7 +93,7 @@ static String body() {
   h += T(STR_W_SCALE_ADC_HINT);
   h += F("</span></div><div class='field'><label>");
   h += T(STR_W_SCALE_FIND);
-  h += F("</label><input id='adcms' type='number' min='");
+  h += F("</label><input id='adcms' type='number' style='max-width:140px' min='");
   h += String(HX_FIND_MS_MIN);
   h += F("' max='");
   h += String(HX_FIND_MS_MAX);
@@ -147,7 +147,16 @@ static String body() {
          "slChart();}).catch(()=>{});}"
          "slTick();setInterval(slTick,500);"
          "$('adcs').addEventListener('click',()=>{"
-         "post('/api/scale/adc',$('adc').value+','+$('adcms').value).then(r=>{"
+         "var ms=parseInt($('adcms').value,10);"
+         "if(isNaN(ms))ms=");
+  h += String(HX_FIND_MS_DEFAULT);
+  h += F(";ms=Math.max(");
+  h += String(HX_FIND_MS_MIN);
+  h += F(",Math.min(");
+  h += String(HX_FIND_MS_MAX);
+  h += F(",ms));$('adcms').value=ms;"
+         "post('/api/scale/adc',$('adc').value+','+ms).then(r=>{"
+         "if(r.ok&&r.ms)$('adcms').value=r.ms;"
          "flash('adc-s',r.ok?WS.ok:WS.err,!r.ok,6000);"
          "if(r.ok)$('adcr').style.display='';});});"
          "$('adcr').addEventListener('click',()=>{post('/api/restart','');});"
@@ -207,7 +216,7 @@ static void routes(WebServer &srv) {
     scaleHxSetFindMs((uint16_t)ms);
     logSDf("Web: scale chip -> %s, HX711 search wait %u ms (from next start)",
            choice == 1 ? "HX711" : choice == 2 ? "NAU7802" : "auto", (unsigned)scaleHxFindMs());
-    srv.send(200, "application/json", "{\"ok\":true}");
+    srv.send(200, "application/json", "{\"ok\":true,\"ms\":" + String((int)scaleHxFindMs()) + "}");
   });
 
   srv.on("/api/scale/autozero", HTTP_POST, [&srv]() {
