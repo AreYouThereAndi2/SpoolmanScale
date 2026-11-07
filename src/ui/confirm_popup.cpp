@@ -20,6 +20,7 @@
 #include "dried_action.h"
 #include "app/deferred_actions.h"
 #include "spoolman_screen.h"
+#include "main_screen_helpers.h"
 #include "tare_entry.h"
 #include "extras_chooser.h"
 #include "lang.h"
@@ -95,6 +96,24 @@ static int        s_job_spool_id  = 0;  // ... carried with the parked write
 static void tareFollowUp();
 static void tareDropFollowUp();
 
+// Says on the status line what became of a weight write. The press closes the
+// popup at once and the request runs a pass later, so without this a write
+// that went nowhere - no spool loaded, no network, a refusal from the server -
+// looked exactly like one that worked.
+static void weightResult(int code, float grams) {
+  char buf[64];
+  if (code == PATCH_WEIGHT_ASKING) return;   // a question follows instead
+  if (backendWriteOk(code)) {
+    snprintf(buf, sizeof(buf), T(STR_WEIGHT_SAVED_OK), grams);
+    statusMessageShow(buf, UI_COL_GOOD);
+  } else if (code == PATCH_WEIGHT_NO_TARGET) {
+    statusMessageShow(T(wifi_ok ? STR_WEIGHT_NO_SPOOL : STR_NO_WIFI), UI_COL_WARN);
+  } else {
+    snprintf(buf, sizeof(buf), T(STR_WEIGHT_SAVE_FAIL), code);
+    statusMessageShow(buf, UI_COL_BAD_TEXT);
+  }
+}
+
 void handleConfirmPopupDeferredActions() {
   if (s_job == CJ_NONE) return;
   const ConfirmJob job = s_job;
@@ -108,8 +127,9 @@ void handleConfirmPopupDeferredActions() {
     return;
   }
   switch (job) {
-    case CJ_WEIGHT:
-      patchSpoolmanWeight(s_job_value);
+    case CJ_WEIGHT: {
+      const int code = patchSpoolmanWeight(s_job_value);
+      weightResult(code, s_job_value);
       // Remembered so the question can come up on removal. A yes there
       // reports the same weight once more, which is the only way to open the
       // window. The cap check cannot interfere: it is BamBuddy only and
@@ -117,6 +137,7 @@ void handleConfirmPopupDeferredActions() {
       if (amsAskActive()) amsNoteMeasurement(sm_id, s_job_value, s_job_gross, true);
       if (amsPickActive()) amsPickNote(sm_id, sm_filament_name);
       break;
+    }
     case CJ_INITIAL:
       patchInitialWeight(s_job_value);
       break;
@@ -132,12 +153,12 @@ void handleConfirmPopupDeferredActions() {
       // already leaves the spool at full - the weight write after it is what
       // stamps last_weighed_at and last_scale_weight.
       patchInitialWeight(s_job_value);
-      patchSpoolmanWeight(s_job_value, true);
+      weightResult(patchSpoolmanWeight(s_job_value, true), s_job_value);
       break;
     case CJ_CAP_KEEP:
       // Written anyway, so the scale and the server agree that a weighing
       // happened. BamBuddy clamps it, which is what the user just accepted.
-      patchSpoolmanWeight(s_job_value, true);
+      weightResult(patchSpoolmanWeight(s_job_value, true), s_job_value);
       break;
     default: break;
   }

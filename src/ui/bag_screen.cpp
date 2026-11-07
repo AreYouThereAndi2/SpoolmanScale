@@ -17,6 +17,10 @@
 
 
 static char bag_input[16] = "";
+// The field opens showing the stored weight. The first digit replaces it
+// instead of being appended: "35" typed over "50.0" used to save 50.035 g,
+// and the bag weight looked as if it never changed.
+static bool bag_input_fresh = false;
 static lv_obj_t *lbl_bag_display = nullptr;
 static lv_obj_t *lbl_bag_result_global = nullptr;
 
@@ -36,6 +40,7 @@ void buildBagScreen() {
   lbl_bag_display = nullptr;
   lbl_bag_result_global = nullptr;
   snprintf(bag_input, sizeof(bag_input), "%.1f", bag_weight_g);
+  bag_input_fresh = true;
 
   buildSubHeader(scr_bag, T(STR_BTN_BAGWEIGHT),
     [](lv_event_t *e){
@@ -102,6 +107,7 @@ void buildBagScreen() {
     lv_obj_add_event_cb(btn, [](lv_event_t *e) {
       if (!lbl_bag_display) return;
       const char* ch = lv_label_get_text(lv_obj_get_child(lv_event_get_target(e), 0));
+      if (bag_input_fresh) { bag_input[0] = '\0'; bag_input_fresh = false; }
       if (ch[0] == '.' && strchr(bag_input, '.')) return;
       int len = strlen(bag_input);
       if (len < (int)sizeof(bag_input)-1) { bag_input[len]=ch[0]; bag_input[len+1]='\0'; }
@@ -124,6 +130,7 @@ void buildBagScreen() {
   lv_obj_set_style_border_color(btn_del_b, lv_color_hex(UI_COL_LINE_SOFT), 0);
   lv_obj_add_event_cb(btn_del_b, [](lv_event_t *e) {
     if (!lbl_bag_display) return;
+    bag_input_fresh = false;
     int len = strlen(bag_input);
     if (len > 0) bag_input[len-1] = '\0';
     lv_label_set_text(lbl_bag_display, bag_input[0] ? bag_input : "_");

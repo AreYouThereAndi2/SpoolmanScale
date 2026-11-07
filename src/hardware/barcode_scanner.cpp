@@ -35,6 +35,16 @@ static size_t   s_len = 0;
 static uint32_t s_last_byte_ms = 0;
 static bool     s_overflow = false;
 
+// Bytes that came in on our RX since the UART was opened, replies and codes
+// alike. The settings page shows it: zero while the scanner beeps and lights
+// up means the line from its TXD never reaches us.
+static uint32_t s_rx_bytes = 0;
+
+static void noteRx() {
+  if (s_rx_bytes++ == 0)
+    logSDf("Scanner: first data on RX (GPIO%d)", (int)g_scanner_rx_pin);
+}
+
 static char     s_last_code[SCANNER_CODE_MAX];
 static uint32_t s_last_code_ms = 0;
 
@@ -80,7 +90,7 @@ static constexpr uint8_t  GM_DEFAULT_0000 = 0xD6;
 // data byte. Whatever else the line carries meanwhile is dropped, a code read
 // in these few hundred milliseconds included.
 static bool gmTransact(const uint8_t* cmd, size_t n, uint8_t* value) {
-  while (s_uart.available() > 0) s_uart.read();
+  while (s_uart.available() > 0) { s_uart.read(); noteRx(); }
   s_uart.write(cmd, n);
   s_uart.flush();
   uint8_t win[5] = {0};
@@ -90,6 +100,7 @@ static bool gmTransact(const uint8_t* cmd, size_t n, uint8_t* value) {
     if (s_uart.available() <= 0) { delay(2); continue; }
     memmove(win, win + 1, sizeof(win) - 1);
     win[sizeof(win) - 1] = (uint8_t)s_uart.read();
+    noteRx();
     if (++got >= sizeof(win) && win[0] == 0x02 && win[1] == 0x00 && win[2] == 0x00 &&
         win[3] >= 1) {
       if (value) *value = win[4];
@@ -160,6 +171,7 @@ void scannerBegin() {
   scannerClose();
   s_len = 0;
   s_overflow = false;
+  s_rx_bytes = 0;
   if (!g_scanner_enabled) {
     s_light_result = SCAN_LIGHT_NOT_SENT;
     logSD("Scanner: switched off");
@@ -228,6 +240,7 @@ bool scannerPoll(char* out, size_t out_size) {
   while (s_uart.available() > 0) {
     const int c = s_uart.read();
     if (c < 0) break;
+    noteRx();
     s_last_byte_ms = millis();
     if (c == '\r' || c == '\n') {
       if (s_len > 0 || s_overflow) {
@@ -245,3 +258,4 @@ bool scannerPoll(char* out, size_t out_size) {
 }
 
 const char* scannerLastCode()   { return s_last_code; }
+uint32_t    scannerRxBytes()    { return s_rx_bytes; }

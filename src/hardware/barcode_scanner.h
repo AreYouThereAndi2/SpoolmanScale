@@ -84,3 +84,6 @@ bool scannerPoll(char* out, size_t out_size);
 
 // The last code read, for the status page.
 const char* scannerLastCode();
+// Bytes received from the scanner since the UART opened. Zero while it
+// reads and beeps: its TXD does not reach our RX pin.
+uint32_t scannerRxBytes();

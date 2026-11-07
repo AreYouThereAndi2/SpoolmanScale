@@ -47,9 +47,18 @@ const char* const STRINGS[][3] = {
     "Parcours de l'inventaire... %u ko" },  // STR_SEARCHING_INVENTORY_KB
 
   // Mainscreen Buttons
-  { "Gewicht updaten",  "Update Weight", "Envoyer le poids" },  // STR_BTN_WEIGHT
-  { "Heute getrocknet", "Dried today",   "Noter le séchage" },  // STR_BTN_DRIED
-  { "Spule verknüpfen", "Link Spool",    "Lier la bobine" },  // STR_BTN_LINK
+  { "Gewicht updaten", "Update Weight", "Envoyer le poids" },  // STR_BTN_WEIGHT
+  { "Gewicht gespeichert: %.0f g",
+    "Weight saved: %.0f g",
+    "Poids enregistré : %.0f g" },  // STR_WEIGHT_SAVED_OK
+  { "Keine Spule: Tag auflegen oder scannen",
+    "No spool: place the tag or scan",
+    "Pas de bobine : posez le tag" },  // STR_WEIGHT_NO_SPOOL
+  { "Nicht gespeichert (HTTP %d)",
+    "Not saved (HTTP %d)",
+    "Non enregistré (HTTP %d)" },  // STR_WEIGHT_SAVE_FAIL
+  { "Heute getrocknet", "Dried today", "Noter le séchage" },  // STR_BTN_DRIED
+  { "Spule verknüpfen", "Link Spool",  "Lier la bobine" },  // STR_BTN_LINK
 
   // Welcome Screen
 
@@ -3301,12 +3310,18 @@ const char* const STRINGS[][3] = {
   { "Vom Scanner bestätigt.",
     "Confirmed by the scanner.",
     "Confirmé par le lecteur." },  // STR_W_SCANNER_LIGHT_OK
-  { "Der Scanner hat nicht geantwortet: TX-Leitung prüfen.",
-    "The scanner did not answer: check the TX wire.",
-    "Le lecteur n'a pas répondu : vérifiez le fil TX." },  // STR_W_SCANNER_LIGHT_NOANS
+  { "Keine Antwort vom Scanner. Ändert sich das Licht trotzdem, fehlt der Rückweg: Scanner-TXD zum RX-Pin.",
+    "No answer from the scanner. If the light changes anyway, the way back is missing: scanner TXD to the RX pin.",
+    "Pas de réponse du lecteur. Si la lumière change quand même, c'est le retour qui manque : TXD du lecteur vers la broche RX." },  // STR_W_SCANNER_LIGHT_NOANS
   { "Ohne TX-Pin kann die Waage nichts senden.",
     "Without a TX pin the scale cannot send anything.",
     "Sans broche TX, la balance ne peut rien envoyer." },  // STR_W_SCANNER_LIGHT_NOTX
+  { "Vom Scanner empfangen",
+    "Received from the scanner",
+    "Reçu du lecteur" },  // STR_W_SCANNER_RXBYTES
+  { "Noch nichts angekommen. Leuchtet und piept der Scanner beim Lesen, erreicht seine TXD-Leitung den RX-Pin nicht, oder er gibt über USB aus: im Handbuch den Einstellcode „Serial Output“ (Kapitel 2.1) scannen.",
+    "Nothing received yet. If the scanner lights up and beeps when it reads, its TXD wire does not reach the RX pin, or it sends over USB: scan the setup code “Serial Output” in its manual (chapter 2.1).",
+    "Rien reçu pour l'instant. Si le lecteur s'allume et bipe à la lecture, son fil TXD n'atteint pas la broche RX, ou il émet par USB : scannez le code de réglage « Serial Output » du manuel (chapitre 2.1)." },  // STR_W_SCANNER_RX0
   { "Druck fertig",
     "Print finished",
     "Terminé" },  // STR_PD_TITLE
