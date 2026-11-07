@@ -12,6 +12,8 @@ bool isSpoolWeightScopeOpen();
 // Runs whatever a popup button parked - the weight, tare, archive and cap
 // writes. Called from appLoop().
 void handleConfirmPopupDeferredActions();
+// Closes the weight popup unsent when another spool was loaded under it.
+void confirmPopupSpoolTick();
 // Every dialog this file owns, for the navigation. Closed, not hidden: a
 // question nobody can see any more must not keep uiModalWaiting() true.
 void closeConfirmPopups();

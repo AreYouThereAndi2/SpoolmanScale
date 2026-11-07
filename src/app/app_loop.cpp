@@ -724,6 +724,7 @@ void appLoop() {
   handleBluetoothDeferredActions();
   handleBleDevicesDeferredActions();
   handlePrinterDeferredActions();
+  confirmPopupSpoolTick();
   handleConfirmPopupDeferredActions();
   handleDriedDeferredAction();
   // Bringing an archived spool back. Out here rather than in the button's

@@ -351,6 +351,21 @@ static String body() {
     }
     h += F("</span>");
   }
+  // Whether anything comes back at all. Lights that change and a beep on a
+  // read prove only the way to the scanner and the scanner itself.
+  if (g_scanner_enabled) {
+    h += F("<div class='field'><label>");
+    h += T(STR_W_SCANNER_RXBYTES);
+    h += F("</label><code>");
+    h += String((unsigned long)scannerRxBytes());
+    h += F(" B</code>");
+    if (scannerRxBytes() == 0) {
+      h += F("<span class='hint'>");
+      h += T(STR_W_SCANNER_RX0);
+      h += F("</span>");
+    }
+    h += F("</div>");
+  }
   if (scannerLastCode()[0]) {
     h += F("<div class='field'><label>");
     h += T(STR_W_SCANNER_LAST);
@@ -517,8 +532,11 @@ static String body() {
          "document.querySelectorAll('[id^=xd]').forEach(c=>c.addEventListener('change',()=>{"
          "if(document.querySelectorAll('[id^=xd]:checked').length>3)c.checked=false;}));"
          "$('xt-b').addEventListener('click',()=>{let b='';"
-         "for(let i=0;i<8;i++){b+=$('xn'+i).value.replace(/[\\t\\n]/g,' ').trim()+'\\t'"
-         "+($('xg'+i).value||'0')+'\\t'+($('xd'+i).checked?'1':'0')+'\\n';}"
+         // A weight typed without a name used to be dropped on the device,
+         // which keeps only named places: the placeholder becomes the name.
+         "for(let i=0;i<8;i++){let n=$('xn'+i).value.replace(/[\\t\\n]/g,' ').trim();"
+         "const g=$('xg'+i).value||'0';if(!n&&parseFloat(g)>0){n=$('xn'+i).placeholder;$('xn'+i).value=n;}"
+         "b+=n+'\\t'+g+'\\t'+($('xd'+i).checked?'1':'0')+'\\n';}"
          "postFlash('/api/extras',b,'xt-s',4000);});"
          "$('f2-b').addEventListener('click',()=>{"
          "postFlash('/api/f2b',$('f2').value.trim(),'f2-s',4000);});"
