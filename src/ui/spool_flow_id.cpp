@@ -389,12 +389,14 @@ void linkIdLookupAndPatch(int entered_id, bool is_bambu) {
     if (lbl_link_id_status) lv_label_set_text(lbl_link_id_status, T(STR_NO_CONNECTION));
     return;
   }
-  if (code == 404 || code < 0) {
-    if (lbl_link_id_status) lv_label_set_text(lbl_link_id_status, T(STR_LINK_ID_NOT_FOUND));
-    return;
-  }
+  // Before "not found": -2 is a spool the server did send, as a document the
+  // scale could not read, and the catch-all below swallowed it (upstream 1156587).
   if (code == -2) {
     if (lbl_link_id_status) lv_label_set_text(lbl_link_id_status, T(STR_LINK_JSON_ERR));
+    return;
+  }
+  if (code == 404 || code < 0) {
+    if (lbl_link_id_status) lv_label_set_text(lbl_link_id_status, T(STR_LINK_ID_NOT_FOUND));
     return;
   }
   if (code != 200) {

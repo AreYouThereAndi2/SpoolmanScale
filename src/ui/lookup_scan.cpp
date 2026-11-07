@@ -329,7 +329,6 @@ static void archiveNoVerdict(int code, int text_id) {
   paintLookupFailure(code, text_id);
   sm_found = false;
   s_verdict_unknown = false;
-  s_verdict_certain = false;
   updateLinkButton();
 }
 

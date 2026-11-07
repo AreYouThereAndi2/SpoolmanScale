@@ -307,7 +307,7 @@ RXD ist nur nötig, wenn die Waage dem Scanner etwas sagen soll: Licht und grün
 | Anzeige | Ursache und Abhilfe |
 |---|---|
 | Scanner leuchtet nicht | Keine 3,3 V am Scanner: Regler und Pin 1/4 am Scanner-Stecker prüfen. |
-| Scanner leuchtet und piept, aber „Letzter Code“ bleibt leer | TXD steckt nicht an Pin 6, oder TXD und RXD sind vertauscht. Scanner in der Weboberfläche eingeschaltet? |
+| Scanner leuchtet und piept, aber „Letzter Code“ bleibt leer | Weboberfläche → Einstellungen → Barcode-Scanner, Zeile **„Vom Scanner empfangen“** (ab v0.10.8). Steht dort **0 B**, kommt nichts an: Scanner-TXD erreicht den RX-Pin nicht (Pin 6, an der Debug-Buchse Pin 4), TXD und RXD sind vertauscht, oder der Scanner gibt über USB statt seriell aus. Dann im Handbuch des GM861 den Einstellcode **„Serial Output“** (Kapitel 2.1) scannen. Ändert die Lichteinstellung das Licht des Scanners, ist der Weg zum Scanner in Ordnung und nur der Rückweg fehlt. |
 | „Letzter Code“ zeigt Zeichensalat | Die Baudrate stimmt nicht. Der GM861 hat ab Werk 9600. |
 | Licht/LED-Einstellung: „keine Antwort“ | RXD fehlt an Pin 8, oder in der Weboberfläche ist kein TX-Pin (21) eingetragen. |
 

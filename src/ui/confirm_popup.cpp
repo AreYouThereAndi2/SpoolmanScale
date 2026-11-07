@@ -92,6 +92,9 @@ static float      s_job_gross = 0.0f;   // the pad reading the AMS note wants
 // question stood would take a tare that belongs to the one before it.
 static int        s_tare_spool_id = 0;  // the spool the scope question is for
 static int        s_job_spool_id  = 0;  // ... carried with the parked write
+// The spool the weight popup was opened for. Another spool loaded under the
+// open popup would otherwise take its weight (upstream 43a4aff).
+static int        s_weight_spool_id = 0;
 
 static void tareFollowUp();
 static void tareDropFollowUp();
@@ -114,12 +117,24 @@ static void weightResult(int code, float grams) {
   }
 }
 
+void confirmPopupSpoolTick() {
+  if (!confirm_popup || confirm_action != 2 || sm_id == s_weight_spool_id) return;
+  logSDf("UI: weight popup for spool %d closed unsent, spool %d is loaded now",
+         s_weight_spool_id, sm_id);
+  closeConfirmPopup();
+}
+
 void handleConfirmPopupDeferredActions() {
   if (s_job == CJ_NONE) return;
   const ConfirmJob job = s_job;
   s_job = CJ_NONE;
   const bool tare_job = job == CJ_TARE_SPOOL || job == CJ_TARE_FILAMENT ||
                         job == CJ_TARE_VENDOR;
+  if (job == CJ_WEIGHT && sm_id != s_job_spool_id) {
+    logSDf("Weight: %.1f g was for spool %d, spool %d is loaded now - not sent",
+           s_job_value, s_job_spool_id, sm_id);
+    return;
+  }
   if (tare_job && sm_id != s_job_spool_id) {
     logSDf("Tare: %.1f g was for spool %d, spool %d is loaded now - not stored",
            s_job_value, s_job_spool_id, sm_id);
@@ -414,6 +429,7 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_set_style_text_font(lbl_q, &lv_font_montserrat_ext_14, 0);
     lv_obj_set_style_text_align(lbl_q, LV_TEXT_ALIGN_CENTER, 0);
     snprintf(s_weight_msg, sizeof(s_weight_msg), "%s", msg);
+    s_weight_spool_id = sm_id;
 
     // The parts on the spool, top right: what comes off, and a tap to change
     // it. Only once any are set up; the question keeps the middle either way.
@@ -473,11 +489,13 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_set_style_shadow_width(btn1, 0, 0);
     lv_obj_add_event_cb(btn1, [](lv_event_t *e) {
       closeConfirmPopup();
+      // A tap in the pass the spool changed in, before the tick took us down.
+      if (sm_id != s_weight_spool_id) return;
       const float bare = spoolExtrasBareReading();
       float r = bare - (float)sm_spool_weight;
       if (r < 0) r = 0;
       // The numbers are taken now, the request runs on the next loop pass.
-      s_job = CJ_WEIGHT; s_job_value = r; s_job_gross = bare;
+      s_job = CJ_WEIGHT; s_job_value = r; s_job_gross = bare; s_job_spool_id = sm_id;
     }, LV_EVENT_CLICKED, NULL);
     lv_obj_t *l1 = lv_label_create(btn1);
     char buf1[48];
@@ -498,12 +516,13 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_set_style_shadow_width(btn2, 0, 0);
     lv_obj_add_event_cb(btn2, [](lv_event_t *e) {
       closeConfirmPopup();
+      if (sm_id != s_weight_spool_id) return;
       const float bare = spoolExtrasBareReading();
       float r = bare - (float)sm_spool_weight - bag_weight_g;
       if (r < 0) r = 0;
       // Gross without the bag: that is what the scale would have shown had
       // the spool been weighed bare, and it is what FilaMan has to be told.
-      s_job = CJ_WEIGHT; s_job_value = r; s_job_gross = bare - bag_weight_g;
+      s_job = CJ_WEIGHT; s_job_value = r; s_job_gross = bare - bag_weight_g; s_job_spool_id = sm_id;
     }, LV_EVENT_CLICKED, NULL);
     lv_obj_t *l2 = lv_label_create(btn2);
     char buf2[56];
