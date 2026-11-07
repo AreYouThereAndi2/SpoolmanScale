@@ -13,6 +13,7 @@
 #include "services/tag_spool_match.h"
 #include "ui/spool_flow.h"
 #include "ui/spoolman_lookup.h"
+#include "ui/status_popover.h"
 #include "ui/theme.h"
 #include "ui/ui_common.h"
 #include "services/spool_color.h"
@@ -32,13 +33,33 @@
 
 static unsigned long s_msg_ms = 0;                       // 0: nothing held
 static char          s_msg_uid[sizeof(g_tag.uid_str)] = "";
+// The message in full, for the popover a tap on the line opens: the line
+// itself cuts it off at about forty characters. And the scanned code it is
+// about, when there is one, for the popover's link to the phone app.
+static char          s_msg_text[192] = "";
+static char          s_msg_code[64]  = "";
 
 void statusMessageShow(const char* text, uint32_t color) {
   if (!lbl_status || !text) return;
+  snprintf(s_msg_text, sizeof(s_msg_text), "%s", text);
+  s_msg_code[0] = '\0';
   lv_label_set_text(lbl_status, text);
   lv_obj_set_style_text_color(lbl_status, lv_color_hex(color), 0);
   snprintf(s_msg_uid, sizeof(s_msg_uid), "%s", g_tag.uid_str);
   s_msg_ms = millis() ? millis() : 1;
+}
+
+void statusMessageAttachCode(const char* code) {
+  snprintf(s_msg_code, sizeof(s_msg_code), "%s", code ? code : "");
+}
+
+// Whether the line still shows the last message: anything else written to it
+// since starts differently. Compared over the first characters only, because
+// the label replaces its end with "..." once the text is longer than the line.
+static bool statusMessageOnLine() {
+  if (!lbl_status || !s_msg_text[0]) return false;
+  const size_t n = strlen(s_msg_text) < 12 ? strlen(s_msg_text) : 12;
+  return strncmp(lv_label_get_text(lbl_status), s_msg_text, n) == 0;
 }
 
 void applyTagSpoolView() {
@@ -69,6 +90,12 @@ void tagSpoolViewAttach(lv_obj_t* status_label) {
   // a target without reaching into the header above.
   lv_obj_set_ext_click_area(status_label, STATUS_TAP_EXT_PX);
   lv_obj_add_event_cb(status_label, [](lv_event_t* e) {
+    // A message on the line: the whole of it, which the line cuts off.
+    if (statusMessageOnLine()) {
+      logSD("UI: status line -> message in full");
+      showStatusPopover(s_msg_text, s_msg_code[0] ? s_msg_code : nullptr);
+      return;
+    }
     if (!sm_found || !tagSpoolLookupDiffers()) return;
     tagSpoolLookupToggleView();
     logSDf("UI: status line -> showing the %s of spool %d",

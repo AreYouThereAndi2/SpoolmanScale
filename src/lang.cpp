@@ -3430,6 +3430,12 @@ const char* const STRINGS[][3] = {
   { "%s unbekannt, am Handy anlegen",
     "%s unknown, add it on the phone",
     "%s inconnu, à créer au tél." },  // STR_NS_NOT_FOUND
+  { "filament_to_bambuddy kennt diesen Code nicht. Amazon-Aufkleber (X00…) stehen in keiner Produktdatenbank: besser den Barcode des Herstellers scannen. Oder die Spule einmal am Handy anlegen. Die App merkt sich den Code, und die Waage erkennt ihn beim nächsten Scan.",
+    "filament_to_bambuddy does not know this code. Amazon stickers (X00…) are in no product database: scan the maker's barcode instead. Or add the spool once on the phone. The app remembers the code, and the scale knows it at the next scan.",
+    "filament_to_bambuddy ne connaît pas ce code. Les étiquettes Amazon (X00…) ne sont dans aucune base : scannez plutôt le code du fabricant. Ou créez la bobine une fois au téléphone. L'appli retient le code, la balance le reconnaît au scan suivant." },  // STR_NS_NOT_FOUND_HELP
+  { "Mit dem Handy scannen: öffnet die App mit diesem Code",
+    "Scan with the phone: opens the app with this code",
+    "Scanner avec le téléphone : ouvre l'appli avec ce code" },  // STR_STATUS_QR_CAP
   { "Neue Spule: %s",
     "New spool: %s",
     "Nouvelle : %s" },  // STR_NS_TITLE
