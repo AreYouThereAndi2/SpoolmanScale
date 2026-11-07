@@ -151,6 +151,8 @@ static void offerNewSpool(const char* code, int filament_id = 0) {
   }
   if (!s_ns.found) {
     scanStatus(UI_COL_WARN, STR_NS_NOT_FOUND, code);
+    // A tap on the line offers the phone app with this code filled in.
+    statusMessageAttachCode(code);
     return;
   }
   if (s_ns.label_weight <= 0) s_ns.label_weight = 1000;

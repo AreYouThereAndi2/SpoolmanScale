@@ -15,14 +15,18 @@ void paintTagStatus();
 // so nobody ever saw one. Held while the same tag stays on the pad, for
 // STATUS_MESSAGE_HOLD_MS; a different tag ends it at once.
 void statusMessageShow(const char* text, uint32_t color);
+// The scanned code the message just shown is about. A tap on the line then
+// offers the phone app with that code filled in (ui/status_popover.h).
+void statusMessageAttachCode(const char* code);
 
 // Material, maker and colour swatch of a Bambu tag that does not match its
 // spool, from whichever side tagSpoolLookupShowsSpool() names. Temperature and
 // everything else stay as they are. Nothing but repainting three labels.
 void applyTagSpoolView();
 
-// Makes the status line the switch between the two: tappable, and only
-// answering while tag and spool differ. Once, where the line is built.
+// Makes the status line tappable, once, where it is built. A message on it
+// opens in full (ui/status_popover.h); otherwise the tap switches between tag
+// and spool, and only while the two differ.
 void tagSpoolViewAttach(lv_obj_t* status_label);
 
 // Shows or hides every way into the AMS view: the header chip on any device,
