@@ -9,7 +9,8 @@
 //
 //  The printer is the one picked in the AMS view, kept in NVS as
 //  "ams_printer", so switching there switches everything: the power chip,
-//  the question after a print and the cooldown switch-off.
+//  the question after a print and the cooldown switch-off. A cooldown that
+//  is already waiting stays with the printer and the plug it was asked for.
 //
 //  A finished print is read off BamBuddy's archive, not off the printer's
 //  live state: the archive keeps the job, its outcome and whether anyone has
@@ -22,8 +23,10 @@
 //  Switching off after a print: BamBuddy has no cooldown on a manual off.
 //  When its own Auto Power Off is set on the plug, BamBuddy does it and the
 //  scale only says so. Otherwise the scale waits here until nozzle and bed
-//  are below the plug's threshold (50 C when none is set), then switches.
-//  A new print starting, or an hour passing, ends the wait.
+//  are below the plug's threshold (50 C when none is set), then switches;
+//  only on a reading of a connected printer that has the nozzle in it. A
+//  print starting or paused on it, or an hour passing, ends the wait with
+//  the plug left on.
 //
 //  Everything here blocks for one small request at a time and runs from the
 //  loop on a slow timer. No LVGL.

@@ -402,6 +402,8 @@ int bbSwitchPlug(const char* base_url, const char* api_key, int plug_id, bool on
 
 struct BbPrinterLive {
   bool  valid;
+  // False only when BamBuddy says so; a server that leaves the field out
+  // reads as connected, as before the cooldown asked.
   bool  connected;
   bool  awaiting_plate_clear;
   char  state[16];       // Bambu's gcode_state: IDLE, RUNNING, FINISH, FAILED...

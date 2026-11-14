@@ -27,6 +27,13 @@ static unsigned long s_cool_since_ms = 0;
 static unsigned long s_cool_next_ms  = 0;
 static int           s_cool_temp     = -1;
 static int           s_cool_target   = PW_COOL_DEFAULT_C;
+// The printer and the plug a running cooldown is for, taken when the wait
+// starts. The AMS view may step to another printer meanwhile, and its chip
+// reads that printer's plug into s_plug: the wait used to follow, and switched
+// the other printer off as soon as that one read cold, a paused print on it
+// included, while the printer that had been asked about stayed on.
+static int           s_cool_printer  = 0;
+static int           s_cool_plug     = 0;
 
 static bool watchActive() {
   return backendIsBamBuddy() && wifi_ok;
@@ -71,17 +78,34 @@ int printerWatchRefreshPlug() {
   return code;
 }
 
-int printerWatchSwitch(bool on) {
-  if (!s_plug.found || !s_plug.controllable) return -1;
-  const int code = bbSwitchPlug(backendBaseUrl(), bambuddyApiKey(), s_plug.id, on);
-  logSDf("PrinterWatch: plug %d -> %s, HTTP %d", s_plug.id, on ? "ON" : "OFF", code);
+static int switchPlug(int plug_id, bool on) {
+  const int code = bbSwitchPlug(backendBaseUrl(), bambuddyApiKey(), plug_id, on);
+  logSDf("PrinterWatch: plug %d -> %s, HTTP %d", plug_id, on ? "ON" : "OFF", code);
   if (code == 200) {
-    s_plug.state_known = true;
-    s_plug.on = on;
-    // A manual switch overrides a pending cooldown either way.
-    s_cooling = false;
+    if (s_plug.id == plug_id) {
+      s_plug.state_known = true;
+      s_plug.on = on;
+    }
+    // A switch of the plug a cooldown waits for ends that wait, either way.
+    if (s_cooling && plug_id == s_cool_plug) s_cooling = false;
   }
   return code;
+}
+
+int printerWatchSwitch(bool on) {
+  if (!s_plug.found || !s_plug.controllable) return -1;
+  return switchPlug(s_plug.id, on);
+}
+
+// A print on the printer, running, being prepared or paused. A paused one (a
+// runout, a jam) cools down like a finished one, and power cut then loses it.
+// The spellings the AMS view reads as well.
+static bool printActive(const char* st) {
+  static const char* const ACTIVE[] = { "RUNNING", "PRINTING", "PREPARE", "PREPARING",
+                                        "SLICING", "PAUSE", "PAUSED" };
+  for (const char* a : ACTIVE)
+    if (strcasecmp(st, a) == 0) return true;
+  return false;
 }
 
 static bool jobAskable(const BbJob& j) {
@@ -118,6 +142,8 @@ PwOffPlan printerWatchPowerOffWhenCool() {
   s_cool_target = (s_plug.off_by_temp && s_plug.off_temp_c > 0) ? s_plug.off_temp_c
                                                                  : PW_COOL_DEFAULT_C;
   s_cooling       = true;
+  s_cool_printer  = s_printer_id;
+  s_cool_plug     = s_plug.id;
   s_cool_since_ms = millis();
   s_cool_next_ms  = 0;
   s_cool_temp     = -1;
@@ -140,19 +166,25 @@ static void coolTick() {
     return;
   }
   BbPrinterLive live;
-  if (bbGetPrinterLive(backendBaseUrl(), bambuddyApiKey(), s_printer_id, live) != 200) return;
-  // A new print took over: leave the power alone.
-  if (strcmp(live.state, "RUNNING") == 0 || strcmp(live.state, "PREPARE") == 0) {
-    logSD("PrinterWatch: a new print started, cooldown switch-off dropped");
+  if (bbGetPrinterLive(backendBaseUrl(), bambuddyApiKey(), s_cool_printer, live) != 200) return;
+  // A new print took over, or one is paused: leave the power alone.
+  if (printActive(live.state)) {
+    logSDf("PrinterWatch: printer %d is %s, cooldown switch-off dropped", s_cool_printer,
+           live.state);
     s_cooling = false;
     return;
   }
-  if (live.nozzle_c < 0 && live.bed_c < 0) return;
+  // Only numbers BamBuddy has from the printer itself, the nozzle among them.
+  // A bed reading alone switched a printer off whose nozzle nobody had read,
+  // and a disconnected printer's are not current. The hour above still ends
+  // the wait, with the plug left on.
+  if (!live.connected || live.nozzle_c < 0) return;
   const float hot = live.nozzle_c > live.bed_c ? live.nozzle_c : live.bed_c;
   s_cool_temp = (int)(hot + 0.5f);
   if (hot < (float)s_cool_target) {
-    logSDf("PrinterWatch: %d C, below %d C, switching off", s_cool_temp, s_cool_target);
-    printerWatchSwitch(false);
+    logSDf("PrinterWatch: printer %d at %d C, below %d C, switching off", s_cool_printer,
+           s_cool_temp, s_cool_target);
+    switchPlug(s_cool_plug, false);
     s_cooling = false;
   }
 }

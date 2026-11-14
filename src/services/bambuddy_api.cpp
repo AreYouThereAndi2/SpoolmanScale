@@ -1911,7 +1911,7 @@ int bbGetPrinterLive(const char* base_url, const char* api_key, int printer_id,
   int code = getJson(url, api_key, doc, timeout_ms, nullptr, &filter);
   if (code != 200) return code;
   out.valid     = true;
-  out.connected = doc["connected"] | false;
+  out.connected = doc["connected"] | true;   // see BbPrinterLive
   strncpy(out.state, doc["state"] | "", sizeof(out.state) - 1);
   out.progress  = (int)(doc["progress"] | -1.0f);
   out.awaiting_plate_clear = doc["awaiting_plate_clear"] | false;
