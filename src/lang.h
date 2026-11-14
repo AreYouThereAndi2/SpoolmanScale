@@ -1655,6 +1655,8 @@ enum StringID {
   STR_W_BACKUP_RESTORE,
   STR_W_BACKUP_DONE,
   STR_W_BACKUP_BAD,
+  // Weight button: a tag is read but the pad is too light for its spool
+  STR_WB_NO_SPOOL,
 
   STR_COUNT
 };

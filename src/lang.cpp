@@ -3661,6 +3661,9 @@ const char* const STRINGS[][3] = {
   { "Das ist keine Sicherung dieser Waage.",
     "This is not a backup of this scale.",
     "Ce n'est pas une sauvegarde de cette balance." },  // STR_W_BACKUP_BAD
+  // Weight button (app_loop.cpp, automatic weighing): a tag is read but the
+  // pad weighs too little for its spool, so nothing is written.
+  { "Spule fehlt", "No spool", "Pas de bobine" },  // STR_WB_NO_SPOOL
 };
 
 StringID tagWriteResultString(uint8_t code) {

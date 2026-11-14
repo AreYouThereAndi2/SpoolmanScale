@@ -29,6 +29,8 @@ jobs:
         run: scripts/check.sh
       - name: Test Bluetooth discovery
         run: python3 test/test_ble_discovery.py
+      - name: Test auto weighing on an empty pad
+        run: python3 test/test_auto_weight_pad.py
 
   build:
     name: Build ${{ matrix.env }}

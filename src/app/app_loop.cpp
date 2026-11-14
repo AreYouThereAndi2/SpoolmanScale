@@ -204,6 +204,26 @@ static bool aw_adopted      = false;
 static bool aw_adopted_seen = false;   // a real load has been on the pad since
 static bool aw_done         = false;   // this spool already saved
 
+// The pad is too light for the spool whose tag is read: say so on the button,
+// and in the log once per spool (upstream ee77f0e). shown_s is the countdown's
+// "what the button shows" marker; AW_SHOWN_NO_SPOOL keeps the label from being
+// set again on every pass.
+#define AW_SHOWN_NO_SPOOL (-2)
+static void autoWeightNoSpool(float gross, int &shown_s) {
+  static int logged_id = 0;
+  if (logged_id != sm_id) {
+    logSDf("Auto-Weight: %.0f g is too light for spool %d (under %.0f g) - not on the pad, nothing written",
+           gross, sm_id, AUTO_WEIGHT_EMPTY_PAD_G);
+    logged_id = sm_id;
+  }
+  if (shown_s == AW_SHOWN_NO_SPOOL || !lbl_weight_main_lbl) return;
+  shown_s = AW_SHOWN_NO_SPOOL;
+  char wmbuf[48];
+  snprintf(wmbuf, sizeof(wmbuf), LV_SYMBOL_WARNING "  %s", T(STR_WB_NO_SPOOL));
+  lv_label_set_text(lbl_weight_main_lbl, wmbuf);
+  lv_obj_set_style_text_color(lbl_weight_main_lbl, lv_color_hex(UI_COL_WARN), 0);
+}
+
 // Lost more than half the reference. Nothing but taking the spool off does that.
 static bool weightSaysSpoolGone() {
   if (!weightSpeaks()) return false;
@@ -466,6 +486,14 @@ static void amsMainAssignRun() {
   if (!amsCommitWithWindow()) {
     showInfoPopup(STR_AMSV_TITLE, STR_AMSV_ASSIGN_FAIL, INFO_WARN);
   }
+}
+
+void appAutoWeighAgain(const char* why) {
+  if (!g_auto_weight || !aw_done) return;
+  aw_done = false;
+  auto_weight_stable_ms = 0;
+  auto_weight_last_val = -9999.0f;   // the next reading starts the countdown
+  logSDf("Auto-Weight: %s for spool %d, weighing again", why ? why : "?", sm_id);
 }
 
 bool appAdoptSpoolForWeighing(int spool_id) {
@@ -1522,6 +1550,14 @@ void appLoop() {
         auto_weight_last_val = cur;
         auto_weight_stable_ms = millis();
         aw_last_shown_s = -1;
+      } else if (autoWeightPadTooLight(cur)) {
+        // A tag held to the reader without its spool - a loose sticker, a
+        // spool tilted off the pad - reads as present over an empty pad, and
+        // used to file the spool as 0 g (upstream ee77f0e). No countdown,
+        // nothing written: the button says the spool is missing, and the
+        // window starts again with the next reading.
+        auto_weight_stable_ms = millis();
+        autoWeightNoSpool(cur, aw_last_shown_s);
       } else if (auto_weight_stable_ms > 0 &&
                  millis() - auto_weight_stable_ms >= AUTO_WEIGHT_STABLE_MS) {
         // 3 Sekunden stabil -> einmalig speichern
@@ -1530,17 +1566,31 @@ void appLoop() {
         aw_last_shown_s = -1;
         float netto = cur - spoolExtrasNow() - (float)sm_spool_weight;
         if (netto < 0) netto = 0;
-        // Haekchen im Button - bleibt bis Spule abgenommen wird
+        // The tick goes on the button only once the server has the weight
+        // (upstream b67c31a). It showed before the request and stayed after
+        // a refusal, such as Spoolman's 409 for a spool without an empty
+        // weight, so the button claimed a weight the server never took.
+        const int code = patchSpoolmanWeight(netto);
+        const bool taken = backendWriteOk(code) || code == PATCH_WEIGHT_ASKING;
         if (lbl_weight_main_lbl) {
+          // Haekchen im Button - bleibt bis Spule abgenommen wird
           char wmbuf[48];
-          snprintf(wmbuf, sizeof(wmbuf), "%s " LV_SYMBOL_OK, T(STR_BTN_WEIGHT));
+          if (taken) snprintf(wmbuf, sizeof(wmbuf), "%s " LV_SYMBOL_OK, T(STR_BTN_WEIGHT));
+          else       snprintf(wmbuf, sizeof(wmbuf), "%s (A)", T(STR_BTN_WEIGHT));
           lv_label_set_text(lbl_weight_main_lbl, wmbuf);
-          lv_obj_set_style_text_color(lbl_weight_main_lbl, lv_color_hex(UI_COL_WEIGHT_SENT), 0);
+          lv_obj_set_style_text_color(lbl_weight_main_lbl,
+                                      lv_color_hex(taken ? UI_COL_WEIGHT_SENT : UI_COL_WEIGHT_AUTO), 0);
         }
-        patchSpoolmanWeight(netto);
+        if (!taken) {
+          // Not retried on its own: the same answer every three seconds is no
+          // use. A new empty weight weighs the spool again (appAutoWeighAgain()).
+          logSDf("Auto-Weight: %.0f g not taken (HTTP %d), button back to idle", netto, code);
+          weightResultShow(code, netto);
+        }
         // Remembered, not held back: the value is in FilaMan now, this only
-        // lets a yes on removal report it once more to open the window.
-        if (amsAskActive()) amsNoteMeasurement(sm_id, netto, cur, true);
+        // lets a yes on removal report it once more to open the window. A
+        // value that did not go out is sent by that yes.
+        if (amsAskActive()) amsNoteMeasurement(sm_id, netto, cur, backendWriteOk(code));
         if (amsPickActive()) amsPickNote(sm_id, sm_filament_name);
       } else if (auto_weight_stable_ms == 0) {
         auto_weight_last_val = cur;
