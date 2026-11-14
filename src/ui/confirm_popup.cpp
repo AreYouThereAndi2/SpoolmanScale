@@ -156,9 +156,9 @@ void handleConfirmPopupDeferredActions() {
       weightResultShow(code, s_job_value);
       // Remembered so the question can come up on removal. A yes there
       // reports the same weight once more, which is the only way to open the
-      // window. The cap check cannot interfere: it is BamBuddy only and
-      // amsAskActive() requires FilaMan.
-      if (amsAskActive()) amsNoteMeasurement(sm_id, s_job_value, s_job_gross, true);
+      // window; a write that failed is not called saved. The cap check cannot
+      // interfere: it is BamBuddy only and amsAskActive() requires FilaMan.
+      if (amsAskActive()) amsNoteMeasurement(sm_id, s_job_value, s_job_gross, backendWriteOk(code));
       if (amsPickActive()) amsPickNote(sm_id, sm_filament_name);
       break;
     }
