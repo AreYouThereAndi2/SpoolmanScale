@@ -428,7 +428,10 @@ void writeBootBlock(const char* boot_or_reboot) {
   // the flash ring carry the same block rather than two versions of it.
   char dt_buf[32];
   struct tm t;
-  if (getLocalTime(&t)) {
+  // clockReady(), not getLocalTime(): that waits five seconds for a clock
+  // that is not set, here and once more per line of the block below, which
+  // was about 50 s of boot on a network that lets no NTP out (upstream a4789c3).
+  if (clockReady(&t)) {
     snprintf(dt_buf, sizeof(dt_buf), "%02d.%02d.%04d %02d:%02d:%02d",
       t.tm_mday, t.tm_mon + 1, t.tm_year + 1900,
       t.tm_hour, t.tm_min, t.tm_sec);
@@ -474,7 +477,7 @@ void writeBootBlock(const char* boot_or_reboot) {
       const int to = (nl < 0) ? block.length() : nl;
       if (to > from) {
         const String one = block.substring(from, to);
-        flashLogWrite(getLocalTime(&t) ? time(nullptr) : (time_t)0,
+        flashLogWrite(clockReady(nullptr) ? time(nullptr) : (time_t)0,
                       (uint32_t)(millis() / 1000), one.c_str());
       }
       from = to + 1;
@@ -499,7 +502,7 @@ void cleanOldLogs() {
   if (!sd_available) return;
 
   struct tm now;
-  if (!getLocalTime(&now)) {
+  if (!clockReady(&now)) {
     Serial.println("cleanOldLogs: no time -> skip");
     return;
   }

@@ -19,6 +19,7 @@
 #include "services/backend_api.h"
 #include "services/filaman_api.h"
 #include "services/http_progress.h"
+#include "services/recheck_pace.h"
 #include "services/server_reach.h"
 #include "services/spool_cache.h"
 #include "services/spool_tare.h"
@@ -653,9 +654,13 @@ void querySpoolmanById(int spool_id) {
 
   // last_dried
   sm_last_dried[0] = '\0';
-  if (!spool["extra"]["last_dried"].isNull()) {
-    String dried = spool["extra"]["last_dried"].as<String>();
-    dried.replace("\"", "");
+  // Spooly marks a spool never dried with the JSON text null, which read as
+  // the date "null" (upstream 88130ec): no date, like an empty value.
+  String dried = spool["extra"]["last_dried"].isNull() ? String("")
+               : spool["extra"]["last_dried"].as<String>();
+  dried.replace("\"", "");
+  dried.trim();
+  if (dried.length() && dried != "null") {
     // The stored value is a UTC instant; the day it belongs to is the local
     // one, exactly as for last_used above.
     char day[11];
@@ -790,6 +795,10 @@ static int s_failure_text = -1;
 // gap and the first probe waits a full gap after the lookup itself.
 static uint32_t s_recheck_end_ms = 0;
 static uint32_t s_recheck_gap_ms = TAG_RECHECK_MS;
+// When the lookup began: with the last touch of the display, the start of the
+// count in recheck_pace.h (upstream 632a905).
+static uint32_t s_recheck_since_ms = 0;
+static RecheckPhase s_recheck_phase = RECHECK_PHASE_FAST;
 // Counts lookups. A probe started under one lookup and answered after the
 // next has begun is about a verdict that no longer stands.
 static uint32_t s_lookup_epoch = 0;
@@ -885,6 +894,37 @@ static bool recheckCollect(bool* out_hit) {
   return true;
 }
 
+// Time since the spool was put down or the display touched, whichever is later.
+static uint32_t recheckQuietMs() {
+  const uint32_t since_lookup = millis() - s_recheck_since_ms;
+  const uint32_t since_touch = lv_disp_get_inactive_time(nullptr);
+  return since_lookup < since_touch ? since_lookup : since_touch;
+}
+
+static void recheckLogPhase(RecheckPhase phase) {
+  if (phase == s_recheck_phase) return;
+  s_recheck_phase = phase;
+  if (phase == RECHECK_PHASE_SLOW)      logSD("Recheck: tag left unknown, asking once a minute");
+  else if (phase == RECHECK_PHASE_OVER) logSD("Recheck: tag left unknown, stopped until the display is touched or the spool is put down again");
+  else                                  logSD("Recheck: display touched, asking every few seconds again");
+}
+
+// Whether the next question is due, by the pace and by what the server asked.
+// An unknown tag left on the pad was asked about every few seconds for as long
+// as it lay there: 21,600 to 43,200 requests a day for a forgotten spool. Now
+// fast for five minutes, then once a minute, and not at all after two hours;
+// a touch of the display or a new placement starts over.
+static bool recheckDue() {
+  // `| 1` keeps a probe that ends at millis() == 0 from reading as "not seen".
+  if (!s_recheck_end_ms) { s_recheck_end_ms = millis() | 1; return false; }
+  const uint32_t quiet = recheckQuietMs();
+  recheckLogPhase(recheckPhase(quiet));
+  const uint32_t gap = recheckPacedGap(quiet, s_recheck_gap_ms);
+  if (gap == RECHECK_STOPPED) return false;
+  // Signed difference, so this survives the millis() rollover.
+  return (int32_t)(millis() - s_recheck_end_ms) >= (int32_t)gap;
+}
+
 void spoolmanRecheckTick() {
   // A probe on its way is waited for; a finished one is collected before
   // anything else, so the slot never stays taken by an answer nobody reads.
@@ -902,10 +942,7 @@ void spoolmanRecheckTick() {
     if (!sm_reachable) return;
     if (isSpoolFlowIdInputOpen()) return;   // the user is busy picking a spool
 
-    // `| 1` keeps a probe that ends at millis() == 0 from reading as "not seen".
-    if (!s_recheck_end_ms) { s_recheck_end_ms = millis() | 1; return; }
-    // Signed difference, so this survives the millis() rollover.
-    if ((int32_t)(millis() - s_recheck_end_ms) < (int32_t)s_recheck_gap_ms) return;
+    if (!recheckDue()) return;
     // FilaMan keeps one "list stopped short" flag for everything off the loop:
     // a probe beside a list on the other core could set it for that list.
     if (backendListBusy()) return;
@@ -1139,6 +1176,8 @@ void querySpoolman(const char* tray_uuid, LookupOrigin origin) {
   s_failure_text = -1;
   s_recheck_end_ms = 0;
   s_recheck_gap_ms = TAG_RECHECK_MS;
+  s_recheck_since_ms = millis();
+  s_recheck_phase = RECHECK_PHASE_FAST;
   s_lookup_epoch++;
   s_shadow = SHADOW_NOT_ASKED;
   // A 4-byte MIFARE tag is looked up by its UID through the same call, so
