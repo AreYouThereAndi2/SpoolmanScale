@@ -194,30 +194,58 @@ static void fillRect(lv_obj_t* canvas, lv_coord_t x, lv_coord_t y, lv_coord_t w,
   lv_canvas_draw_rect(canvas, x, y, w, h, &dsc);
 }
 
+// How a code sits in its box: the quiet zone and the dots per module.
+struct QrFit { int quiet; int scale; };
+
+// Whole dots per module for a code of `size` modules in `box` dots: the full
+// quiet zone where it fits, the tight one where not. False when even that
+// leaves a module under the minimum.
+static bool qrFit(int size, lv_coord_t box, QrFit* f) {
+  f->quiet = LR_QR_QUIET;
+  f->scale = box / (size + 2 * f->quiet);
+  if (f->scale < LR_QR_MODULE_MIN) {
+    f->quiet = LR_QR_QUIET_TIGHT;
+    f->scale = box / (size + 2 * f->quiet);
+  }
+  return f->scale >= LR_QR_MODULE_MIN;
+}
+
+// Encodes `text` into `qr` at `ecc` or above (qrcodegen raises it where the
+// version has room) and fits it into `box`. False when it does not encode or
+// fit; qr[0] is 0 when it did not even encode.
+static bool qrEncodeFit(const char* text, qrcodegen_Ecc ecc, lv_coord_t box, uint8_t* qr,
+                        QrFit* f) {
+  uint8_t tmp[qrcodegen_BUFFER_LEN_FOR_VERSION(LR_QR_MAX_VERSION)];
+  if (!qrcodegen_encodeText(text, tmp, qr, ecc, 1, LR_QR_MAX_VERSION, qrcodegen_Mask_AUTO, true))
+    return false;
+  return qrFit(qrcodegen_getSize(qr), box, f);
+}
+
 // The code, drawn module by module into a box of box x box dots at x, y:
 // whole dots per module, the quiet zone inside the box and white, the rest
 // centred. Returns the edge length used, 0 when it does not fit readably.
 // With no canvas it only measures.
+//
+// Medium error correction first, low where medium does not fit (upstream
+// 711f3cb). A spool page on a public name, 44 characters, is two over what
+// version 3 holds at medium, so it took version 4 at 111 dots where a label's
+// text column left 110, and the code went missing from the label. At low the
+// same address is version 3 again. The measuring call and the drawing call
+// choose alike, because the drawing box is the measured edge.
 static lv_coord_t drawQr(lv_obj_t* canvas, lv_coord_t x, lv_coord_t y,
                          lv_coord_t box, const char* text) {
-  uint8_t tmp[qrcodegen_BUFFER_LEN_FOR_VERSION(LR_QR_MAX_VERSION)];
   uint8_t qr[qrcodegen_BUFFER_LEN_FOR_VERSION(LR_QR_MAX_VERSION)];
-  if (!qrcodegen_encodeText(text, tmp, qr, qrcodegen_Ecc_MEDIUM, 1,
-                            LR_QR_MAX_VERSION, qrcodegen_Mask_AUTO, true)) {
-    logSDf("Label: QR does not fit version %d: %s", LR_QR_MAX_VERSION, text);
+  qr[0] = 0;
+  QrFit fit{};
+  if (!qrEncodeFit(text, qrcodegen_Ecc_MEDIUM, box, qr, &fit) &&
+      !qrEncodeFit(text, qrcodegen_Ecc_LOW, box, qr, &fit)) {
+    if (qr[0] == 0) logSDf("Label: QR does not fit version %d: %s", LR_QR_MAX_VERSION, text);
+    else logSDf("Label: QR of %d modules does not fit %d dots", qrcodegen_getSize(qr), (int)box);
     return 0;
   }
   const int size = qrcodegen_getSize(qr);
-  int quiet = LR_QR_QUIET;
-  int scale = box / (size + 2 * quiet);
-  if (scale < LR_QR_MODULE_MIN) {
-    quiet = LR_QR_QUIET_TIGHT;
-    scale = box / (size + 2 * quiet);
-  }
-  if (scale < LR_QR_MODULE_MIN) {
-    logSDf("Label: QR of %d modules does not fit %d dots", size, (int)box);
-    return 0;
-  }
+  const int quiet = fit.quiet;
+  const int scale = fit.scale;
   const lv_coord_t total = (size + 2 * quiet) * scale;
   if (!canvas) return total;
   const lv_coord_t ox = x + (box - total) / 2;
@@ -509,8 +537,31 @@ static bool isHex6(const char* s) {
   return true;
 }
 
-bool labelRenderSpool(const LabelPrinterConfig& printer, const SpoolLabelData& spool,
+// Takes the trademark, registered and copyright signs out of `s`, in place
+// (upstream 9dce21e). No label font has them and they say nothing on a spool:
+// "Panchroma(TM) Marble", with the sign, printed a box after the first word.
+static void labelDropMarks(char* s) {
+  if (!s) return;
+  static const char* const MARKS[] = { "\xE2\x84\xA2", "\xC2\xAE", "\xC2\xA9" };
+  char* out = s;
+  for (const char* p = s; *p; ) {
+    bool mark = false;
+    for (const char* m : MARKS) {
+      const size_t len = strlen(m);
+      if (strncmp(p, m, len) == 0) { p += len; mark = true; break; }
+    }
+    if (!mark) *out++ = *p++;
+  }
+  *out = '\0';
+}
+
+bool labelRenderSpool(const LabelPrinterConfig& printer, const SpoolLabelData& in,
                       LabelRaster* out) {
+  // The spool's texts as the label prints them: see labelDropMarks().
+  SpoolLabelData spool = in;
+  labelDropMarks(spool.vendor);
+  labelDropMarks(spool.material);
+  labelDropMarks(spool.name);
   char qr[LABEL_QR_LEN];
   labelQrForSpool(spool.id, qr, sizeof(qr));
   // What stays true for the spool's whole life: where it is kept, the colour
