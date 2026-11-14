@@ -98,8 +98,15 @@ static int        s_job_spool_id  = 0;  // ... carried with the parked write
 static int        s_weight_spool_id = 0;
 
 static void tareFollowUp();
-static void storeTareJob(ConfirmJob job);
 static void tareDropFollowUp();
+
+// A new empty weight makes the automatic weighing stale: weigh again (b67c31a).
+static void storeTare(void (*patch)(float)) {
+  const float before = sm_spool_weight;
+  patch(s_job_value);
+  tareFollowUp();
+  if (sm_spool_weight != before) appAutoWeighAgain("new empty weight");
+}
 
 // Says on the status line what became of a weight write. The press closes the
 // popup at once and the request runs a pass later, so without this a write
@@ -158,11 +165,9 @@ void handleConfirmPopupDeferredActions() {
     case CJ_INITIAL:
       patchInitialWeight(s_job_value);
       break;
-    case CJ_TARE_SPOOL:
-    case CJ_TARE_FILAMENT:
-    case CJ_TARE_VENDOR:
-      storeTareJob(job);
-      break;
+    case CJ_TARE_SPOOL:    storeTare(patchSpoolWeight);         break;
+    case CJ_TARE_FILAMENT: storeTare(patchFilamentSpoolWeight); break;
+    case CJ_TARE_VENDOR:   storeTare(patchVendorSpoolWeight);   break;
     case CJ_ARCHIVE:
       patchArchiveSpool();
       break;
@@ -212,19 +217,6 @@ static void tareFollowUp() {
 
 static void tareDropFollowUp() {
   s_tare_then_new = false;
-}
-
-// A new empty weight for the spool on the pad makes the automatic weighing
-// before it stale: computed against the old one, or refused for want of one
-// (Spoolman answers 409, and the empty weight entry leads here). With the
-// automatic on, the spool is weighed again where it lies (upstream b67c31a).
-static void storeTareJob(ConfirmJob job) {
-  const float before = sm_spool_weight;
-  if (job == CJ_TARE_SPOOL)         patchSpoolWeight(s_job_value);
-  else if (job == CJ_TARE_FILAMENT) patchFilamentSpoolWeight(s_job_value);
-  else                              patchVendorSpoolWeight(s_job_value);
-  tareFollowUp();
-  if (sm_spool_weight != before) appAutoWeighAgain("new empty weight");
 }
 
 // Whether New spool has to derive the tare from this reading because nothing
