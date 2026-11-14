@@ -41,6 +41,14 @@ jobs:
         run: python3 test/test_notes_cut.py
       - name: Test self-deleting tasks free what they declare
         run: python3 test/test_task_self_delete.py
+      - name: Test copy list keeps tagged spools
+        run: python3 test/test_copy_list_tagged.py
+      - name: Test link by number judges the article number
+        run: python3 test/test_link_number_article.py
+      - name: Test material and name joined once
+        run: python3 test/test_join_material_name.py
+      - name: Test native tag probe
+        run: python3 test/test_native_tag_probe.py
 
   build:
     name: Build ${{ matrix.env }}

@@ -158,18 +158,16 @@ static void linkCopyConfirmFromRow(int cidx) {
   copy_confirm_initial = cs.total;
   copy_confirm_spool_w = cs.spool_weight;
   {
-    bool nm = (cs.material[0] && cs.name[0] &&
-               strncasecmp(cs.name, cs.material, strlen(cs.material)) == 0);
-    if (nm)
-      snprintf(copy_confirm_name, sizeof(copy_confirm_name), "%s (%s)", cs.name, cs.vendor);
-    else
-      snprintf(copy_confirm_name, sizeof(copy_confirm_name), "%s %s (%s)", cs.material, cs.name, cs.vendor);
+    // The same join as the list rows, so "Hyper PLA Gelb" is not "PLA Hyper
+    // PLA Gelb" here either, and a long name is cut on a character.
+    char joined[96]; joinMaterialName(cs.material, cs.name, joined, sizeof(joined));
+    char full[sizeof(joined) + sizeof(cs.vendor) + 4];
+    snprintf(full, sizeof(full), "%s (%s)", joined, cs.vendor);
+    utf8Cut(full, sizeof(copy_confirm_name) - 1, copy_confirm_name, sizeof(copy_confirm_name));
   }
   copyLookFromRow(copy_confirm_look, cs);
   copy_confirm_pending = true;
 }
-
-static void showLinkConfirmPopup(int idx);
 
 // What a tap on a row of the spool list leads to, once the row is true.
 void linkRowChosen(int idx) {
@@ -182,7 +180,7 @@ void linkRowChosen(int idx) {
 #define LINK_CONFIRM_ROWS_Y    96
 #define LINK_CONFIRM_ROWS_GAP   6
 
-static void showLinkConfirmPopup(int idx) {
+void showLinkConfirmPopup(int idx) {
   if (idx < 0 || idx >= link_spool_count) return;
   UnlinkedSpool &s = link_spools[idx];
 

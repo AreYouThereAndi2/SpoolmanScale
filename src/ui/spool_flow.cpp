@@ -39,36 +39,6 @@
 
 // UnlinkedSpool, the row of the link and copy lists, stands in spool_flow_internal.h.
 
-// True when the filament name already opens with the material. Spoolman's own
-// naming does this, and BamBuddy's mapping always does ("PETG HF Orange"), so
-// prefixing the material a second time would read "PETG PETG HF Orange".
-bool nameStartsWithMaterial(const char* name, const char* material) {
-  if (!name || !name[0]) return false;
-  if (!material || !material[0]) return true;   // nothing left to prefix with
-  return strncasecmp(name, material, strlen(material)) == 0;
-}
-
-// Material and filament name as one line, without saying anything twice.
-// Besides a name that repeats the whole material, a name may repeat its
-// subtype: Spoolman libraries hold "PLA Tough+" with "Tough+ Cyan" and
-// "PETG Translucent" with "Translucent Gray", which read "PLA Tough+ Tough+
-// Cyan". The words the two share are written once, and only whole words.
-void joinMaterialName(const char* material, const char* name, char* out, size_t out_size) {
-  if (!name) name = "";
-  if (!material) material = "";
-  if (nameStartsWithMaterial(name, material)) { snprintf(out, out_size, "%s", name); return; }
-  for (const char* p = strchr(material, ' '); p; p = strchr(p + 1, ' ')) {
-    const char* tail = p + 1;
-    const size_t n = strlen(tail);
-    if (n && strncasecmp(name, tail, n) == 0 && (name[n] == '\0' || name[n] == ' ')) {
-      snprintf(out, out_size, "%s%s", material, name + n);
-      return;
-    }
-  }
-  // No name: the material alone, without a trailing space.
-  snprintf(out, out_size, "%s%s%s", material, name[0] ? " " : "", name);
-}
-
 // Whether a second UID can be appended at all right now: the selected tag
 // field has a list format, the switch is on, and the server actually has that
 // field. Probed where the list is loaded,
@@ -273,10 +243,13 @@ static bool linkSpoolBound(const UnlinkedSpool& s) {
 // "is extra.tag set" check in six places. Bound spools simply stopped
 // appearing, with nothing in the log to say why.
 //
-// The copy-from-archived flow is the exception it always was: there a tagged
-// spool is a template, not a conflict.
+// A copy through the picker is the exception: there a tagged spool is a
+// template, not a conflict, and the fetch keeps it in the active list as well
+// as in the archived one (linkFilterVerdict()). Keeping it only for the
+// archived list dropped exactly the roll that is bought again (upstream
+// 9b9e9ae).
 bool linkSpoolSkip(const UnlinkedSpool& s) {
-  if (copy_flow_via_list && copy_flow_archived) return false;
+  if (copy_flow_via_list) return false;
   if (link_cu_ok) return false;
   return linkSpoolBound(s);
 }
