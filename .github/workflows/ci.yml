@@ -31,6 +31,10 @@ jobs:
         run: python3 test/test_ble_discovery.py
       - name: Test auto weighing on an empty pad
         run: python3 test/test_auto_weight_pad.py
+      - name: Test AMS grid redraw
+        run: python3 test/test_ams_grid_redraw.py
+      - name: Test AMS weights after a quick printer switch
+        run: python3 test/test_ams_weights_owed.py
 
   build:
     name: Build ${{ matrix.env }}
