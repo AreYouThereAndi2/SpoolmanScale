@@ -12,6 +12,8 @@
 #include "mbedtls/sha256.h"
 
 #include "hardware/sd_logger.h"
+#include "services/asset_digest.h"
+#include "services/notes_cut.h"
 #include "services/ota_state.h"
 
 // This fork updates from its own releases: an image from upstream would
@@ -25,6 +27,18 @@ static uint32_t imageSizeOf(JsonVariantConst rel) {
   for (JsonObjectConst a : rel["assets"].as<JsonArrayConst>())
     if (strcmp(a["name"] | "", GH_IMAGE_ASSET) == 0) return a["size"] | 0u;
   return 0;
+}
+
+// The image's checksum out of the same list, "" when the asset carries no
+// digest (services/asset_digest.h, upstream 3e75552).
+static void imageShaOf(JsonVariantConst rel, char *hex, size_t hex_len) {
+  if (!hex || hex_len == 0) return;
+  hex[0] = '\0';
+  for (JsonObjectConst a : rel["assets"].as<JsonArrayConst>())
+    if (strcmp(a["name"] | "", GH_IMAGE_ASSET) == 0) {
+      assetDigestSha256(a["digest"] | "", hex, hex_len);
+      return;
+    }
 }
 
 // No bytes for this long while the socket is still open: the download is
@@ -123,6 +137,7 @@ bool githubListReleases(char *err, size_t err_len) {
   f["prerelease"] = true;
   f["assets"][0]["name"] = true;
   f["assets"][0]["size"] = true;
+  f["assets"][0]["digest"] = true;
 
   JsonDocument doc;
   DeserializationError jerr = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
@@ -144,6 +159,7 @@ bool githubListReleases(char *err, size_t err_len) {
     it.published[sizeof(it.published) - 1] = '\0';
     it.prerelease = rel["prerelease"] | false;
     it.image_size = imageSizeOf(rel);
+    imageShaOf(rel, it.sha, sizeof(it.sha));
   }
   if (g_gh_release_count == 0) {
     if (err && err_len) snprintf(err, err_len, "no release");
@@ -154,11 +170,14 @@ bool githubListReleases(char *err, size_t err_len) {
 
 bool githubLatestTag(bool prerelease, char *tag, size_t tag_len,
                      char *published, size_t pub_len,
-                     char *err, size_t err_len, uint32_t *image_size) {
+                     char *err, size_t err_len, uint32_t *image_size,
+                     char *image_sha, size_t sha_len) {
   if (!tag || tag_len == 0) return false;
   tag[0] = '\0';
   uint32_t found_size = 0;
+  char found_sha[ASSET_SHA256_HEX_LEN + 1] = "";
   if (image_size) *image_size = 0;
+  if (image_sha && sha_len) image_sha[0] = '\0';
   if (published && pub_len) published[0] = '\0';
   if (err && err_len) err[0] = '\0';
 
@@ -192,6 +211,7 @@ bool githubLatestTag(bool prerelease, char *tag, size_t tag_len,
     f["draft"] = true;
     f["assets"][0]["name"] = true;
     f["assets"][0]["size"] = true;
+    f["assets"][0]["digest"] = true;
 
     JsonDocument doc;
     jerr = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
@@ -211,6 +231,7 @@ bool githubLatestTag(bool prerelease, char *tag, size_t tag_len,
           }
           found_size = imageSizeOf(rel);
           if (image_size) *image_size = found_size;
+          imageShaOf(rel, found_sha, sizeof(found_sha));
           break;
         }
       }
@@ -221,6 +242,7 @@ bool githubLatestTag(bool prerelease, char *tag, size_t tag_len,
     filter["published_at"] = true;
     filter["assets"][0]["name"] = true;
     filter["assets"][0]["size"] = true;
+    filter["assets"][0]["digest"] = true;
 
     JsonDocument doc;
     jerr = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
@@ -235,6 +257,7 @@ bool githubLatestTag(bool prerelease, char *tag, size_t tag_len,
       }
       found_size = imageSizeOf(doc);
       if (image_size) *image_size = found_size;
+      imageShaOf(doc, found_sha, sizeof(found_sha));
     }
   }
 
@@ -244,6 +267,10 @@ bool githubLatestTag(bool prerelease, char *tag, size_t tag_len,
   logSDf("OTA check: HTTP %d len=%d heap %u->%u pre=%d err=%s entries=%d tag='%s' image=%u",
          code, payload_len, (unsigned)heap_before, (unsigned)heap_parse,
          prerelease ? 1 : 0, jerr.c_str(), entries, tag, (unsigned)found_size);
+  // A line of its own: 64 hex digits behind the one above ran past the 160
+  // characters a log line keeps.
+  if (tag[0]) logSDf("OTA check: %s sha256=%s", tag, found_sha[0] ? found_sha : "none");
+  if (image_sha && sha_len) snprintf(image_sha, sha_len, "%s", found_sha);
   Serial.printf("OTA check: len=%d heap %u->%u err=%s entries=%d tag='%s'\n",
                 payload_len, (unsigned)heap_before, (unsigned)heap_parse,
                 jerr.c_str(), entries, tag);
@@ -280,10 +307,6 @@ static bool tagLooksSafe(const char *tag) {
   }
   return n < 40;
 }
-
-// Long enough for the release notes this project writes - they run about 5 kB -
-// with room to spare, and short enough that a pasted build log cannot matter.
-#define GH_NOTES_MAX 8000
 
 bool githubReleaseByTag(const char *tag, GithubRelease &out,
                         char *err, size_t err_len) {
@@ -333,9 +356,14 @@ bool githubReleaseByTag(const char *tag, GithubRelease &out,
   out.published[sizeof(out.published) - 1] = '\0';
   out.prerelease = doc["prerelease"] | false;
 
+  // How much of the notes goes on to the page: services/notes_cut.h
+  // (upstream 7b552e8). It was 8000 bytes, cut wherever that fell.
   const char *b = doc["body"] | "";
-  if (strlen(b) > GH_NOTES_MAX) {
-    out.notes = String(b).substring(0, GH_NOTES_MAX);
+  const size_t body_len = strlen(b);
+  const size_t keep = notesCutLength(b, body_len, GH_NOTES_MAX);
+  if (keep < body_len) {
+    out.notes.reserve(keep + 4);
+    out.notes.concat(b, keep);
     out.notes += "\n...";
   } else {
     out.notes = b;

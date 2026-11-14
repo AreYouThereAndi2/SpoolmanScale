@@ -95,17 +95,24 @@ volatile uint32_t s_found_size = 0;
 unsigned long s_due_ms = 0;
 bool s_scheduled = false;
 
-void updateCheckTask(void* arg) {
-  (void)arg;
-
+// The request itself, in a function of its own that returns (upstream
+// 08b4e78). It used to be the body of updateCheckTask(), which ends with
+// vTaskDelete(NULL): that call does not return, so the destructors of the
+// client, the connection and the document declared there never ran. The
+// HTTPClient keeps the socket open after end() for reuse and stops it only in
+// its destructor, so the TLS session and the socket stayed open; the
+// WiFiClientSecure frees its context only in its destructor, and the document
+// keeps its pool: all of it was lost on every check. Freeing them by hand on
+// every way out was rejected: client.stop() ends the TLS session but keeps
+// the client's context, and the next local someone adds would leak again.
+// test/test_task_self_delete.py holds every self-deleting task in src to this.
+static void runUpdateCheck() {
   WiFiClientSecure client;
   githubTrust(client);
   HTTPClient http;
 
   if (!http.begin(client, VERSION_URL)) {
     s_result = RES_FAIL_BEGIN;
-    s_task_running = false;
-    vTaskDelete(NULL);
     return;
   }
 
@@ -120,8 +127,6 @@ void updateCheckTask(void* arg) {
     Serial.printf("[upd] HTTP %d\n", code);
     s_result = RES_FAIL_HTTP;
     http.end();
-    s_task_running = false;
-    vTaskDelete(NULL);
     return;
   }
 
@@ -135,8 +140,6 @@ void updateCheckTask(void* arg) {
   if (err) {
     Serial.printf("[upd] JSON error: %s\n", err.c_str());
     s_result = RES_FAIL_JSON;
-    s_task_running = false;
-    vTaskDelete(NULL);
     return;
   }
 
@@ -159,8 +162,6 @@ void updateCheckTask(void* arg) {
 
   if (!tag || tag[0] == '\0') {
     s_result = RES_FAIL_JSON;
-    s_task_running = false;
-    vTaskDelete(NULL);
     return;
   }
 
@@ -189,7 +190,14 @@ void updateCheckTask(void* arg) {
 
   // Published last. Everything the tick needs is in place by now.
   s_result = (remote > installed) ? RES_AVAILABLE : RES_UP_TO_DATE;
+}
 
+void updateCheckTask(void* arg) {
+  (void)arg;
+  runUpdateCheck();
+  // Only now, with the client, the connection and the document destroyed. The
+  // guard keeps the web jobs and the next check from starting while they still
+  // hold their memory, so it drops after them and not with the result.
   s_task_running = false;
   vTaskDelete(NULL);
 }
@@ -202,12 +210,14 @@ struct ManualCheck {
   char     tag[40];
   char     err[80];
   uint32_t size;
+  char     sha[ASSET_SHA256_HEX_LEN + 1];   // the asset's digest, "" when none
 };
 ManualCheck s_mc = {};
 
 void manualCheckTask(void*) {
   s_mc.ok = githubLatestTag(s_mc.prerelease, s_mc.tag, sizeof(s_mc.tag), nullptr, 0,
-                            s_mc.err, sizeof(s_mc.err), &s_mc.size);
+                            s_mc.err, sizeof(s_mc.err), &s_mc.size,
+                            s_mc.sha, sizeof(s_mc.sha));
   Serial.printf("[upd] manual check %s, task stack low water mark: %u bytes free\n",
                 s_mc.ok ? "ok" : "failed", (unsigned)uxTaskGetStackHighWaterMark(NULL));
   s_mc.state = 2;               // last: the loop reads the rest after it
@@ -273,6 +283,7 @@ bool updateCheckManualStart(bool prerelease) {
   s_mc.tag[0] = '\0';
   s_mc.err[0] = '\0';
   s_mc.size = 0;
+  s_mc.sha[0] = '\0';
   // Set before the task exists, as for the daily check: the guard also keeps
   // the background check from opening a second TLS connection beside it.
   s_task_running = true;
@@ -288,12 +299,14 @@ bool updateCheckManualStart(bool prerelease) {
 }
 
 bool updateCheckManualTake(bool* okp, char* tag, size_t tag_len, char* err,
-                           size_t err_len, uint32_t* image_size) {
+                           size_t err_len, uint32_t* image_size,
+                           char* sha, size_t sha_len) {
   if (s_mc.state != 2) return false;
   if (okp) *okp = s_mc.ok;
   if (tag && tag_len) { strncpy(tag, s_mc.tag, tag_len - 1); tag[tag_len - 1] = '\0'; }
   if (err && err_len) { strncpy(err, s_mc.err, err_len - 1); err[err_len - 1] = '\0'; }
   if (image_size) *image_size = s_mc.size;
+  if (sha && sha_len) snprintf(sha, sha_len, "%s", s_mc.sha);
   s_mc.state = 0;
   return true;
 }
@@ -408,7 +421,12 @@ void updateCheckTick() {
     // after a reboot as "update available" through updateCheckRestoreBadge().
     const bool keep = update_available && !partitionTagTooBig(gh_latest_version);
     prefsPutString("upd_ver", keep ? gh_latest_version : "");
-    prefsPutString("upd_sha", keep ? gh_latest_sha : "");
+    // The checksum of that version only (upstream 3e75552). A manual check
+    // moves gh_latest_version on and may find no checksum for it, while the
+    // pair still holds the one of an older tag; stored next to the new tag it
+    // came back after a reboot as that tag's checksum, and the install was
+    // refused as a mismatch.
+    prefsPutString("upd_sha", keep ? otaExpectedSha(gh_latest_version) : "");
   } else if (answered) {
     // The server answered but NTP has not, so the daily window cannot be
     // measured in wall clock time. Count uptime instead, otherwise the retry
