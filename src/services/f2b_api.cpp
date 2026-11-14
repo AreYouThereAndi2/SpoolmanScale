@@ -8,6 +8,7 @@
 #include "hardware/sd_logger.h"
 #include "services/backend_http.h"
 #include "services/prefs_store.h"
+#include "services/text_util.h"
 
 char g_f2b_url[96] = "";
 
@@ -39,8 +40,11 @@ static String urlEncode(const char* s) {
   return out;
 }
 
+// Cut on a character, not a byte: a brand or colour name longer than its
+// field went to BamBuddy (the scale's own create, when the app cannot be
+// reached) with half a UTF-8 character at its end.
 static void copyStr(char* dst, size_t n, const char* src) {
-  snprintf(dst, n, "%s", src ? src : "");
+  utf8Cut(src ? src : "", n - 1, dst, n);
 }
 
 int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
