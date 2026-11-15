@@ -11,11 +11,16 @@
 #define TSPL_GAP_MM   6
 #define TSPL_DENSITY  10
 
-// TSPL ends a job when the last line is in, but the printer prints from its
-// buffer and a link closed right after the data cost the M220 its label. No
-// status characteristic is known for the PM240, so the session stays for a
-// while instead: a 30 mm label is through in about a second.
-static const BleDone TSPL_HOLD = { 0, nullptr, 0, 3000 };
+// The printer notifies on ff03, and takes a job only from a client that
+// subscribed there: with the Labelife app's subscription on the link a job
+// printed, without it 11 kB arrived and nothing came out (15.11.2026). The
+// Phomemo PM245 driver of the original project subscribes for the same
+// reason. What the notes mean is not known, so none counts as "done" (a
+// pattern that never comes); the session stays a few seconds so the printer
+// takes the whole job, and logs what it says.
+#define TSPL_STATUS_UUID 0xff03
+static const uint8_t TSPL_NEVER[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
+static const BleDone TSPL_HOLD = { TSPL_STATUS_UUID, TSPL_NEVER, sizeof(TSPL_NEVER), 6000 };
 
 BleWriteResult tsplPrint(const char* address, const LabelRaster& image,
                          uint16_t media_w_mm, uint16_t media_l_mm, BleProgressFn progress) {
@@ -38,7 +43,7 @@ BleWriteResult tsplPrint(const char* address, const LabelRaster& image,
   char head[160];
   const int n = snprintf(head, sizeof(head),
                          "SIZE %u.0 mm,%u.0 mm\r\nGAP %u.0 mm,0 mm\r\nDIRECTION 0,0\r\n"
-                         "DENSITY %u\r\nCLS\r\nBITMAP 0,0,%u,%u,1,",
+                         "DENSITY %u\r\nCLS\r\nBITMAP 0,0,%u,%u,0,",
                          (unsigned)media_w_mm, (unsigned)media_l_mm, (unsigned)TSPL_GAP_MM,
                          (unsigned)TSPL_DENSITY, (unsigned)row, (unsigned)image.height);
   static const char TAIL[] = "\r\nPRINT 1\r\n";
@@ -54,5 +59,6 @@ BleWriteResult tsplPrint(const char* address, const LabelRaster& image,
   const BleWriteResult r = bleWriteBlocks(address, TSPL_SERVICE_UUID, TSPL_WRITE_UUID, blocks,
                                           sizeof(blocks) / sizeof(blocks[0]), progress, &TSPL_HOLD);
   free(bits);
-  return r;
+  // No done signal is known: "sent" is the whole truth here.
+  return r == BLE_WRITE_SENT_UNCONFIRMED ? BLE_WRITE_OK : r;
 }
