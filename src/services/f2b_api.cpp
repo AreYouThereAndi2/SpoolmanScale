@@ -6,6 +6,7 @@
 #include <esp_heap_caps.h>
 
 #include "hardware/sd_logger.h"
+#include "services/backend.h"
 #include "services/backend_http.h"
 #include "services/prefs_store.h"
 #include "services/text_util.h"
@@ -47,6 +48,13 @@ static void copyStr(char* dst, size_t n, const char* src) {
   utf8Cut(src ? src : "", n - 1, dst, n);
 }
 
+// With sign-in switched on in the app (AUTH_MODE=bambuddy) it takes the
+// scale's BamBuddy key and acts with it; without, it ignores the header.
+static void addF2bKey(BackendHttp& http) {
+  const char* key = bambuddyApiKey();
+  if (key && key[0]) http.addHeader("X-API-Key", key);
+}
+
 int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
   out = F2bProduct{};
   if (!g_f2b_url[0] || !code || !code[0]) return -1;
@@ -55,6 +63,7 @@ int f2bLookup(const char* code, F2bProduct& out, uint32_t timeout_ms) {
   BackendHttp http;
   if (!http.begin(url)) return -1;
   http.setTimeout(timeout_ms);
+  addF2bKey(http);
   const int code_http = http.GET();
   if (code_http != 200) {
     http.end();
@@ -136,6 +145,7 @@ int f2bCreateSpool(const F2bProduct& p, float cost_per_kg, int* out_spool_id,
   if (!http.begin(String(g_f2b_url) + "/api/spool")) return -1;
   http.setTimeout(timeout_ms);
   http.addHeader("Content-Type", "application/json");
+  addF2bKey(http);
   const int code = http.sendRequest("POST", (uint8_t*)payload.c_str(), payload.length());
   if (code <= 0) {
     http.end();
@@ -178,6 +188,7 @@ int f2bFetchLabel(int spool_id, uint16_t w_mm, uint16_t l_mm, uint8_t** out_bits
   http.setTimeout(timeout_ms);
   const char* keys[] = {"X-Width", "X-Height"};
   http.collectHeaders(keys, 2);
+  addF2bKey(http);
   const int code = http.GET();
   if (code != 200) {
     http.end();
