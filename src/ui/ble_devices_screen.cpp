@@ -262,9 +262,13 @@ void buildBleDevicesScreen() {
   const BleCandidatePage page = bleCandidatePage(ble_devices, ble_device_count,
                                                  ble_show_all, ble_page, printer.address);
   ble_page = page.number;
+  // A page is at most BLE_DEVICE_PAGE_SIZE rows, so it is always built:
+  // right after a scan the internal heap sits just at LVGL's reserve, and the
+  // row check cut the list to 0 or 1 of 13 devices (15.11.2026). Rows past
+  // the reserve go to PSRAM, which only costs scrolling smoothness.
+  if (!lvPoolHasRoomForRow()) logSD("BLE: internal heap low, the list's rows go to PSRAM");
   for (int p = 0; p < page.count; ++p) {
     const int i = page.indices[p];
-    if (!lvPoolHasRoomForRow()) { logSDf("BLE: list cut at %d rows", i); break; }
     char name[BLE_NAME_LEN];
     deviceName(ble_devices[i], name, sizeof(name));
     char sub[48];
