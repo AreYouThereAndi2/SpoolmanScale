@@ -39,7 +39,9 @@
 #define BB_BACKOFF_MAX_MS     30000
 // A request may take a tenth of the time at most.
 #define BB_COST_FACTOR           10
-#define BB_TASK_STACK_BYTES   12288
+// The report goes out over TLS when BamBuddy is reached by https, like the
+// backend and AMS jobs, which have 16 KB for the same reason.
+#define BB_TASK_STACK_BYTES   16384
 #define BB_TASK_PRIORITY          1     // below the Arduino loop task
 #define BB_TASK_CORE              0     // the loop runs on core 1
 
