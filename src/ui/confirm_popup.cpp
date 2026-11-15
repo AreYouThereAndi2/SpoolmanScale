@@ -18,6 +18,7 @@
 #include "services/spoolman_actions.h"
 #include "services/spool_extras.h"
 #include "dried_action.h"
+#include "app/app_loop.h"
 #include "app/deferred_actions.h"
 #include "spoolman_screen.h"
 #include "main_screen_helpers.h"
@@ -92,18 +93,26 @@ static float      s_job_gross = 0.0f;   // the pad reading the AMS note wants
 // question stood would take a tare that belongs to the one before it.
 static int        s_tare_spool_id = 0;  // the spool the scope question is for
 static int        s_job_spool_id  = 0;  // ... carried with the parked write
-// The spool the weight popup was opened for. Another spool loaded under the
-// open popup would otherwise take its weight (upstream 43a4aff).
+// The spool a popup about it was opened for: weight, dried, archive. Another
+// spool loaded under it would take its weight or be archived (upstream 43a4aff).
 static int        s_weight_spool_id = 0;
 
 static void tareFollowUp();
 static void tareDropFollowUp();
 
+// A new empty weight makes the automatic weighing stale: weigh again (b67c31a).
+static void storeTare(void (*patch)(float)) {
+  const float before = sm_spool_weight;
+  patch(s_job_value);
+  tareFollowUp();
+  if (sm_spool_weight != before) appAutoWeighAgain("new empty weight");
+}
+
 // Says on the status line what became of a weight write. The press closes the
 // popup at once and the request runs a pass later, so without this a write
 // that went nowhere - no spool loaded, no network, a refusal from the server -
 // looked exactly like one that worked.
-static void weightResult(int code, float grams) {
+void weightResultShow(int code, float grams) {
   char buf[64];
   if (code == PATCH_WEIGHT_ASKING) return;   // a question follows instead
   if (backendWriteOk(code)) {
@@ -118,9 +127,9 @@ static void weightResult(int code, float grams) {
 }
 
 void confirmPopupSpoolTick() {
-  if (!confirm_popup || confirm_action != 2 || sm_id == s_weight_spool_id) return;
-  logSDf("UI: weight popup for spool %d closed unsent, spool %d is loaded now",
-         s_weight_spool_id, sm_id);
+  if (!confirm_popup || confirm_action < 1 || confirm_action > 3 || sm_id == s_weight_spool_id) return;
+  logSDf("UI: popup %d for spool %d closed unanswered, spool %d is loaded now",
+         confirm_action, s_weight_spool_id, sm_id);
   closeConfirmPopup();
 }
 
@@ -130,9 +139,9 @@ void handleConfirmPopupDeferredActions() {
   s_job = CJ_NONE;
   const bool tare_job = job == CJ_TARE_SPOOL || job == CJ_TARE_FILAMENT ||
                         job == CJ_TARE_VENDOR;
-  if (job == CJ_WEIGHT && sm_id != s_job_spool_id) {
-    logSDf("Weight: %.1f g was for spool %d, spool %d is loaded now - not sent",
-           s_job_value, s_job_spool_id, sm_id);
+  if ((job == CJ_WEIGHT || job == CJ_INITIAL || job == CJ_ARCHIVE) && sm_id != s_job_spool_id) {
+    logSDf("Popup job %d (%.1f g) was for spool %d, spool %d is loaded now - not sent",
+           (int)job, s_job_value, s_job_spool_id, sm_id);
     return;
   }
   if (tare_job && sm_id != s_job_spool_id) {
@@ -144,21 +153,21 @@ void handleConfirmPopupDeferredActions() {
   switch (job) {
     case CJ_WEIGHT: {
       const int code = patchSpoolmanWeight(s_job_value);
-      weightResult(code, s_job_value);
+      weightResultShow(code, s_job_value);
       // Remembered so the question can come up on removal. A yes there
       // reports the same weight once more, which is the only way to open the
-      // window. The cap check cannot interfere: it is BamBuddy only and
-      // amsAskActive() requires FilaMan.
-      if (amsAskActive()) amsNoteMeasurement(sm_id, s_job_value, s_job_gross, true);
+      // window; a write that failed is not called saved. The cap check cannot
+      // interfere: it is BamBuddy only and amsAskActive() requires FilaMan.
+      if (amsAskActive()) amsNoteMeasurement(sm_id, s_job_value, s_job_gross, backendWriteOk(code));
       if (amsPickActive()) amsPickNote(sm_id, sm_filament_name);
       break;
     }
     case CJ_INITIAL:
       patchInitialWeight(s_job_value);
       break;
-    case CJ_TARE_SPOOL:    patchSpoolWeight(s_job_value);         tareFollowUp(); break;
-    case CJ_TARE_FILAMENT: patchFilamentSpoolWeight(s_job_value); tareFollowUp(); break;
-    case CJ_TARE_VENDOR:   patchVendorSpoolWeight(s_job_value);   tareFollowUp(); break;
+    case CJ_TARE_SPOOL:    storeTare(patchSpoolWeight);         break;
+    case CJ_TARE_FILAMENT: storeTare(patchFilamentSpoolWeight); break;
+    case CJ_TARE_VENDOR:   storeTare(patchVendorSpoolWeight);   break;
     case CJ_ARCHIVE:
       patchArchiveSpool();
       break;
@@ -168,12 +177,12 @@ void handleConfirmPopupDeferredActions() {
       // already leaves the spool at full - the weight write after it is what
       // stamps last_weighed_at and last_scale_weight.
       patchInitialWeight(s_job_value);
-      weightResult(patchSpoolmanWeight(s_job_value, true), s_job_value);
+      weightResultShow(patchSpoolmanWeight(s_job_value, true), s_job_value);
       break;
     case CJ_CAP_KEEP:
       // Written anyway, so the scale and the server agree that a weighing
       // happened. BamBuddy clamps it, which is what the user just accepted.
-      weightResult(patchSpoolmanWeight(s_job_value, true), s_job_value);
+      weightResultShow(patchSpoolmanWeight(s_job_value, true), s_job_value);
       break;
     default: break;
   }
@@ -380,7 +389,7 @@ void showSpoolWeightScope(float grams, bool measured) {
 
 void showConfirmPopup(const char* msg, int action) {
   closeConfirmPopup();
-  confirm_action = action;
+  confirm_action = action; s_weight_spool_id = sm_id;
 
   confirm_popup = lv_obj_create(lv_scr_act());
   lv_obj_set_size(confirm_popup, 480, 320);
@@ -429,7 +438,6 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_set_style_text_font(lbl_q, &lv_font_montserrat_ext_14, 0);
     lv_obj_set_style_text_align(lbl_q, LV_TEXT_ALIGN_CENTER, 0);
     snprintf(s_weight_msg, sizeof(s_weight_msg), "%s", msg);
-    s_weight_spool_id = sm_id;
 
     // The parts on the spool, top right: what comes off, and a tap to change
     // it. Only once any are set up; the question keeps the middle either way.
@@ -543,14 +551,14 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_set_style_shadow_width(btn3, 0, 0);
     lv_obj_add_event_cb(btn3, [](lv_event_t *e) {
       closeConfirmPopup();
+      if (sm_id != s_weight_spool_id) return;   // as the weight buttons above
       float derived = 0.0f;
       if (newSpoolDerivesTare(&derived)) {
         showSpoolWeightPopup(derived, true);   // stores the tare, then the initial
         return;
       }
-      float initial = spoolExtrasBareReading() - (float)sm_spool_weight;
-      if (initial < 0) initial = 0;
-      s_job = CJ_INITIAL; s_job_value = initial;
+      const float initial = fmaxf(spoolExtrasBareReading() - (float)sm_spool_weight, 0.0f);
+      s_job = CJ_INITIAL; s_job_value = initial; s_job_spool_id = sm_id;
     }, LV_EVENT_CLICKED, NULL);
     lv_obj_t *l3 = lv_label_create(btn3);
     char buf3[56];
@@ -881,8 +889,8 @@ void showConfirmPopup(const char* msg, int action) {
     lv_obj_add_event_cb(btn_ja, [](lv_event_t *e) {
       int act = confirm_action;
       closeConfirmPopup();
-      if (act == 1) btn_dried_cb(nullptr);
-      if (act == 3) s_job = CJ_ARCHIVE;
+      if (act == 1 && sm_id == s_weight_spool_id) btn_dried_cb(nullptr);
+      if (act == 3) { s_job = CJ_ARCHIVE; s_job_spool_id = s_weight_spool_id; }
       if (act == 4) spoolmanClearHost();
       // 5 = downgrade confirmed on the OTA screen. Only the flag here; the
       // download runs from appLoop().

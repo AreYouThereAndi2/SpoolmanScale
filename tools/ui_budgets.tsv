@@ -87,6 +87,7 @@ STR_LBL_WO_BAG_CAP	12	68	NEVER	src/ui/main_screen.cpp:622 caption at x=218, valu
 # " (A)" to it when automatic weighing is on, and that suffix measures 26 px.
 STR_BTN_MORE_INFO	12	76	NEVER	src/ui/main_screen.cpp:414 84 px button, -8 air
 STR_BTN_WEIGHT	16	168	NEVER	src/ui/main_screen.cpp:786 202 px button, -8 air, -26 for " (A)"
+STR_WB_NO_SPOOL	16	168	NEVER	src/app/app_loop.cpp 202 px weight button, -8 air, -26 for the warning sign
 STR_BTN_DRIED	16	194	NEVER	src/ui/main_screen.cpp:829 202 px button, -8 air
 STR_BTN_LINK	16	194	NEVER	src/ui/main_screen.cpp:868 202 px button, -8 air
 STR_BTN_LOCATION	16	194	NEVER	src/ui/main_screen.cpp:801 202 px button, -8 air

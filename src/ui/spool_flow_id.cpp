@@ -451,7 +451,19 @@ void linkIdLookupAndPatch(int entered_id, bool is_bambu) {
     UnlinkedSpool &s = link_spools[link_spool_count];
     s.id = entered_id;
     s.from_cache = false;   // read from the server a moment ago
-    s.article_hit = false;  // typed in, not offered by the list
+    // Typed in, not offered by the list, but judged as the list judges its
+    // rows (upstream 9720027): the question behind the number compares the
+    // row with the tag (showLinkConfirmPopup()), and without the article a
+    // spool the catalog's article number vouches for came up as "does not
+    // match", while the warning below (tagSpoolCompareTag()) found the same
+    // spool fine. Only in the Bambu flow, as the list's linkArticleHit() only
+    // knows an article there.
+    {
+      char tag_article[16];
+      tagSpoolTagArticle(tag_article, sizeof(tag_article));
+      const char* sp_article = doc["filament"]["article_number"] | "";
+      s.article_hit = is_bambu && tag_article[0] && strcasecmp(tag_article, sp_article) == 0;
+    }
     // Same rule as the list fetch: too long is stored as empty, never cut.
     linkFillTagValues(s, doc.as<JsonObjectConst>());
     String mat = doc["filament"]["material"] | String("");
@@ -520,6 +532,19 @@ void linkIdLookupAndPatch(int entered_id, bool is_bambu) {
   if (ask_a) {
     showWarnPopupA(entered_id, a_tag.c_str(), is_bambu, "", a_add);
     return;
+  }
+  // A typed number can be a wrong number, so it gets the question a tap on the
+  // list gets: which spool it is, and whether to link it (upstream 6eff48d).
+  // It went straight to the link unless the spool was bound or did not match.
+  // Not in a copy through the picker, where that question is the copy's.
+  if (!copy_flow_via_list) {
+    for (int i = 0; i < link_spool_count; i++) {
+      if (link_spools[i].id != entered_id) continue;
+      link_flow_is_bambu = is_bambu;
+      showLinkConfirmPopup(i);
+      return;
+    }
+    logSDf("Link by id: no room for the row of spool %d, linked without asking", entered_id);
   }
   doLinkPatch(entered_id, is_bambu);
 }

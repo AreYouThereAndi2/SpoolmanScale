@@ -17,6 +17,8 @@
 #include "services/backend.h"
 #include "services/backend_api.h"
 #include "services/filaman_api.h"
+#include "services/ntag_pages.h"
+#include "services/spool_temp_rules.h"
 #include "services/tag_field.h"
 #include "services/tag_link.h"
 #include "services/tag_uid.h"
@@ -155,8 +157,9 @@ bool tagWriteRequest(int spool_id, TagFormat fmt, bool link) {
   return true;
 }
 
-// Neither backend stores print temperatures, so they come from the family the
-// material name starts with. Density is only used to estimate the length.
+// Print temperatures for a spool whose backend entry names none, from the
+// family the material name starts with; the backend's own value goes first
+// (spoolTempTagEnds()). Density is only used to estimate the length.
 //
 // Longer names first where one is a prefix of another: PLA+ before PLA, PETG
 // before nothing else that starts with PET.
@@ -219,16 +222,28 @@ static void buildAce(JsonObjectConst sp, AceFields *f) {
 
   float density = MAT_DENSITY_FALLBACK;
   const MatFamily* fam = matchFamily(material);
+  SpoolTempRange fam_nozzle = {0, 0}, fam_bed = {0, 0};
   if (fam) {
-    f->et_lo = fam->et_lo; f->et_hi = fam->et_hi;
-    f->bed_lo = fam->bed_lo; f->bed_hi = fam->bed_hi;
+    fam_nozzle = {fam->et_lo, fam->et_hi};
+    fam_bed = {fam->bed_lo, fam->bed_hi};
     density = fam->density;
-  } else {
-    // Zero, and the preview shows a dash. A reader can ignore a missing
-    // temperature; a wrong one it cannot.
-    logSDf("tag: material '%s' is in no known family, no temperatures written",
-           material);
   }
+  // What the user entered in the backend is what they print at, so it goes
+  // on the tag before the family's textbook range (upstream 89a33ed).
+  // Spoolman holds one value per filament; a backend without one leaves the
+  // field out and the family answers.
+  JsonObjectConst fil = sp["filament"];
+  const SpoolTempRange nozzle = spoolTempTagEnds(
+      spoolTempRange(0, fil["settings_extruder_temp"] | 0), fam_nozzle);
+  const SpoolTempRange bed = spoolTempTagEnds(
+      spoolTempRange(0, fil["settings_bed_temp"] | 0), fam_bed);
+  f->et_lo = (uint16_t)nozzle.lo;  f->et_hi = (uint16_t)nozzle.hi;
+  f->bed_lo = (uint16_t)bed.lo;    f->bed_hi = (uint16_t)bed.hi;
+  // Zero, and the preview shows a dash. A reader can ignore a missing
+  // temperature; a wrong one it cannot.
+  if (!nozzle.hi)
+    logSDf("tag: material '%s' has no temperature in the backend and is in no "
+           "known family, none written", material);
 
   unsigned r = 0, g = 0, b = 0;
   const char *c = sp["filament"]["color_hex"] | "";
@@ -406,35 +421,38 @@ static bool rdPageIs(uint8_t page, const uint8_t *expect) {
   return nfcReadNtagPage(page, got) && memcmp(got, expect, 4) == 0;
 }
 
-// The last user page an NTAG2xx can have: the library refuses pages from 231
-// on, and the largest tag this firmware writes, an NTAG216, ends at 225.
-#define NTAG_PAGE_MAX         230
-// Without a readable capability container the smallest tag is assumed.
-#define NTAG_FALLBACK_LAST_PG  39
-// The page every record starts on, once the four the chip keeps for itself
-// are past.
-#define NTAG_FIRST_USER_PAGE    4
-
-// Capability container at page 3: byte 2 counts 8 byte blocks. What it reports
-// is the NDEF area, which is a little smaller than the chip: NTAG213 144 of
-// 144, NTAG215 496 of 504, NTAG216 872 of 888. Those are the numbers the UI
-// shows, because they are what a record actually has to fit into.
+// The user memory the capability container names, 0 for none; the numbers
+// the UI shows, because they are what a record has to fit into. The pages a
+// write may touch follow from it: services/ntag_pages.h.
 static uint16_t tagUserBytes() {
   uint8_t cc[4] = {0};
-  if (!nfcReadNtagPage(3, cc) || cc[0] != 0xE1 || !cc[2]) return 0;
-  return (uint16_t)cc[2] * 8;
+  return nfcReadNtagPage(3, cc) ? ntagUserBytesFromCc(cc) : 0;
 }
 
-// Falls back to the smallest tag, so an unreadable CC never overruns.
-static uint8_t lastUserPage() {
-  const uint16_t b = tagUserBytes();
-  if (!b) return NTAG_FALLBACK_LAST_PG;
-  // In 16 bits. Byte 2 of the CC is whatever the tag says, and from 0x7F up -
-  // an NTAG I2C plus 2k reports 0xEA - the old 8 bit sum wrapped to page 1,
-  // after which eraseTag() ran no pass at all and reported success.
-  uint16_t last = NTAG_FIRST_USER_PAGE + b / 4 - 1;
-  if (last > NTAG_PAGE_MAX) last = NTAG_PAGE_MAX;
-  return (uint8_t)last;
+// Falls back to the smallest Type 2 tag, so an unreadable or blank container
+// never sends a write into another chip's lock or configuration pages.
+static uint8_t lastUserPage() { return ntagLastUserPage(tagUserBytes()); }
+
+// Whether the pages up to `need_last` are user memory on the tag; when not,
+// write_err and write_code say why. need_bytes is what the format occupies.
+static char    write_err[80] = "";
+static uint8_t write_code = TW_ERR_WRITE;
+static bool tagHolds(uint8_t need_last, int need_bytes, const char *what) {
+  const uint8_t last = lastUserPage();
+  if (need_last <= last) return true;
+  // Two different faults used to read as one. A tag whose capability
+  // container is blank reports no size at all, and lastUserPage() then
+  // assumes the smallest tag - so an NTAG215 with 496 bytes free was turned
+  // away as if it were small, which sends the owner looking for a bigger tag
+  // instead of formatting the one in their hand.
+  if (!tagUserBytes())
+    snprintf(write_err, sizeof(write_err),
+             "Tag reports no size. Format it as NDEF once, then retry");
+  else
+    snprintf(write_err, sizeof(write_err), "%s needs %d bytes, this tag holds %u", what,
+             need_bytes, (unsigned)((last - 3) * 4));
+  write_code = TW_ERR_SPACE;
+  return false;
 }
 
 static bool wrText(uint8_t first, const char *s) {
@@ -457,7 +475,9 @@ static bool wrU16Pair(uint8_t page, uint16_t a, uint16_t b) {
 }
 
 // Clears the user pages, whatever the tag has. A fixed upper page would
-// overrun an NTAG213 and report a failed erase after erasing everything.
+// overrun an NTAG213 and report a failed erase after erasing everything. A
+// tag that names no size gets pages 4 to 15: page 4 holds the head of every
+// record the scale writes, so it reads as empty afterwards.
 static bool eraseTag() {
   const uint8_t zero[4] = {0, 0, 0, 0};
   const uint8_t last = lastUserPage();
@@ -472,6 +492,10 @@ static bool eraseTag() {
 #define ACE_PAGES_WRITTEN  (2 + 3 * 5 + 1 + 4)
 
 static bool writeAce(const AceFields *f) {
+  // The ACE map runs to page 31 on any tag. It used to be written without a
+  // look at the tag: on a 48 byte one (NTAG210, Ultralight EV1) the material
+  // text's zeros went onto AUTH0 and the password, and the tag needed one.
+  if (!tagHolds(ACE_P_WEIGHT, ACE_BYTES, "ACE")) return false;
   const uint8_t magic[4] = { 0x7B, 0x00, 0x65, 0x00 };
   const uint8_t color[4] = { 0xFF, f->b, f->g, f->r };
   const uint8_t zero[4]  = { 0, 0, 0, 0 };
@@ -511,8 +535,6 @@ size_t tagNdefSizeFor(size_t json_len) {
   return n + ((4 - (n % 4)) % 4);
 }
 
-static char    write_err[80] = "";
-static uint8_t write_code = TW_ERR_WRITE;
 static char    remote_payload[320] = "";
 static char    remote_proto[12] = "";
 
@@ -527,26 +549,8 @@ static bool writeNdefJson(const char *json) {
   // Settled before a single byte is laid out: the same arithmetic the preview
   // uses, so a tag the page called too small is exactly the one that fails here.
   const int i_need = (int)tagNdefSizeFor((size_t)n);
-  {
-    const uint8_t need_last = (uint8_t)(4 + (i_need + 3) / 4 - 1);
-    const uint8_t last = lastUserPage();
-    if (need_last > last) {
-      // Two different faults used to read as one. A tag whose capability
-      // container is blank reports no size at all, and lastUserPage() then
-      // assumes the smallest NTAG - so an NTAG215 with 496 bytes free was
-      // turned away claiming it held 144, which sends the owner looking for a
-      // bigger tag instead of formatting the one in their hand.
-      if (!tagUserBytes())
-        snprintf(write_err, sizeof(write_err),
-                 "Tag reports no size. Format it as NDEF once, then retry");
-      else
-        snprintf(write_err, sizeof(write_err),
-                 "OpenSpool needs %d bytes, this tag holds %u", i_need,
-                 (unsigned)((last - 3) * 4));
-      write_code = TW_ERR_SPACE;
-      return false;
-    }
-  }
+  if (!tagHolds((uint8_t)(NTAG_FIRST_USER_PAGE + (i_need + 3) / 4 - 1), i_need, "OpenSpool"))
+    return false;
 
   uint8_t buf[288];
   int i = 0;

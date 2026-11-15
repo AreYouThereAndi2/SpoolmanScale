@@ -26,6 +26,7 @@
 #include "services/spool_color.h"
 #include "services/tag_field.h"
 #include "services/tag_uid.h"
+#include "services/text_util.h"   // joinMaterialName(), nameStartsWithMaterial()
 
 // One row of the link and copy lists, in PSRAM.
 struct UnlinkedSpool {
@@ -94,8 +95,6 @@ struct CopyLook {
 extern CopyLook copy_confirm_look;
 void copyLookFromRow(CopyLook& look, const UnlinkedSpool& s);
 
-bool nameStartsWithMaterial(const char* name, const char* material);
-void joinMaterialName(const char* material, const char* name, char* out, size_t out_size);
 // "New from tag" on the copy entry opens the popup of spool_flow_newtag.cpp.
 extern bool newtag_open_pending;
 
@@ -238,6 +237,9 @@ void listReloadStrip(lv_obj_t* scr, time_t at, uint32_t age_ms, lv_event_cb_t on
 void addListMoreInfo(lv_obj_t* list, StringID str_id);
 // What a tap on a row of the spool list leads to, once the row is true.
 void linkRowChosen(int idx);
+// The question before a link: which spool row idx is, whether it matches the
+// tag, and whether to link it. Also asked for a spool number typed in.
+void showLinkConfirmPopup(int idx);
 
 // ---- in spool_flow_picker.cpp ------------------------------------------------
 

@@ -629,9 +629,12 @@ LookupStep lookupResolveActive(const LookupCtx& c, JsonDocument& doc,
 
     // Spool status. Only FilaMan maps it, the others leave the key unset.
     sm_status_id = spool["status_id"] | 0;
-    if (!extra["last_dried"].isNull()) {
-      String dried = extra["last_dried"].as<String>();
-      dried.replace("\"", "");
+    // Spooly marks a spool never dried with the JSON text null, which read
+    // as the date "null" (upstream 88130ec): no date, like an empty value.
+    String dried = extra["last_dried"].isNull() ? String("") : extra["last_dried"].as<String>();
+    dried.replace("\"", "");
+    dried.trim();
+    if (dried.length() && dried != "null") {
       char day[11];
       isoDayLocal(dried.c_str(), day, sizeof(day));
       char de_date[12];

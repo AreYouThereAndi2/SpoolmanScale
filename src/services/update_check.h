@@ -45,6 +45,8 @@ void updateCheckRestoreBadge();
 // heap is too low; the caller then waits or checks inline. One at a time.
 bool updateCheckManualStart(bool prerelease);
 // True once, when the task has finished: fills what it found and frees the
-// slot. False while it is still running or when none was started.
+// slot. False while it is still running or when none was started. sha gets
+// the image's checksum from the asset's digest, "" when it carries none.
 bool updateCheckManualTake(bool* ok, char* tag, size_t tag_len, char* err,
-                           size_t err_len, uint32_t* image_size);
+                           size_t err_len, uint32_t* image_size,
+                           char* sha, size_t sha_len);

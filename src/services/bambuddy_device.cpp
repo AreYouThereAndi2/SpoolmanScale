@@ -39,7 +39,9 @@
 #define BB_BACKOFF_MAX_MS     30000
 // A request may take a tenth of the time at most.
 #define BB_COST_FACTOR           10
-#define BB_TASK_STACK_BYTES   12288
+// The report goes out over TLS when BamBuddy is reached by https, like the
+// backend and AMS jobs, which have 16 KB for the same reason.
+#define BB_TASK_STACK_BYTES   16384
 #define BB_TASK_PRIORITY          1     // below the Arduino loop task
 #define BB_TASK_CORE              0     // the loop runs on core 1
 
@@ -151,14 +153,17 @@ static void declineCommand(const char* base, const char* key, const char* cmd) {
 static void handleCommand(const char* base, const char* key, const char* cmd,
                           int write_spool_id) {
   if (strcmp(cmd, "tare") == 0) {
-    if (!scale_ready) {
+    // Presence as well as scale_ready, and the mean of a second, as the tare
+    // buttons take it: this took one raw sample, and from an ADC that has
+    // left the bus that is all ones, stored as the zero point.
+    if (!scale_ready || !scaleHardwarePresent()) {
       bbCommandResult(base, key, cmd, false, "Scale not ready");
       logSD("BamBuddy: tare requested but the scale is not ready");
       return;
     }
-    // Same three steps the tare button on the main screen performs. The
-    // display picks the new value up on the next updateDisplay().
-    int32_t raw = scaleHardwareReadRaw();
+    // Same steps the tare button on the main screen performs. The display
+    // picks the new value up on the next updateDisplay().
+    const int32_t raw = scaleHardwareTareReading();
     saveTareOffset(raw);
     scale_weight_g = 0.0f;
     resetScaleFilter();

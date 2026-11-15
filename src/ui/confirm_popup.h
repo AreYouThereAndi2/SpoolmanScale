@@ -14,6 +14,10 @@ bool isSpoolWeightScopeOpen();
 void handleConfirmPopupDeferredActions();
 // Closes the weight popup unsent when another spool was loaded under it.
 void confirmPopupSpoolTick();
+// Says on the status line what became of a weight write: saved, no spool
+// loaded, no WiFi, or the HTTP code. code is what patchSpoolmanWeight()
+// returned; PATCH_WEIGHT_ASKING says nothing, a question follows instead.
+void weightResultShow(int code, float grams);
 // Every dialog this file owns, for the navigation. Closed, not hidden: a
 // question nobody can see any more must not keep uiModalWaiting() true.
 void closeConfirmPopups();

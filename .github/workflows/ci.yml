@@ -29,6 +29,32 @@ jobs:
         run: scripts/check.sh
       - name: Test Bluetooth discovery
         run: python3 test/test_ble_discovery.py
+      - name: Test auto weighing on an empty pad
+        run: python3 test/test_auto_weight_pad.py
+      - name: Test AMS grid redraw
+        run: python3 test/test_ams_grid_redraw.py
+      - name: Test AMS weights after a quick printer switch
+        run: python3 test/test_ams_weights_owed.py
+      - name: Test release asset digest
+        run: python3 test/test_asset_digest.py
+      - name: Test release notes cut
+        run: python3 test/test_notes_cut.py
+      - name: Test self-deleting tasks free what they declare
+        run: python3 test/test_task_self_delete.py
+      - name: Test copy list keeps tagged spools
+        run: python3 test/test_copy_list_tagged.py
+      - name: Test link by number judges the article number
+        run: python3 test/test_link_number_article.py
+      - name: Test material and name joined once
+        run: python3 test/test_join_material_name.py
+      - name: Test native tag probe
+        run: python3 test/test_native_tag_probe.py
+      - name: Test recheck pace
+        run: python3 test/test_recheck_pace.py
+      - name: Test spool temperature on a written tag
+        run: python3 test/test_spool_temp.py
+      - name: Test tag writes stay inside the user memory
+        run: python3 test/test_ntag_pages.py
 
   build:
     name: Build ${{ matrix.env }}

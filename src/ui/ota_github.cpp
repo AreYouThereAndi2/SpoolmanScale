@@ -164,7 +164,7 @@ static void checkSpinner(bool on) {
 // state of the update button. Shared by the check that ran in its task and the
 // inline one the low-memory fallback still runs.
 static void applyCheckResult(bool found, const char* tag, const char* cerr,
-                             uint32_t image_size) {
+                             uint32_t image_size, const char* sha) {
   if (!lbl_gh_status) return;
   if (!found) {
     lv_label_set_text(lbl_gh_status, (cerr && cerr[0]) ? cerr : T(STR_GH_OTA_FLASH_FAIL));
@@ -174,6 +174,9 @@ static void applyCheckResult(bool found, const char* tag, const char* cerr,
 
   strncpy(gh_latest_version, tag, sizeof(gh_latest_version)-1);
   gh_latest_version[sizeof(gh_latest_version)-1] = 0;
+  // The install checks the image against it (otaExpectedSha()); without the
+  // daily check that was TLS alone (upstream 3e75552).
+  otaRememberSha(tag, sha);
 
   if (lbl_gh_installed) {
     char inst[48]; snprintf(inst, sizeof(inst), T(STR_GH_OTA_INSTALLED), FW_VERSION);
@@ -281,26 +284,27 @@ void doGithubOtaCheck() {
   }
 
   // No task to be had (low memory): the old way, blocking, as before.
-  char tag[40] = "", cerr[80] = "";
+  char tag[40] = "", cerr[80] = "", sha[ASSET_SHA256_HEX_LEN + 1] = "";
   uint32_t image_size = 0;
   const bool found = githubLatestTag(gh_prerelease, tag, sizeof(tag), nullptr, 0,
-                                     cerr, sizeof(cerr), &image_size);
-  applyCheckResult(found, tag, cerr, image_size);
+                                     cerr, sizeof(cerr), &image_size, sha, sizeof(sha));
+  applyCheckResult(found, tag, cerr, image_size, sha);
 }
 
 // From the loop, once a pass. Picks up the result of the check task.
 void otaGithubCheckTick() {
   if (!s_manual_check) return;
   bool found = false;
-  char tag[40] = "", cerr[80] = "";
+  char tag[40] = "", cerr[80] = "", sha[ASSET_SHA256_HEX_LEN + 1] = "";
   uint32_t image_size = 0;
-  if (!updateCheckManualTake(&found, tag, sizeof(tag), cerr, sizeof(cerr), &image_size)) return;
+  if (!updateCheckManualTake(&found, tag, sizeof(tag), cerr, sizeof(cerr), &image_size,
+                             sha, sizeof(sha))) return;
   s_manual_check = false;
   checkSpinner(false);
   logSDf("OTA check: %s %s", found ? "found" : "failed", found ? tag : cerr);
   // The screen may have been left in the meantime; the labels are then gone and
   // there is nobody to tell.
-  applyCheckResult(found, tag, cerr, image_size);
+  applyCheckResult(found, tag, cerr, image_size, sha);
 }
 
 void doGithubOtaFlash(const char* version) {

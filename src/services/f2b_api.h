@@ -33,7 +33,10 @@ void f2bSetUrl(const char* url);
 struct F2bProduct {
   bool found;              // the app knew the code and has a material
   char source[24];         // cache, spoolman, tigertag, ofd, spoolmandb-community, upcitemdb, none, amazon
-  char barcode[24];        // the code as the app canonicalised it
+  // The code as the app canonicalised it. Room for the longest code a scan
+  // offers (a 32 character shop SKU, scan_action.cpp): a cut one was created
+  // with, and written to the filament as its article number.
+  char barcode[40];
   char brand[32];
   char material[16];
   char subtype[24];

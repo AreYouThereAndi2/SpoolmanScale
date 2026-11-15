@@ -120,7 +120,9 @@ void fetchSpoolSummary(int spool_id, SpoolSummary &out) {
   const char* material = f["material"]       | "";
   const char* name     = f["name"]           | "";
   const char* color    = f["color_hex"]      | "";
-  snprintf(out.text, sizeof(out.text), "#%d  %s %s  %s", spool_id, vendor, material, name);
+  char joined[64]; joinMaterialName(material, name, joined, sizeof(joined));
+  char line[160]; snprintf(line, sizeof(line), "#%d  %s  %s", spool_id, vendor, joined);
+  utf8Cut(line, sizeof(out.text) - 1, out.text, sizeof(out.text));
   snprintf(out.color, sizeof(out.color), "%s", color);
 }
 

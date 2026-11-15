@@ -16,6 +16,9 @@
 
 static lv_obj_t *s_extras_popup = nullptr;
 static uint8_t   s_extras_mask  = 0;
+// The spool the chooser was opened for: another one put down under it would
+// otherwise be given these parts on OK.
+static int       s_extras_spool = 0;
 static lv_obj_t *s_extras_sum   = nullptr;
 static lv_obj_t *s_extras_btn[SPOOL_EXTRAS_MAX] = {};
 static void    (*s_on_close)()  = nullptr;
@@ -49,12 +52,14 @@ static void extrasRefresh() {
 }
 
 static void extrasClose(bool keep) {
-  if (keep && sm_found && sm_id > 0) {
+  if (keep && sm_found && sm_id > 0 && sm_id == s_extras_spool) {
     spoolExtrasSetFor(sm_id, s_extras_mask);
     char names[96];
     spoolExtrasNames(s_extras_mask, names, sizeof(names));
     logSDf("UI: spool %d parts -> %s (%.1f g)", sm_id, names[0] ? names : "none",
            spoolExtrasGrams(s_extras_mask));
+  } else if (keep) {
+    logSDf("UI: parts for spool %d not kept, spool %d is loaded now", s_extras_spool, sm_id);
   }
   // Deleted on the next pass: this runs inside one of the popup's buttons.
   if (s_extras_popup) { lv_obj_del_async(s_extras_popup); s_extras_popup = nullptr; }
@@ -69,6 +74,7 @@ void showExtrasChooser(void (*on_close)()) {
   logSD("SHOW: ExtrasChooser");
   releaseScreen(&s_extras_popup);
   s_extras_mask = spoolExtrasFor(sm_found ? sm_id : 0);
+  s_extras_spool = sm_found ? sm_id : 0;
 
   lv_obj_t *scrim = lv_obj_create(lv_scr_act());
   s_extras_popup = scrim;
