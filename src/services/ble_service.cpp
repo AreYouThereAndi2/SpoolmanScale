@@ -235,8 +235,14 @@ int bleScan(BleDevice* out, int capacity, uint32_t duration_ms, BleProgressFn pr
 // A write without response is refused, not queued, while the controller's
 // buffers are full. Seen on the M220 after 15 chunks (23.09.2026): that is
 // back pressure, not a fault, so a refused chunk waits and goes again.
-#define BLE_WRITE_RETRIES       40
+// The PM240 refuses for longer while it prints what it has (16.11.2026: at
+// 3584 of 11520 bytes, 40 tries of 25 ms were not enough). So a refused
+// chunk waits longer each time, up to BLE_WRITE_REFUSED_MAX_MS in all, and
+// the chunks after it go out with a longer gap.
 #define BLE_WRITE_RETRY_MS      25
+#define BLE_WRITE_RETRY_MAX_MS  200
+#define BLE_WRITE_REFUSED_MAX_MS 10000
+#define BLE_WRITE_GAP_MAX_MS    80
 #define BLE_WRITE_CHUNK_MIN    20
 // Asked for at connect; the printer answers with what it can do.
 #define BLE_PREFERRED_MTU      185
@@ -428,12 +434,14 @@ BleWriteResult bleWriteBlocks(const char* address, uint16_t service_uuid,
     s_total = total;
     const uint32_t started = millis();
     unsigned retried = 0;
+    uint32_t gap_ms = BLE_WRITE_CHUNK_GAP_MS;
     bool ok = true;
     for (int b = 0; ok && b < count; b++) {
       const BleBlock& blk = blocks[b];
       for (size_t pos = 0; pos < blk.len; pos += chunk) {
         const size_t n = (blk.len - pos) < chunk ? (blk.len - pos) : chunk;
         int tries = 0;
+        uint32_t wait_ms = BLE_WRITE_RETRY_MS, waited_ms = 0;
         for (;;) {
           if (!client->isConnected()) {
             logSDf("BLE: link dropped in block %d at %u/%u", b, (unsigned)pos, (unsigned)blk.len);
@@ -441,23 +449,29 @@ BleWriteResult bleWriteBlocks(const char* address, uint16_t service_uuid,
             break;
           }
           if (chr->writeValue(blk.data + pos, n, response)) break;
-          if (++tries > BLE_WRITE_RETRIES) {
-            logSDf("BLE: write refused in block %d at %u/%u, rc=%d, gave up after %d tries",
-                   b, (unsigned)pos, (unsigned)blk.len, client->getLastError(), tries - 1);
+          if (waited_ms >= BLE_WRITE_REFUSED_MAX_MS) {
+            logSDf("BLE: write refused in block %d at %u/%u, rc=%d, gave up after %d tries in %u ms",
+                   b, (unsigned)pos, (unsigned)blk.len, client->getLastError(), tries, (unsigned)waited_ms);
             ok = false;
             break;
           }
+          tries++;
           retried++;
-          delay(BLE_WRITE_RETRY_MS);
+          delay(wait_ms);
+          waited_ms += wait_ms;
+          if (progress) progress();
+          wait_ms = wait_ms * 2 > BLE_WRITE_RETRY_MAX_MS ? BLE_WRITE_RETRY_MAX_MS : wait_ms * 2;
         }
         if (!ok) break;
+        // Back pressure seen: the rest goes slower, the printer is busy.
+        if (tries && gap_ms < BLE_WRITE_GAP_MAX_MS) gap_ms = gap_ms * 2 > BLE_WRITE_GAP_MAX_MS ? BLE_WRITE_GAP_MAX_MS : gap_ms * 2;
         s_sent += n;
-        delay(BLE_WRITE_CHUNK_GAP_MS);
+        delay(gap_ms);
         if (progress) progress();
       }
     }
-    if (ok) logSDf("BLE: %u bytes sent in %u ms, %u chunks waited", (unsigned)total,
-                   (unsigned)(millis() - started), retried);
+    if (ok) logSDf("BLE: %u bytes sent in %u ms, %u waits, gap %u ms at the end", (unsigned)total,
+                   (unsigned)(millis() - started), retried, (unsigned)gap_ms);
     if (ok && done) {
       // Without the status characteristic there is nothing to wait for but
       // time; with it, the device says when it is through.
