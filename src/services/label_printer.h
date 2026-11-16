@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "services/ble_service.h"
@@ -10,20 +11,33 @@
 //
 //  Which printer the scale has, what label stock is in it, and
 //  the one call that puts a raster on paper. The printer is a
-//  BLE device picked on the device card; the model and the
-//  loaded label size are set on the printer screen or in the
-//  browser. Models are profiles: head width, the label sizes
-//  they take, whether anyone has printed on one yet.
+//  BLE device picked on the device card, or, for a printer that
+//  only speaks classic Bluetooth, the print bridge on the WLAN
+//  (services/print_bridge.h) whose address is typed in the
+//  browser. The model and the loaded label size are set on the
+//  printer screen or in the browser. Models are profiles: head
+//  width, the label sizes they take, whether anyone has printed
+//  on one yet, and which way the job goes.
 //
 //  Millimetres are what a person reads off the label roll; dots
 //  are what the head wants, at 203 dpi. The conversions live
 //  here so the renderer and the screens agree on them.
 // ============================================================
 
+// Stored in NVS as the number: a new model is appended, an old one never
+// renumbered.
 enum LabelPrinterModel : uint8_t {
   LP_MODEL_NONE = 0, LP_MODEL_M220 = 1, LP_MODEL_M110 = 2, LP_MODEL_M100 = 3,
-  LP_MODEL_PM240 = 4
+  LP_MODEL_PM240 = 4,
+  // The same PM240, reached through the print bridge: it prints over classic
+  // Bluetooth only, which the ESP32-S3 does not have (16.11.2026).
+  LP_MODEL_PM240_BRIDGE = 5
 };
+
+// The bridge's address as typed: "printbridge.local", an IP, either with
+// ":port". Its API key as set on the bridge's own page, empty for none.
+#define LP_BRIDGE_HOST_LEN 64
+#define LP_BRIDGE_KEY_LEN  48
 
 struct LabelPrinterProfile {
   LabelPrinterModel model;
@@ -37,6 +51,12 @@ struct LabelPrinterProfile {
   // wherever it gets hot enough, a spool in the dryer included.
   bool     direct_thermal;
   const char* vendor;      // shown before the name where models are listed
+  // The job goes to the print bridge over HTTP, not over BLE: no BLE device,
+  // no Bluetooth switch, the bridge's address instead.
+  bool     via_bridge;
+  // A StringID shown after the name where models are listed, -1 for none:
+  // which way the job goes, where two entries share a printer.
+  int      note;
 };
 
 struct LabelPrinterConfig {
@@ -49,6 +69,10 @@ struct LabelPrinterConfig {
   // to the row when used, so LP_OFFSET_RIGHT keeps a roll against the right
   // wall there for every label width.
   int16_t  x_offset;
+  // Only used by a via_bridge model. Kept apart from the BLE device, so
+  // switching between the two ways keeps both.
+  char     bridge_host[LP_BRIDGE_HOST_LEN];
+  char     bridge_key[LP_BRIDGE_KEY_LEN];
 };
 
 // "Against the wall": beyond any head, clamped to the row's edge when used.
@@ -74,15 +98,31 @@ enum LabelPrintResult : uint8_t {
   LP_BLE_WRITE,
   LP_BLE_STUCK,
   LP_SENT_UNCONFIRMED,  // all sent, the printer never said done
+  // The print bridge's answers (services/print_bridge.h).
+  LP_BRIDGE_UNREACHABLE,  // no answer from its address
+  LP_BRIDGE_NO_PRINTER,   // 412: no printer chosen on the bridge
+  LP_BRIDGE_PRINTER,      // 502: the bridge could not reach the printer
+  LP_BRIDGE_AUTH,         // 401: the API key is wrong or missing
+  LP_BRIDGE_BUSY,         // 409: another job is running
+  LP_BRIDGE_REFUSED,      // any other answer
 };
 
 const LabelPrinterProfile& labelPrinterProfile(LabelPrinterModel model);
+// The models in the order the screens list them.
+extern const LabelPrinterModel LABEL_PRINTER_MODELS[];
+extern const int LABEL_PRINTER_MODEL_COUNT;
+// True when this model prints through the bridge.
+bool labelPrinterViaBridge(LabelPrinterModel model);
+// "PM240 (WLAN-Brücke)": the name and its note, for a list or a row.
+void labelPrinterModelLabel(LabelPrinterModel model, char* out, size_t n);
 
 // Cached after the first read; every write goes through the save.
 LabelPrinterConfig labelPrinterLoadConfig();
 bool labelPrinterSaveConfig(const LabelPrinterConfig& config);
+// A BLE device picked, or for a bridge model, the bridge's address set.
 bool labelPrinterConfigured(const LabelPrinterConfig& config);
-// Drops the device, keeps model and label size.
+// Drops the device (or the bridge's address and key), keeps model and label
+// size.
 bool labelPrinterForget();
 // True when this address is the picked printer.
 bool labelPrinterIsDevice(const char* address);

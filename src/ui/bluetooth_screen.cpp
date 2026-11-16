@@ -85,14 +85,20 @@ void buildBluetoothScreen() {
       logSD("BTN: Bluetooth -> Devices");
       show_ble_devices_pending = true;
     }, LV_EVENT_CLICKED, NULL);
+  }
 
-    // The printer: the one BLE device the scale has a use for so far.
+  // The printer, with the switch on or off: a PM240 prints through the print
+  // bridge over the WLAN and needs no Bluetooth here, and its model is picked
+  // on the printer screen behind this row.
+  {
     const LabelPrinterConfig c = labelPrinterLoadConfig();
     char buf_p[40]; copyT(buf_p, sizeof(buf_p), STR_PRN_TITLE);
-    char buf_ps[64];
+    char buf_m[48]; labelPrinterModelLabel(c.model, buf_m, sizeof(buf_m));
+    char buf_ps[128];
     if (!labelPrinterConfigured(c)) copyT(buf_ps, sizeof(buf_ps), STR_PRN_NONE);
-    else snprintf(buf_ps, sizeof(buf_ps), "%s  %s", labelPrinterProfile(c.model).name,
-                  c.name[0] ? c.name : c.address);
+    else if (labelPrinterViaBridge(c.model))
+      snprintf(buf_ps, sizeof(buf_ps), "%s  %s", buf_m, c.bridge_host);
+    else snprintf(buf_ps, sizeof(buf_ps), "%s  %s", buf_m, c.name[0] ? c.name : c.address);
     lv_obj_t *pbtn = makeListBtn(list, LV_SYMBOL_IMAGE, buf_p, buf_ps, labelPrinterConfigured(c));
     lv_obj_add_event_cb(pbtn, [](lv_event_t *e){
       logSD("BTN: Bluetooth -> Printer");

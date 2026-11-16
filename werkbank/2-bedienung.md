@@ -79,9 +79,11 @@ Abgezogen wird überall, wo aus der Anzeige ein Filamentgewicht wird: Netto auf 
 
 Der Abzug ist eine Einstellung der Waage. Er liegt nicht im Backend: Eine zweite Waage oder BamBuddy selbst wissen nichts davon.
 
-## Etikettendrucker TYPONOS PM240
+## Etikettendrucker TYPONOS PM240 (über die Druckbrücke)
 
-Der PM240 spricht **TSPL**, die Befehlssprache vieler Etikettendrucker. Die Hersteller-App (Labelnize) schickt sie über klassisches Bluetooth. Der ESP32-S3 kann nur Bluetooth Low Energy, aber der PM240 bietet denselben Dienst auch per BLE an (`0xFF00`, geschrieben wird `0xFF02`, wie bei den Phomemo-Druckern). Das Protokoll stammt aus einem Mitschnitt der App. Ein Druckauftrag der Waage ist Byte für Byte derselbe wie der der App für das gleiche Bild:
+Der PM240 spricht **TSPL**, die Befehlssprache vieler Etikettendrucker, und druckt **nur über klassisches Bluetooth (SPP)**. Das zeigt ein Mitschnitt der Hersteller-App (Labelife, 16.11.2026): Sie öffnet eine RFCOMM-Verbindung und schickt reines TSPL. Seine BLE-Dienste (`ff00` mit `ff02`/`ff04`, `ae00`/`ae01`, `ae3a`/`ae3b`) nehmen einen Auftrag zwar an, drucken aber nichts, mit nRF Connect auf jedem Schreib-Kanal ausprobiert. Der ESP32-S3 der Waage kann kein klassisches Bluetooth. Deshalb steht neben dem Drucker die **Druckbrücke**: ein kleiner ESP32 (das Original mit klassischem Bluetooth, z. B. ESP32-WROOM-32), der Aufträge über das WLAN annimmt und per SPP an den Drucker gibt. Aufbau und Einrichtung der Brücke: [bridge/README.md](../bridge/README.md).
+
+Die Waage baut den Auftrag genau wie die App und schickt ihn per `POST http://<Brücke>/api/print`:
 
 ```
 SIZE 50.0 mm,30.0 mm
@@ -89,7 +91,7 @@ GAP 6.0 mm,0 mm
 DIRECTION 0,0
 DENSITY 10
 CLS
-BITMAP 0,0,48,240,1,<48 Bytes x 240 Zeilen, Bit 0 = schwarz>
+BITMAP 0,0,48,240,0,<48 Bytes x 240 Zeilen, Bit 0 = schwarz>
 PRINT 1
 ```
 
@@ -97,13 +99,20 @@ Der Kopf ist 48 mm breit (384 Punkte bei 203 dpi). Bei 50-mm-Etiketten druckt er
 
 **Einrichten:**
 
-1. Die Drucker-App am Handy schließen bzw. die Verbindung trennen. Der PM240 nimmt nur eine BLE-Verbindung zur Zeit an.
-2. An der Waage: Einstellungen → **Bluetooth** einschalten. Die Waage startet dafür einmal neu.
-3. Bluetooth → Geräte suchen → **PM240** antippen → als Drucker verwenden.
-4. Bluetooth → **Drucker** → Modell antippen, bis **PM240** erscheint. Etikett **50 x 30 mm**. In der Weboberfläche heißt das Modell „TYPONOS PM240“.
-5. Testdruck.
+1. Die Druckbrücke einrichten (siehe [bridge/README.md](../bridge/README.md)): ins WLAN bringen, den PM240 suchen und wählen, dort einen Testdruck machen.
+2. An der Waage: Einstellungen → Bluetooth → **Drucker** → Modell antippen, bis **PM240 (WLAN-Brücke)** erscheint. Bluetooth muss dafür nicht eingeschaltet sein. Etikett **50 x 30 mm**.
+3. In der Weboberfläche → **Drucker**: Modell „TYPONOS PM240 (WLAN-Brücke)“, darunter die **Adresse der Druckbrücke** eintragen (`printbridge.local` oder die IP, wahlweise mit `:Port`), und den **API-Schlüssel**, falls auf der Brücke einer gesetzt ist. Speichern.
+4. **Verbindung prüfen**: Die Waage fragt `GET /api/status` der Brücke und zeigt, ob sie erreichbar ist und welcher Drucker gewählt ist.
+5. Testdruck, an der Waage oder in der Weboberfläche.
 
-**Noch nicht am Gerät getestet.** Wenn etwas schiefgeht, bitte das Log schicken, die Zeilen beginnen mit `TSPL:` und `BLE:`:
+Der Eintrag **PM240 (druckt nicht über BLE)** bleibt in der Liste, damit Waagen, die ihn schon gewählt hatten, nicht auf einen anderen Drucker springen. Er druckt auf dem PM240 nichts; der BLE-Weg bleibt für TSPL-Drucker der Phomemo-Klasse PM241/PM245, die über BLE drucken.
 
-- „kein unterstützter Drucker“: Die Waage hat unter `0xFF00` kein beschreibbares `0xFF02` gefunden. Laut nRF Connect hat der PM240 es (Write No Response). Die Meldung heißt dann eher, dass eine falsche Adresse gewählt ist.
-- Druck verschoben oder leer: Lücke (6 mm) und Dichte (10) sind die Werte der App für die 50 x 30-mm-Rolle. Andere Rollen brauchen eventuell andere Werte.
+**Meldungen der Druckbrücke** auf der Druckkarte:
+
+- „Druckbrücke nicht erreichbar“: Name löst nicht auf oder keine Verbindung. Brücke an? Im selben WLAN? Falls `printbridge.local` nicht klappt, die IP der Brücke eintragen.
+- „Druckbrücke: kein Drucker gewählt“: Auf der Seite der Brücke den PM240 suchen und wählen.
+- „Druckbrücke: Drucker nicht erreichbar“: Die Brücke kommt nicht an den Drucker. Drucker an? Hält das Handy noch die Verbindung?
+- „Druckbrücke: API-Schlüssel falsch“: Den Schlüssel in der Weboberfläche der Waage neu eintragen.
+- „Druckbrücke beschäftigt“: Ein anderer Auftrag läuft, gleich noch einmal versuchen.
+
+**Noch nicht am Gerät getestet.** Wenn etwas schiefgeht, bitte das Log schicken, die Zeilen beginnen mit `TSPL:` und `Bridge:`. Druck verschoben oder leer: Lücke (6 mm) und Dichte (10) sind die Werte der App für die 50 x 30-mm-Rolle. Andere Rollen brauchen eventuell andere Werte.

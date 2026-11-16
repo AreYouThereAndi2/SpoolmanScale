@@ -1,0 +1,120 @@
+name: Druckbruecke
+
+# The print bridge (bridge/) is a firmware of its own for an original ESP32.
+# Built on every push and pull request that touches it; a tag bridge-vX.Y.Z
+# also makes a GitHub release with the images. The scale's tags (v*) and its
+# workflows are not involved: "bridge-v..." does not match "v*".
+on:
+  push:
+    branches: ['**']
+    paths: ['bridge/**', '.github/workflows/bridge.yml']
+    # Path filters are not evaluated for tags, so a tag always builds.
+    tags: ['bridge-v*']
+  pull_request:
+    paths: ['bridge/**', '.github/workflows/bridge.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: bridge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Druckbruecke
+    runs-on: ubuntu-latest
+    # Same reason as in build-all-boards.yml: the platform's virtualenv pulls
+    # "pioarduino", and 6.2.0.post1 fails the platform's own version check.
+    env:
+      UV_CONSTRAINT: ${{ github.workspace }}/.github/pio-constraints.txt
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio-bridge-${{ hashFiles('bridge/platformio.ini') }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+      - name: Read version from bridge.h
+        id: version
+        run: |
+          VERSION=$(sed -nE 's/^#define[[:space:]]+BRIDGE_VERSION[[:space:]]+"([^"]+)".*/\1/p' bridge/src/bridge.h)
+          if [ -z "$VERSION" ]; then
+            echo "::error::BRIDGE_VERSION not found in bridge/src/bridge.h"
+            exit 1
+          fi
+          # The manifest tells ESP Web Tools which version it installs.
+          MANIFEST=$(python3 -c "import json; print(json.load(open('bridge/manifest.json'))['version'])")
+          if [ "$MANIFEST" != "$VERSION" ]; then
+            echo "::error::bridge/manifest.json says $MANIFEST, bridge.h says $VERSION"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "bridge-v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match BRIDGE_VERSION $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Build
+        run: pio run -d bridge
+      - name: Refuse a binary larger than the app slot
+        # min_spiffs.csv: two app slots of 0x1E0000 bytes. An update over the
+        # web page writes into the other slot and fails if it does not fit.
+        run: |
+          SIZE=$(stat -c %s bridge/.pio/build/esp32dev/firmware.bin)
+          echo "firmware.bin: $SIZE bytes of 1966080"
+          if [ "$SIZE" -gt 1966080 ]; then
+            echo "::error::firmware.bin is $SIZE bytes, more than the 1966080 byte app slot"
+            exit 1
+          fi
+      - name: Prepare images
+        # The platform writes firmware.factory.bin itself: bootloader at
+        # 0x1000, partition table, otadata and app, padded from 0x0. That is
+        # what ESP Web Tools and esptool flash at offset 0. firmware.bin alone
+        # is what the bridge's own update page takes.
+        run: |
+          B=bridge/.pio/build/esp32dev
+          if [ ! -f $B/firmware.factory.bin ]; then
+            echo "::error::$B/firmware.factory.bin missing"
+            exit 1
+          fi
+          mkdir -p out
+          cp $B/firmware.factory.bin out/Druckbruecke.bin
+          cp $B/firmware.bin out/Druckbruecke_app.bin
+          ls -l out
+      - name: Upload images
+        uses: actions/upload-artifact@v4
+        with:
+          name: Druckbruecke-${{ steps.version.outputs.version }}-${{ github.sha }}
+          path: out/*.bin
+          retention-days: 14
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Druckbrücke ${{ steps.version.outputs.version }}
+          # Never "latest": the scale downloads its update from
+          # releases/latest/download/SpoolmanScale.bin. A bridge release
+          # marked latest would break every scale's update button.
+          make_latest: 'false'
+          body: |
+            Firmware der Druckbrücke (ESP32-WROOM-32, WLAN zu Bluetooth Classic für den TYPONOS PM240).
+
+            - `Druckbruecke.bin`: komplettes Image zum Erst-Flashen an Adresse 0x0 (ESP Web Tools, esptool).
+            - `Druckbruecke_app.bin`: nur die Anwendung, für das Update über die Weboberfläche der Druckbrücke.
+
+            Anleitung: bridge/README.md
+          files: |
+            out/Druckbruecke.bin
+            out/Druckbruecke_app.bin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

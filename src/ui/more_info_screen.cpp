@@ -789,10 +789,12 @@ void buildMoreInfoScreen() {
     });
   }
 
-  // Print label, left of the X. Only when it can do anything: Bluetooth on,
-  // a printer picked, a spool the backend knows. The print itself runs from
-  // the loop; it starts the BLE stack and blocks for seconds.
-  if (bleEnabled() && labelPrinterConfigured(labelPrinterLoadConfig()) && sm_found && sm_id > 0) {
+  // Print label, left of the X. Only when it can do anything: a printer
+  // picked, Bluetooth on unless it prints through the bridge, a spool the
+  // backend knows. The print itself runs from the loop and blocks for seconds.
+  const LabelPrinterConfig prn = labelPrinterLoadConfig();
+  if ((labelPrinterViaBridge(prn.model) || bleEnabled()) && labelPrinterConfigured(prn) &&
+      sm_found && sm_id > 0) {
     lv_obj_t *btn_print = lv_btn_create(hdr);
     lv_obj_set_size(btn_print, 116, 34);
     lv_obj_set_pos(btn_print, 282, 9);
