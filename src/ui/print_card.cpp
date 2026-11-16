@@ -6,6 +6,7 @@
 #include "hardware/sd_logger.h"
 #include "lang.h"
 #include "services/ble_service.h"
+#include "services/print_bridge.h"
 #include "ui/theme.h"
 #include "ui_common.h"
 
@@ -106,10 +107,12 @@ void printCardShow() {
   lv_refr_now(NULL);
 }
 
-static int phaseText(BleSessionPhase p) {
+// The bridge reports in the BLE session's phases; only its connect reads
+// differently, since the device being reached is the bridge.
+static int phaseText(BleSessionPhase p, bool bridge) {
   switch (p) {
     case BLE_PHASE_FIND:    return STR_PRN_PH_FIND;
-    case BLE_PHASE_CONNECT: return STR_PRN_PH_CONNECT;
+    case BLE_PHASE_CONNECT: return bridge ? STR_PRN_PH_BRIDGE : STR_PRN_PH_CONNECT;
     case BLE_PHASE_SEND:    return STR_PRN_PH_SEND;
     case BLE_PHASE_AWAIT:   return STR_PRN_PH_AWAIT;
     default:                return STR_PRN_PH_RENDER;
@@ -125,16 +128,20 @@ void printCardTick() {
   s_angle = (uint16_t)((s_angle + PC_ARC_STEP_DEG) % 360);
   lv_arc_set_angles(s_arc, s_angle, (s_angle + PC_ARC_DEG) % 360);
 
-  const BleSessionPhase phase = bleSessionPhase();
+  // One of the two runs at a time: a BLE session, or a post to the bridge.
+  BleSessionPhase phase = bleSessionPhase();
+  const bool bridge = phase == BLE_PHASE_IDLE && printBridgePhase() != BLE_PHASE_IDLE;
+  if (bridge) phase = printBridgePhase();
   if ((int)phase != s_shown_phase) {
     s_shown_phase = (int)phase;
-    lv_label_set_text(s_title, T(phaseText(phase)));
+    lv_label_set_text(s_title, T(phaseText(phase, bridge)));
     lv_label_set_text(s_text, "");
     s_shown_pct = -1;
   }
   if (phase == BLE_PHASE_SEND) {
     size_t sent = 0, total = 0;
-    bleSessionBytes(&sent, &total);
+    if (bridge) printBridgeBytes(&sent, &total);
+    else bleSessionBytes(&sent, &total);
     const int pct = total ? (int)(sent * 100 / total) : 0;
     if (pct != s_shown_pct) {
       s_shown_pct = pct;

@@ -53,7 +53,7 @@ static void printFixedLabel(bool (*render)(const LabelPrinterConfig&, LabelRaste
   const LabelPrinterConfig c = labelPrinterLoadConfig();
   LabelPrintResult result = LP_NO_PRINTER;
   if (labelPrinterConfigured(c)) {
-    if (!bleEnabled()) result = LP_BLE_OFF;
+    if (!labelPrinterViaBridge(c.model) && !bleEnabled()) result = LP_BLE_OFF;
     else {
       printCardShow();
       LabelRaster raster{};
@@ -72,14 +72,12 @@ void closePrinterScreen() {
   if (scr_printer) { lv_obj_del(scr_printer); scr_printer = nullptr; }
 }
 
-// The next model in the profile order, NONE never included.
+// The next model in the list order, NONE never included.
 static LabelPrinterModel nextModel(LabelPrinterModel m) {
-  switch (m) {
-    case LP_MODEL_M220: return LP_MODEL_M110;
-    case LP_MODEL_M110: return LP_MODEL_M100;
-    case LP_MODEL_M100: return LP_MODEL_PM240;
-    default:            return LP_MODEL_M220;
-  }
+  for (int i = 0; i < LABEL_PRINTER_MODEL_COUNT; i++)
+    if (LABEL_PRINTER_MODELS[i] == m)
+      return LABEL_PRINTER_MODELS[(i + 1) % LABEL_PRINTER_MODEL_COUNT];
+  return LABEL_PRINTER_MODELS[0];
 }
 
 // The next stock size the model can take, after the current one; the first
@@ -137,6 +135,18 @@ void buildPrinterScreen() {
   const bool have = labelPrinterConfigured(c);
   lv_obj_t *list = buildOptionList(scr_printer);
 
+  // The print bridge in place of the device: its address is typed in the
+  // browser, the one place with a keyboard fit for a host name, so the row
+  // shows it and a tap says where it is set.
+  if (p.via_bridge) {
+    char buf_t[40]; copyT(buf_t, sizeof(buf_t), STR_PRN_BRIDGE);
+    char buf_s[LP_BRIDGE_HOST_LEN + 8];
+    if (!have) copyT(buf_s, sizeof(buf_s), STR_PRN_BRIDGE_NONE);
+    else snprintf(buf_s, sizeof(buf_s), "%s", c.bridge_host);
+    lv_obj_t *btn = makeListBtn(list, LV_SYMBOL_WIFI, buf_t, buf_s, have);
+    lv_obj_add_event_cb(btn, infoPopupEventCb, LV_EVENT_CLICKED,
+                        INFO_POPUP_ARG(STR_PRN_BRIDGE, STR_PRN_BRIDGE_HELP));
+  } else
   // The device: what was picked on the device card, and the way there.
   { char buf_t[40]; copyT(buf_t, sizeof(buf_t), STR_PRN_DEVICE);
     char buf_s[64];
@@ -150,9 +160,11 @@ void buildPrinterScreen() {
 
   // The model, cycled with a tap.
   { char buf_t[40]; copyT(buf_t, sizeof(buf_t), STR_PRN_MODEL);
-    char buf_s[64];
-    if (p.experimental) snprintf(buf_s, sizeof(buf_s), "%s  %s", p.name, T(STR_PRN_EXPERIMENTAL));
-    else snprintf(buf_s, sizeof(buf_s), "%s", p.name);
+    char buf_m[48];
+    labelPrinterModelLabel(c.model, buf_m, sizeof(buf_m));
+    char buf_s[96];
+    if (p.experimental) snprintf(buf_s, sizeof(buf_s), "%s  %s", buf_m, T(STR_PRN_EXPERIMENTAL));
+    else snprintf(buf_s, sizeof(buf_s), "%s", buf_m);
     lv_obj_t *btn = makeListBtn(list, LV_SYMBOL_SETTINGS, buf_t, buf_s);
     lv_obj_add_event_cb(btn, [](lv_event_t *e){
       logSD("BTN: Printer -> next model");
@@ -282,7 +294,7 @@ void handlePrinterDeferredActions() {
       return;
     }
     if (!labelPrinterConfigured(c)) result = LP_NO_PRINTER;
-    else if (!bleEnabled()) result = LP_BLE_OFF;
+    else if (!labelPrinterViaBridge(c.model) && !bleEnabled()) result = LP_BLE_OFF;
     else {
       // What the scan left in the globals, as the backend named it.
       SpoolLabelData spool{};

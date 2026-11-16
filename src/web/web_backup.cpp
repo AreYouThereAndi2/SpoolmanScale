@@ -17,6 +17,7 @@ static const char *NS = "spoolscale";
 
 static const char *const SECRET_KEYS[] = {
   "wifi_pass", "web_pass", "filaman_key", "filaman_dev", "bb_key", "sm_secret",
+  "printer_bkey",   // the print bridge's API key
 };
 static const char *const DEVICE_KEYS[] = {
   "fw_ver", "upd_sha", "upd_ver", "hx711",

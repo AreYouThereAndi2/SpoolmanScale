@@ -10,6 +10,8 @@
 #include "services/backend_job.h"
 #include "bambu/bambu_catalog.h"
 #include "services/github_release.h"
+#include "services/label_printer.h"
+#include "services/print_bridge.h"
 #include "web/web_net_probe.h"
 #include "web/web_shell.h"
 
@@ -46,6 +48,20 @@ static WebJobResult         s_res;
 static char                 s_arg[160] = "";   // a release tag, or the backend address for the probe
 static bool                 s_flag    = false;
 static unsigned long        s_done_ms = 0;
+
+// The handler packs the address and the key into the argument, "host\nkey",
+// so the task reads nothing from the printer config the loop may be writing.
+static PrintBridgeStatus s_bridge{};
+static void runBridgeStatus() {
+  char host[LP_BRIDGE_HOST_LEN] = "";
+  const char* nl = strchr(s_arg, '\n');
+  const size_t hl = nl ? size_t(nl - s_arg) : strlen(s_arg);
+  snprintf(host, sizeof(host), "%.*s", (int)(hl < sizeof(host) ? hl : sizeof(host) - 1), s_arg);
+  printBridgeStatus(host, nl ? nl + 1 : "", &s_bridge);
+  s_res.code = s_bridge.http;
+  s_res.ok   = s_bridge.reachable;
+}
+const PrintBridgeStatus& webJobBridgeStatus() { return s_bridge; }
 
 static void runHostTest() {
   s_res.code = backendGetHealthCode(backendBaseUrl(), 4000);
@@ -160,6 +176,7 @@ static void webJobTask(void* arg) {
     case WJ_GH_LIST:   runGhList();   break;
     case WJ_BAMBU_CATALOG: runBambuCatalog(); break;
     case WJ_NET_PROBE: netProbeRun(s_arg, s_res.body); s_res.ok = true; break;
+    case WJ_BRIDGE_STATUS: runBridgeStatus(); break;
     default: break;
   }
   Serial.printf("[webjob] kind %d done, ok=%d code=%d, stack left %u\n",

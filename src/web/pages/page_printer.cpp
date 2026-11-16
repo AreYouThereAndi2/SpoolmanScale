@@ -9,7 +9,9 @@
 // device meanwhile, whichever screen is showing.
 //
 // The page is always in the tab strip, switch on or off: it is also where a
-// visitor learns which printers the scale can drive.
+// visitor learns which printers the scale can drive, and where the print
+// bridge of a PM240 is set up, which needs no Bluetooth at all. Its address
+// is typed here because the scale has no keyboard fit for a host name.
 #include "web/web_pages.h"
 
 #include <Arduino.h>
@@ -19,9 +21,11 @@
 #include "hardware/sd_logger.h"
 #include "services/ble_service.h"
 #include "services/label_printer.h"
+#include "services/print_bridge.h"
 #include "ui/ble_devices_screen.h"
 #include "ui/printer_screen.h"
 #include "web/web_access.h"
+#include "web/web_jobs.h"
 #include "web/web_shell.h"
 // Last on purpose: T() is a macro and ArduinoJson uses T as a template
 // parameter, so lang.h has to come after anything that pulls it in.
@@ -77,7 +81,14 @@ static String stateJson() {
   j += jsonText(c.name);
   j += F("\",\"address\":\"");
   j += c.address;
-  j += F("\",\"w\":");
+  // The key itself never leaves the scale again, only whether one is set.
+  j += F("\",\"bridge\":");
+  j += labelPrinterViaBridge(c.model) ? F("true") : F("false");
+  j += F(",\"host\":\"");
+  j += jsonText(c.bridge_host);
+  j += F("\",\"key\":");
+  j += c.bridge_key[0] ? F("true") : F("false");
+  j += F(",\"w\":");
   j += String((unsigned)c.media_width_mm);
   j += F(",\"h\":");
   j += String((unsigned)c.media_length_mm);
@@ -129,6 +140,8 @@ static String body() {
   h += T(STR_W_P_TESTED);
   h += F("</span></div><div class='row'><span class='k'>Phomemo M110, M100</span><span class='v'>");
   h += T(STR_W_P_TESTED);
+  h += F("</span></div><div class='row'><span class='k'>TYPONOS PM240</span><span class='v'>");
+  h += T(STR_W_P_VIA_BRIDGE);
   h += F("</span></div><span class='hint'>");
   h += T(STR_W_P_SUPPORTED_HINT);
   h += ' ';
@@ -138,7 +151,53 @@ static String body() {
   // ---- the printer ---------------------------------------------------------
   h += F("<div class='card wide'><h2>");
   h += T(STR_PRN_TITLE);
-  h += F("</h2><div class='field'><label>");
+  h += F("</h2>");
+  // The model first: it decides whether a BLE device or the bridge follows.
+  h += F("<div class='field'><label>");
+  h += T(STR_PRN_MODEL);
+  h += F("</label><select id='pm'>");
+  for (int i = 0; i < LABEL_PRINTER_MODEL_COUNT; i++) {
+    const LabelPrinterModel m = LABEL_PRINTER_MODELS[i];
+    const LabelPrinterProfile& p = labelPrinterProfile(m);
+    char name[48];
+    labelPrinterModelLabel(m, name, sizeof(name));
+    h += F("<option value='");
+    h += String((int)m);
+    h += F("'");
+    if (c.model == m) h += F(" selected");
+    h += '>';
+    h += p.vendor;
+    h += ' ';
+    h += name;
+    if (p.experimental) { h += ' '; h += T(STR_PRN_EXPERIMENTAL); }
+    h += F("</option>");
+  }
+  h += F("</select><span class='hint' id='pm-h'>");
+  h += T(STR_W_P_PM240_HINT);
+  h += F("</span><span class='msg' id='pm-s'></span></div>");
+
+  // ---- the print bridge, for a model that prints through it ---------------
+  h += F("<div id='bb'><div class='field'><label for='bh'>");
+  h += T(STR_W_P_BRIDGE_HOST);
+  h += F("</label><input id='bh' maxlength='");
+  h += String(LP_BRIDGE_HOST_LEN - 1);
+  h += F("' placeholder='printbridge.local' autocomplete='off' spellcheck='false'>"
+         "<span class='hint'>");
+  h += T(STR_W_P_BRIDGE_HOST_HINT);
+  h += F("</span></div><div class='field'><label for='bk'>");
+  h += T(STR_W_P_BRIDGE_KEY);
+  h += F("</label><input id='bk' type='password' maxlength='");
+  h += String(LP_BRIDGE_KEY_LEN - 1);
+  h += F("' autocomplete='new-password'><span class='hint'>");
+  h += T(STR_W_P_BRIDGE_KEY_HINT);
+  h += F("</span></div><div class='field'><div class='inrow'><button id='bs'>");
+  h += T(STR_W_SAVE);
+  h += F("</button><button id='bc' class='quiet'>");
+  h += T(STR_W_P_BRIDGE_CHECK);
+  h += F("</button></div><span class='msg' id='bb-s'></span></div></div>");
+
+  // ---- the BLE device, for every other model -------------------------------
+  h += F("<div id='bd'><div class='field'><label>");
   h += T(STR_PRN_DEVICE);
   h += F("</label><div class='inrow'><span id='pd' class='v'></span>"
          "<button id='fb' class='quiet'>");
@@ -153,29 +212,7 @@ static String body() {
   h += T(STR_BT_SCAN_WEB);
   h += F("</button><span class='hint' style='flex:1'>");
   h += T(STR_W_P_SCAN_HINT);
-  h += F("</span></div><span class='msg' id='dv-s'></span></div>");
-
-  h += F("<div class='field'><label>");
-  h += T(STR_PRN_MODEL);
-  h += F("</label><select id='pm'>");
-  {
-    const LabelPrinterModel models[] = { LP_MODEL_M220, LP_MODEL_M110, LP_MODEL_M100,
-                                         LP_MODEL_PM240 };
-    for (const LabelPrinterModel m : models) {
-      const LabelPrinterProfile& p = labelPrinterProfile(m);
-      h += F("<option value='");
-      h += String((int)m);
-      h += F("'");
-      if (c.model == m) h += F(" selected");
-      h += '>';
-      h += p.vendor;
-      h += ' ';
-      h += p.name;
-      if (p.experimental) { h += ' '; h += T(STR_PRN_EXPERIMENTAL); }
-      h += F("</option>");
-    }
-  }
-  h += F("</select><span class='msg' id='pm-s'></span></div>");
+  h += F("</span></div><span class='msg' id='dv-s'></span></div></div>");
 
   h += F("<div class='field'><label>");
   h += T(STR_PRN_MEDIA);
@@ -325,6 +362,12 @@ static String body() {
   h += jsStr(T(STR_PRN_ERR_BLE_OFF));
   h += F(",stuck:");
   h += jsStr(T(STR_PRN_ERR_STUCK));
+  h += F(",keySet:");
+  h += jsStr(T(STR_W_P_BRIDGE_KEY_SET));
+  h += F(",checking:");
+  h += jsStr(T(STR_W_P_BRIDGE_CHECKING));
+  h += F(",pm240:");
+  h += String((int)LP_MODEL_PM240);
   h += F("};"
          "let timer=0;"
          // The device rows, from the JSON: createElement and textContent,
@@ -350,8 +393,17 @@ static String body() {
          "postFlash('/api/printer/device',x.address,'dv-s',4000).then(load);});"
          "v.appendChild(b);}"
          "r.appendChild(v);box.appendChild(r);});}"
+         "let keyDirty=false;"
          "function paint(d){"
          "$('bl').checked=d.ble;"
+         // The bridge's fields or the BLE device's, after the model; the
+         // PM240 hint only beside the entry that does not print.
+         "const br=d.printer.bridge;"
+         "$('bb').style.display=br?'':'none';$('bd').style.display=br?'none':'';"
+         "$('pm-h').style.display=d.printer.model===P.pm240?'':'none';"
+         "if(document.activeElement!==$('bh'))$('bh').value=d.printer.host;"
+         "if(!keyDirty)$('bk').placeholder=d.printer.key?P.keySet:'';"
+         "$('bc').disabled=!d.printer.host;"
          "$('pd').textContent=d.printer.configured?((d.printer.name||P.unnamed)+'  '+d.printer.address):P.none;"
          "$('fb').style.display=d.printer.configured?'':'none';"
          "$('pc').style.display=d.printer.configured?'':'none';"
@@ -359,7 +411,7 @@ static String body() {
          "$('ps').value=d.printer.w+'x'+d.printer.h;"
          "$('lt').textContent=d.lastTest||'';"
          "$('sc').disabled=!d.ble||d.stuck||d.scanning;"
-         "$('tb').disabled=!d.ble||d.stuck||!d.printer.configured;"
+         "$('tb').disabled=br?!d.printer.configured:(!d.ble||d.stuck||!d.printer.configured);"
          "$('cb').disabled=$('tb').disabled;"
          "pos(d);"
          "rows(d);"
@@ -409,6 +461,24 @@ static String body() {
          "$('xo').addEventListener('change',function(){setOff(Math.round(+$('xo').value||0)*8);});"
          "$('cb').addEventListener('click',function(){"
          "postFlash('/api/printer/calib','','cb-s',4000).then(function(){setTimeout(load,12000);});});"
+         // The key goes along only when it was typed in: an untouched field
+         // keeps the stored one, which the page never sees. Emptied, it
+         // removes it.
+         "$('bk').addEventListener('input',function(){keyDirty=true;});"
+         "$('bs').addEventListener('click',function(){"
+         "const body=$('bh').value.trim()+(keyDirty?'\\n'+$('bk').value:'');"
+         "postFlash('/api/printer/bridge',body,'bb-s',4000).then(function(r){"
+         "if(r.ok){keyDirty=false;$('bk').value='';}load();});});"
+         // Asked again until the scale's worker has the bridge's answer.
+         "function bridgeCheck(n){getJson('/api/printer/bridge').then(function(d){"
+         "if(d&&d.pending&&n<20){setTimeout(function(){bridgeCheck(n+1);},700);return;}"
+         "if(!d){flash('bb-s',WS.err,true);return;}"
+         "flash('bb-s',d.msg||WS.err,!d.ok);});}"
+         "$('bc').addEventListener('click',function(){"
+         "flash('bb-s',P.checking,false);"
+         "post('/api/printer/bridge/check','').then(function(r){"
+         "if(!r.ok){flash('bb-s',r.text||WS.err,true);return;}"
+         "setTimeout(function(){bridgeCheck(0);},700);});});"
          "$('fb').addEventListener('click',function(){"
          "postFlash('/api/printer/forget','','pd-s',4000).then(load);});"
          "load();"
@@ -416,7 +486,126 @@ static String body() {
   return h;
 }
 
+// A test print or the calibration page can start: a printer set, and for a
+// BLE model the switch on and the stack free. The bridge needs neither.
+static bool printReady(WebServer &srv) {
+  const LabelPrinterConfig c = labelPrinterLoadConfig();
+  if (!labelPrinterConfigured(c)) { srv.send(409, "text/plain", T(STR_PRN_ERR_NO_PRINTER)); return false; }
+  if (labelPrinterViaBridge(c.model)) return true;
+  if (!bleEnabled()) { srv.send(409, "text/plain", T(STR_PRN_ERR_BLE_OFF)); return false; }
+  if (bleStackStuck()) { srv.send(409, "text/plain", T(STR_PRN_ERR_STUCK)); return false; }
+  return true;
+}
+
+// "printbridge.local", "192.168.0.50:8080", also pasted as "http://host/":
+// stored as host and port only. Letters, digits, dots, dashes; false for
+// anything else, so the address can go into a request line unescaped.
+static bool cleanBridgeHost(String v, char* out, size_t n) {
+  v.trim();
+  if (v.startsWith("http://")) v = v.substring(7);
+  while (v.endsWith("/")) v.remove(v.length() - 1);
+  if (v.length() >= n) return false;
+  int colons = 0;
+  for (size_t i = 0; i < v.length(); i++) {
+    const char ch = v[i];
+    if (ch == ':') { if (++colons > 1 || i == 0 || i + 1 == v.length()) return false; continue; }
+    if (colons && !isdigit((unsigned char)ch)) return false;
+    if (!isalnum((unsigned char)ch) && ch != '.' && ch != '-') return false;
+  }
+  snprintf(out, n, "%s", v.c_str());
+  return true;
+}
+
 static void routes(WebServer &srv) {
+  // "host" or "host\nkey": the key only when the page's field was typed in,
+  // an empty one removing it. An empty host clears the bridge.
+  srv.on("/api/printer/bridge", HTTP_POST, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_PRINTER))) return;
+    const String v = srv.arg("plain");
+    const int nl = v.indexOf('\n');
+    LabelPrinterConfig c = labelPrinterLoadConfig();
+    if (!cleanBridgeHost(nl < 0 ? v : v.substring(0, nl), c.bridge_host, sizeof(c.bridge_host))) {
+      srv.send(400, "text/plain", T(STR_W_P_BRIDGE_HOST_BAD));
+      return;
+    }
+    if (nl >= 0) {
+      String key = v.substring(nl + 1);
+      key.trim();
+      for (size_t i = 0; i < key.length(); i++)
+        if ((unsigned char)key[i] <= 0x20 || (unsigned char)key[i] >= 0x7f || key.length() >= sizeof(c.bridge_key)) {
+          srv.send(400, "text/plain", T(STR_W_P_BRIDGE_KEY_BAD));
+          return;
+        }
+      snprintf(c.bridge_key, sizeof(c.bridge_key), "%s", key.c_str());
+    }
+    const bool ok = labelPrinterSaveConfig(c);
+    logSDf("Web: print bridge -> %s%s", c.bridge_host[0] ? c.bridge_host : "-",
+           nl >= 0 ? (c.bridge_key[0] ? ", key set" : ", key removed") : "");
+    srv.send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
+  });
+
+  // Asks the bridge's GET /api/status on the web worker: a bridge that is
+  // not there costs the loop nothing. The page polls GET for the verdict.
+  srv.on("/api/printer/bridge/check", HTTP_POST, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_PRINTER))) return;
+    const LabelPrinterConfig c = labelPrinterLoadConfig();
+    if (!c.bridge_host[0]) { srv.send(409, "text/plain", T(STR_PRN_ERR_NO_PRINTER)); return; }
+    if (webJobState() == WJS_DONE) webJobTake();   // somebody else's leftover
+    String arg = c.bridge_host;
+    arg += '\n';
+    arg += c.bridge_key;
+    if (!webJobStart(WJ_BRIDGE_STATUS, arg.c_str(), false)) {
+      srv.send(409, "text/plain", T(STR_W_P_BRIDGE_JOB_BUSY));
+      return;
+    }
+    srv.send(202, "application/json", "{\"pending\":true}");
+  });
+  srv.on("/api/printer/bridge", HTTP_GET, [&srv]() {
+    if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_PRINTER))) return;
+    if (webJobKind() != WJ_BRIDGE_STATUS || webJobState() == WJS_RUNNING) {
+      srv.send(200, "application/json", "{\"pending\":true}");
+      return;
+    }
+    if (webJobState() != WJS_DONE) {
+      srv.send(200, "application/json", "{\"pending\":false,\"ok\":false}");
+      return;
+    }
+    const PrintBridgeStatus st = webJobBridgeStatus();
+    webJobTake();
+    String msg;
+    bool ok = false;
+    if (st.http <= 0) msg = T(STR_PRN_ERR_BRIDGE_UNREACH);
+    else if (st.http == 401) msg = T(STR_PRN_ERR_BRIDGE_AUTH);
+    else if (st.http != 200 || !st.reachable) msg = T(STR_W_P_BRIDGE_NOT_ONE);
+    else {
+      msg = T(STR_W_P_BRIDGE_REACH);
+      if (st.version[0]) { msg += F(" (v"); msg += st.version; msg += ')'; }
+      if (!st.printer_set) { msg += F(". "); msg += T(STR_PRN_ERR_BRIDGE_NO_PRN); }
+      else {
+        ok = true;
+        msg += F(". ");
+        msg += T(STR_PRN_TITLE);
+        msg += F(": ");
+        msg += st.printer_name[0] ? st.printer_name : st.printer_address;
+        if (st.printer_name[0]) { msg += ' '; msg += st.printer_address; }
+        if (st.battery >= 0) {
+          char b[32];
+          snprintf(b, sizeof(b), T(STR_W_P_BRIDGE_BATTERY), st.battery);
+          msg += F(", ");
+          msg += b;
+        }
+      }
+      if (st.busy) { msg += F(". "); msg += T(STR_PRN_ERR_BRIDGE_BUSY); }
+    }
+    logSDf("Web: print bridge check -> %d %s", st.http, ok ? "ok" : "not ready");
+    String j = F("{\"pending\":false,\"ok\":");
+    j += ok ? F("true") : F("false");
+    j += F(",\"msg\":\"");
+    j += jsonText(msg.c_str());
+    j += F("\"}");
+    srv.send(200, "application/json", j);
+  });
+
   srv.on("/api/printer", HTTP_GET, [&srv]() {
     if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_PRINTER))) return;
     srv.send(200, "application/json", stateJson());
@@ -503,9 +692,7 @@ static void routes(WebServer &srv) {
   // and shows the verdict on the device. The page fetches it afterwards.
   srv.on("/api/printer/test", HTTP_POST, [&srv]() {
     if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_PRINTER))) return;
-    if (!labelPrinterConfigured(labelPrinterLoadConfig())) { srv.send(409, "text/plain", T(STR_PRN_ERR_NO_PRINTER)); return; }
-    if (!bleEnabled()) { srv.send(409, "text/plain", T(STR_PRN_ERR_BLE_OFF)); return; }
-    if (bleStackStuck()) { srv.send(409, "text/plain", T(STR_PRN_ERR_STUCK)); return; }
+    if (!printReady(srv)) return;
     printer_test_pending = true;
     logSD("Web: test print requested");
     srv.send(200, "text/plain", T(STR_W_P_QUEUED));
@@ -537,9 +724,7 @@ static void routes(WebServer &srv) {
   // Parks the calibration page, the same way as the test print.
   srv.on("/api/printer/calib", HTTP_POST, [&srv]() {
     if (!webRequire(srv, GATE_CONFIG, T(STR_W_NAV_PRINTER))) return;
-    if (!labelPrinterConfigured(labelPrinterLoadConfig())) { srv.send(409, "text/plain", T(STR_PRN_ERR_NO_PRINTER)); return; }
-    if (!bleEnabled()) { srv.send(409, "text/plain", T(STR_PRN_ERR_BLE_OFF)); return; }
-    if (bleStackStuck()) { srv.send(409, "text/plain", T(STR_PRN_ERR_STUCK)); return; }
+    if (!printReady(srv)) return;
     printer_calib_pending = true;
     logSD("Web: calibration page requested");
     srv.send(200, "text/plain", T(STR_W_P_QUEUED));

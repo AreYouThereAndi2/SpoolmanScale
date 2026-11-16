@@ -1658,6 +1658,36 @@ enum StringID {
   // Weight button: a tag is read but the pad is too light for its spool
   STR_WB_NO_SPOOL,
 
+  // The PM240 through the print bridge (services/print_bridge.h): model
+  // notes, the printer screen's row, the print card, the browser's fields
+  STR_PRN_NOTE_BLE_NO_PRINT,
+  STR_PRN_NOTE_BRIDGE,
+  STR_PRN_BRIDGE,
+  STR_PRN_BRIDGE_NONE,
+  STR_PRN_BRIDGE_HELP,
+  STR_PRN_PH_BRIDGE,
+  STR_PRN_ERR_BRIDGE_UNREACH,
+  STR_PRN_ERR_BRIDGE_NO_PRN,
+  STR_PRN_ERR_BRIDGE_PRN,
+  STR_PRN_ERR_BRIDGE_AUTH,
+  STR_PRN_ERR_BRIDGE_BUSY,
+  STR_PRN_ERR_BRIDGE_REFUSED,
+  STR_W_P_VIA_BRIDGE,
+  STR_W_P_PM240_HINT,
+  STR_W_P_BRIDGE_HOST,
+  STR_W_P_BRIDGE_HOST_HINT,
+  STR_W_P_BRIDGE_KEY,
+  STR_W_P_BRIDGE_KEY_HINT,
+  STR_W_P_BRIDGE_CHECK,
+  STR_W_P_BRIDGE_KEY_SET,
+  STR_W_P_BRIDGE_CHECKING,
+  STR_W_P_BRIDGE_HOST_BAD,
+  STR_W_P_BRIDGE_KEY_BAD,
+  STR_W_P_BRIDGE_JOB_BUSY,
+  STR_W_P_BRIDGE_NOT_ONE,
+  STR_W_P_BRIDGE_REACH,
+  STR_W_P_BRIDGE_BATTERY,
+
   STR_COUNT
 };
 

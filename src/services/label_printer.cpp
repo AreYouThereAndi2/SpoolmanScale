@@ -8,6 +8,7 @@
 #include "lang.h"
 #include "services/phomemo_m_series.h"
 #include "services/prefs_store.h"
+#include "services/print_bridge.h"
 #include "services/tspl_printer.h"
 
 // 203 dpi: dots per millimetre, as a ratio so the rounding stays exact.
@@ -20,34 +21,65 @@
 #define LP_KEY_NAME  "printer_name"
 #define LP_KEY_W     "printer_w"
 #define LP_KEY_H     "printer_h"
+// The print bridge's address and API key. Keys of their own rather than the
+// device's address: that one is 17 characters, too short for a host name, and
+// it keys the BLE printer's offset.
+#define LP_KEY_BHOST "printer_bhost"
+#define LP_KEY_BKEY  "printer_bkey"
 // The offset belongs to one printer, not to the scale: "px" and the device's
 // address without colons, 14 characters. A second printer starts at 0, and
 // the first gets its own back when it is picked again (Nikolai, 30.09.2026).
 #define LP_KEY_XOFF_PREFIX "px"
+// The bridge stands for one printer at a time, so its offset has one key,
+// "pxbridge", whatever address it is reached at.
+#define LP_OFFSET_ID_BRIDGE "bridge"
 
 static const LabelPrinterProfile PROFILE_NONE = {};
 // M220: 2 inch head, 576 dots, takes stock from 20 to 75 mm wide; the vendor
 // app pads narrower rows to 576 and wider ones to 648. Hardware proven.
 static const LabelPrinterProfile PROFILE_M220 = {
-  LP_MODEL_M220, "M220", 40, 30, 20, 75, 10, 150, 576, 648, false, true, "Phomemo"
+  LP_MODEL_M220, "M220", 40, 30, 20, 75, 10, 150, 576, 648, false, true, "Phomemo", false, -1
 };
 // M110: 48 mm head, 384 dots. Same transport, own preamble. A user printed
 // with this profile on an M100 (09.2026), which proves the M110 bytes.
 static const LabelPrinterProfile PROFILE_M110 = {
-  LP_MODEL_M110, "M110", 40, 30, 20, 48, 10, 150, 384, 384, false, true, "Phomemo"
+  LP_MODEL_M110, "M110", 40, 30, 20, 48, 10, 150, 384, 384, false, true, "Phomemo", false, -1
 };
 // M100: the M110's head and bytes under its own name, so a user finds it.
 static const LabelPrinterProfile PROFILE_M100 = {
-  LP_MODEL_M100, "M100", 40, 30, 20, 48, 10, 150, 384, 384, false, true, "Phomemo"
+  LP_MODEL_M100, "M100", 40, 30, 20, 48, 10, 150, 384, 384, false, true, "Phomemo", false, -1
 };
 
-// TYPONOS PM240: TSPL over the Phomemo GATT pair, 48 mm head, 384 dots. The
-// vendor app prints 50 mm labels on it, the head covering their middle 48 mm,
-// so the row may be 400 dots and the driver cuts it to the head. Read off a
-// capture of the app; not yet printed from the scale, hence experimental.
+// TYPONOS PM240: TSPL, 48 mm head, 384 dots. The vendor app prints 50 mm
+// labels on it, the head covering their middle 48 mm, so the row may be 400
+// dots and the driver cuts it to the head.
+//
+// Over BLE it prints nothing: an HCI snoop of the vendor app (16.11.2026)
+// showed the job going over classic Bluetooth SPP, and every GATT write
+// characteristic it lists took a job and printed nothing. The entry stays,
+// because "4" sits in the NVS of every scale that picked it and a model that
+// vanished would turn into an M220 there; its note sends the user to the
+// bridge entry instead, where the same bytes go out over SPP.
 static const LabelPrinterProfile PROFILE_PM240 = {
-  LP_MODEL_PM240, "PM240", 50, 30, 20, 50, 10, 150, 384, 400, true, true, "TYPONOS"
+  LP_MODEL_PM240, "PM240", 50, 30, 20, 50, 10, 150, 384, 400, false, true, "TYPONOS",
+  false, STR_PRN_NOTE_BLE_NO_PRINT
 };
+// The PM240 through the print bridge: the same job, posted to a classic
+// Bluetooth ESP32 next to the printer that hands it on over SPP. The bytes
+// are those the vendor app sends; not yet printed from the scale, hence
+// experimental.
+static const LabelPrinterProfile PROFILE_PM240_BRIDGE = {
+  LP_MODEL_PM240_BRIDGE, "PM240", 50, 30, 20, 50, 10, 150, 384, 400, true, true, "TYPONOS",
+  true, STR_PRN_NOTE_BRIDGE
+};
+
+// The bridge entry before the BLE one, so cycling through the models on the
+// device meets the one that prints first.
+const LabelPrinterModel LABEL_PRINTER_MODELS[] = {
+  LP_MODEL_M220, LP_MODEL_M110, LP_MODEL_M100, LP_MODEL_PM240_BRIDGE, LP_MODEL_PM240
+};
+const int LABEL_PRINTER_MODEL_COUNT =
+  sizeof(LABEL_PRINTER_MODELS) / sizeof(LABEL_PRINTER_MODELS[0]);
 
 // The two sizes printed and checked on the M220 for 0.8.0 (Nikolai,
 // 26.09.2026). 40 x 20 and 30 x 20 leave no room for the code; the larger
@@ -75,6 +107,12 @@ static int16_t loadOffset(const char* address) {
   char key[20];
   return offsetKey(address, key, sizeof(key)) ? (int16_t)prefsGetInt(key, 0) : 0;
 }
+
+// What the offset belongs to: the BLE device, or the bridge with a host set.
+static const char* offsetId(const LabelPrinterConfig& c) {
+  if (labelPrinterViaBridge(c.model)) return c.bridge_host[0] ? LP_OFFSET_ID_BRIDGE : "";
+  return c.address;
+}
 // The label size the user picked, which is what NVS keeps. The config holds
 // the size in effect: the picked one, or the model's default while the model
 // cannot take it. Going M220 -> M110 -> M220 lost a picked 50 x 30 for good
@@ -87,8 +125,19 @@ const LabelPrinterProfile& labelPrinterProfile(LabelPrinterModel model) {
     case LP_MODEL_M110: return PROFILE_M110;
     case LP_MODEL_M100: return PROFILE_M100;
     case LP_MODEL_PM240: return PROFILE_PM240;
+    case LP_MODEL_PM240_BRIDGE: return PROFILE_PM240_BRIDGE;
     default:            return PROFILE_NONE;
   }
+}
+
+bool labelPrinterViaBridge(LabelPrinterModel model) {
+  return labelPrinterProfile(model).via_bridge;
+}
+
+void labelPrinterModelLabel(LabelPrinterModel model, char* out, size_t n) {
+  const LabelPrinterProfile& p = labelPrinterProfile(model);
+  if (p.note >= 0) snprintf(out, n, "%s %s", p.name ? p.name : "", T(p.note));
+  else snprintf(out, n, "%s", p.name ? p.name : "");
 }
 
 static bool mediaFits(const LabelPrinterProfile& p, uint16_t w, uint16_t h) {
@@ -107,6 +156,8 @@ static LabelPrinterConfig normalized(const LabelPrinterConfig& in) {
   c.model = use.model;
   c.name[sizeof(c.name) - 1] = '\0';
   c.address[sizeof(c.address) - 1] = '\0';
+  c.bridge_host[sizeof(c.bridge_host) - 1] = '\0';
+  c.bridge_key[sizeof(c.bridge_key) - 1] = '\0';
   if (c.x_offset > LP_OFFSET_RIGHT) c.x_offset = LP_OFFSET_RIGHT;
   if (c.x_offset < LP_OFFSET_LEFT)  c.x_offset = LP_OFFSET_LEFT;
   if (mediaFits(use, s_want_w, s_want_l)) {
@@ -127,7 +178,9 @@ LabelPrinterConfig labelPrinterLoadConfig() {
   snprintf(c.address, sizeof(c.address), "%s", prefsGetString(LP_KEY_ADDR, "").c_str());
   c.media_width_mm  = prefsGetInt(LP_KEY_W, PROFILE_M220.default_width_mm);
   c.media_length_mm = prefsGetInt(LP_KEY_H, PROFILE_M220.default_length_mm);
-  c.x_offset = loadOffset(c.address);
+  snprintf(c.bridge_host, sizeof(c.bridge_host), "%s", prefsGetString(LP_KEY_BHOST, "").c_str());
+  snprintf(c.bridge_key, sizeof(c.bridge_key), "%s", prefsGetString(LP_KEY_BKEY, "").c_str());
+  c.x_offset = loadOffset(offsetId(c));
   s_want_w = c.media_width_mm;
   s_want_l = c.media_length_mm;
   s_config = normalized(c);
@@ -147,31 +200,50 @@ bool labelPrinterSaveConfig(const LabelPrinterConfig& in) {
   }
   LabelPrinterConfig c = normalized(in);
   // Another device is another printer: its own offset, whatever the caller
-  // carried over from the one before.
-  if (strcmp(in.address, before.address) != 0) c.x_offset = loadOffset(c.address);
+  // carried over from the one before. Going from the BLE device to the
+  // bridge or back is another printer too.
+  if (strcmp(offsetId(c), offsetId(before)) != 0) c.x_offset = loadOffset(offsetId(c));
   bool ok = true;
   ok = prefsPutInt(LP_KEY_MODEL, (int)c.model) && ok;
   ok = prefsPutString(LP_KEY_ADDR, c.address) && ok;
   ok = prefsPutString(LP_KEY_NAME, c.name) && ok;
   ok = prefsPutInt(LP_KEY_W, s_want_w) && ok;
   ok = prefsPutInt(LP_KEY_H, s_want_l) && ok;
+  // Written only when they changed: most saves are a model or a size, and
+  // the key is not worth a flash write each time.
+  if (strcmp(c.bridge_host, before.bridge_host) != 0)
+    ok = prefsPutString(LP_KEY_BHOST, c.bridge_host) && ok;
+  if (strcmp(c.bridge_key, before.bridge_key) != 0)
+    ok = prefsPutString(LP_KEY_BKEY, c.bridge_key) && ok;
   char key[20];
-  if (offsetKey(c.address, key, sizeof(key))) ok = prefsPutInt(key, c.x_offset) && ok;
+  if (offsetKey(offsetId(c), key, sizeof(key))) ok = prefsPutInt(key, c.x_offset) && ok;
   if (ok) { s_config = c; s_loaded = true; }
   else { s_want_w = want_w; s_want_l = want_l; }
-  logSDf("Printer: config %s %s '%s' %ux%u mm offset %d (%d) %s",
-         labelPrinterProfile(c.model).name, c.address[0] ? c.address : "-", c.name,
+  // The key itself never goes into the log, only whether there is one.
+  logSDf("Printer: config %s%s %s '%s' bridge %s%s %ux%u mm offset %d (%d) %s",
+         labelPrinterProfile(c.model).name, labelPrinterViaBridge(c.model) ? " (bridge)" : "",
+         c.address[0] ? c.address : "-", c.name,
+         c.bridge_host[0] ? c.bridge_host : "-", c.bridge_key[0] ? " +key" : "",
          (unsigned)c.media_width_mm, (unsigned)c.media_length_mm, (int)c.x_offset,
          (int)labelPrinterOffset(c), ok ? "saved" : "NOT saved");
   return ok;
 }
 
-bool labelPrinterConfigured(const LabelPrinterConfig& c) { return c.address[0] != '\0'; }
+bool labelPrinterConfigured(const LabelPrinterConfig& c) {
+  return labelPrinterViaBridge(c.model) ? c.bridge_host[0] != '\0' : c.address[0] != '\0';
+}
 
+// The way the model in use prints is what goes: with the bridge model the
+// BLE device stays for a later switch back, and the other way round.
 bool labelPrinterForget() {
   LabelPrinterConfig c = labelPrinterLoadConfig();
-  c.address[0] = '\0';
-  c.name[0] = '\0';
+  if (labelPrinterViaBridge(c.model)) {
+    c.bridge_host[0] = '\0';
+    c.bridge_key[0] = '\0';
+  } else {
+    c.address[0] = '\0';
+    c.name[0] = '\0';
+  }
   return labelPrinterSaveConfig(c);
 }
 
@@ -235,6 +307,22 @@ bool labelPrinterRasterFits(LabelPrinterModel model, const LabelRaster& image,
          nearDots(image.height, media_length_mm);
 }
 
+static LabelPrintResult bridgeResult(PrintBridgeResult r) {
+  switch (r) {
+    case PB_OK:            return LP_OK;
+    case PB_NO_HOST:       return LP_NO_PRINTER;
+    case PB_NO_MEMORY:     return LP_BAD_RASTER;
+    case PB_UNREACHABLE:   return LP_BRIDGE_UNREACHABLE;
+    case PB_SEND_FAILED:   return LP_BLE_WRITE;
+    case PB_NO_ANSWER:     return LP_SENT_UNCONFIRMED;
+    case PB_NO_PRINTER:    return LP_BRIDGE_NO_PRINTER;
+    case PB_PRINTER_FAILED:return LP_BRIDGE_PRINTER;
+    case PB_AUTH:          return LP_BRIDGE_AUTH;
+    case PB_BUSY:          return LP_BRIDGE_BUSY;
+    default:               return LP_BRIDGE_REFUSED;
+  }
+}
+
 LabelPrintResult labelPrinterPrint(const LabelPrinterConfig& c, const LabelRaster& image,
                                    BleProgressFn progress) {
   const LabelPrinterProfile& p = labelPrinterProfile(c.model);
@@ -243,6 +331,9 @@ LabelPrintResult labelPrinterPrint(const LabelPrinterConfig& c, const LabelRaste
   if (image.width > p.max_raster_width) return LP_TOO_WIDE;
   if (!labelPrinterRasterFits(c.model, image, c.media_width_mm, c.media_length_mm))
     return LP_MEDIA_MISMATCH;
+  if (p.via_bridge) return bridgeResult(printBridgePrint(c.bridge_host, c.bridge_key, image,
+                                                         c.media_width_mm, c.media_length_mm,
+                                                         progress));
   BleWriteResult sent;
   if (c.model == LP_MODEL_PM240) {
     sent = tsplPrint(c.address, image, c.media_width_mm, c.media_length_mm, progress);
@@ -275,6 +366,12 @@ int labelPrintResultString(LabelPrintResult r) {
     case LP_BLE_CHARACTERISTIC: return STR_PRN_ERR_NOT_PRINTER;
     case LP_BLE_STUCK:          return STR_PRN_ERR_STUCK;
     case LP_SENT_UNCONFIRMED:   return STR_PRN_UNCONF_MSG;
+    case LP_BRIDGE_UNREACHABLE: return STR_PRN_ERR_BRIDGE_UNREACH;
+    case LP_BRIDGE_NO_PRINTER:  return STR_PRN_ERR_BRIDGE_NO_PRN;
+    case LP_BRIDGE_PRINTER:     return STR_PRN_ERR_BRIDGE_PRN;
+    case LP_BRIDGE_AUTH:        return STR_PRN_ERR_BRIDGE_AUTH;
+    case LP_BRIDGE_BUSY:        return STR_PRN_ERR_BRIDGE_BUSY;
+    case LP_BRIDGE_REFUSED:     return STR_PRN_ERR_BRIDGE_REFUSED;
     default:                    return STR_PRN_ERR_WRITE;
   }
 }

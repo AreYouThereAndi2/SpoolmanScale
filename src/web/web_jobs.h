@@ -35,7 +35,8 @@ enum WebJobKind : uint8_t {
   WJ_GH_NOTES,    // one release's notes, TLS
   WJ_GH_LIST,     // the last few releases, for the version picker, TLS
   WJ_BAMBU_CATALOG, // BambuStudio's colour table, TLS, converted and stored
-  WJ_NET_PROBE     // timing requests to the backend, see web_net_probe.h
+  WJ_NET_PROBE,    // timing requests to the backend, see web_net_probe.h
+  WJ_BRIDGE_STATUS // GET /api/status of the print bridge, 4 s; arg "host\nkey"
 };
 
 enum WebJobState : uint8_t {
@@ -68,6 +69,10 @@ WebJobKind  webJobKind();
 // back; a handler calls it once it has sent the answer.
 const WebJobResult& webJobResult();
 void webJobTake();
+
+// What the print bridge said, valid while a WJ_BRIDGE_STATUS result is DONE.
+struct PrintBridgeStatus;
+const PrintBridgeStatus& webJobBridgeStatus();
 
 // From appLoop(): drops a result no browser came back for.
 void webJobsTick();

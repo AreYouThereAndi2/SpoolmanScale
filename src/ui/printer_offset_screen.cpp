@@ -158,8 +158,10 @@ void printerOffsetFlush() {
   // The offset belongs to the printer it was set for, whose address s_cfg
   // still carries from the build. The web page can pick another printer, or
   // forget this one, inside the 700 ms before this runs, and the step would
-  // then land on a printer nobody adjusted.
-  if (!labelPrinterConfigured(c) || strcmp(c.address, s_cfg.address) != 0) {
+  // then land on a printer nobody adjusted. A switch between the BLE device
+  // and the print bridge is another printer as well.
+  if (!labelPrinterConfigured(c) || strcmp(c.address, s_cfg.address) != 0 ||
+      labelPrinterViaBridge(c.model) != labelPrinterViaBridge(s_cfg.model)) {
     logSDf("Printer: offset %d for %s dropped, the printer is now %s",
            (int)s_cfg.x_offset, s_cfg.address[0] ? s_cfg.address : "-",
            c.address[0] ? c.address : "-");

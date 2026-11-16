@@ -2809,9 +2809,9 @@ const char* const STRINGS[][3] = {
     "Seulement au besoin : la radio tourne tant qu'un appareil l'utilise, puis est libérée. Après l'activation, la balance redémarre une fois." },  // STR_W_P_BLE_HINT
   { "Unterstützte Drucker", "Supported printers", "Imprimantes prises en charge" },  // STR_W_P_SUPPORTED
   { "getestet",             "tested",             "testée" },  // STR_W_P_TESTED
-  { "Thermodrucker der Phomemo-M-Serie und TYPONOS PM240 (experimentell) über Bluetooth. Weitere Modelle kommen mit Rückmeldungen aus der Community.",
-    "Phomemo M-series thermal printers and the TYPONOS PM240 (experimental) over Bluetooth. More models come with feedback from the community.",
-    "Imprimantes thermiques Phomemo série M et TYPONOS PM240 (expérimental) en Bluetooth. D'autres modèles viendront avec les retours de la communauté." },  // STR_W_P_SUPPORTED_HINT
+  { "Thermodrucker der Phomemo-M-Serie über Bluetooth, den TYPONOS PM240 (experimentell) über die Druckbrücke im WLAN. Weitere Modelle kommen mit Rückmeldungen aus der Community.",
+    "Phomemo M-series thermal printers over Bluetooth, the TYPONOS PM240 (experimental) through the print bridge on the Wi-Fi. More models come with feedback from the community.",
+    "Imprimantes thermiques Phomemo série M en Bluetooth, TYPONOS PM240 (expérimental) par le pont Wi-Fi. D'autres modèles viendront avec les retours de la communauté." },  // STR_W_P_SUPPORTED_HINT
   { "Geräte in Reichweite", "Devices in range", "Appareils à portée" },  // STR_W_P_DEVICES
   { "Geräte suchen",        "Scan for devices", "Rechercher" },  // STR_BT_SCAN_WEB
   { "Die Suche läuft auf der Waage und dauert etwa 5 Sekunden; solange steht sie.",
@@ -3664,6 +3664,88 @@ const char* const STRINGS[][3] = {
   // Weight button (app_loop.cpp, automatic weighing): a tag is read but the
   // pad weighs too little for its spool, so nothing is written.
   { "Spule fehlt", "No spool", "Pas de bobine" },  // STR_WB_NO_SPOOL
+  // The PM240 through the print bridge (services/print_bridge.h)
+  { "(druckt nicht über BLE)",
+    "(does not print over BLE)",
+    "(n'imprime pas en BLE)" },  // STR_PRN_NOTE_BLE_NO_PRINT
+  { "(WLAN-Brücke)",
+    "(Wi-Fi bridge)",
+    "(pont Wi-Fi)" },  // STR_PRN_NOTE_BRIDGE
+  { "Druckbrücke",
+    "Print bridge",
+    "Pont Wi-Fi" },  // STR_PRN_BRIDGE
+  { "Adresse im Browser eintragen",
+    "Enter its address in the browser",
+    "Adresse à saisir au navigateur" },  // STR_PRN_BRIDGE_NONE
+  { "Der PM240 druckt nur über klassisches Bluetooth, das die Waage nicht hat. Die Druckbrücke, ein zweiter ESP32 neben dem Drucker, nimmt den Auftrag über das WLAN an und gibt ihn weiter. Ihre Adresse und der API-Schlüssel werden im Browser auf der Seite Drucker eingetragen.",
+    "The PM240 prints over classic Bluetooth only, which the scale does not have. The print bridge, a second ESP32 next to the printer, takes the job over Wi-Fi and hands it on. Its address and API key are entered in the browser, on the Printer page.",
+    "La PM240 n'imprime qu'en Bluetooth classique, que la balance n'a pas. Le pont, un second ESP32 près de l'imprimante, reçoit le travail en Wi-Fi et le transmet. Adresse et clé API se saisissent dans le navigateur, page Imprimante." },  // STR_PRN_BRIDGE_HELP
+  { "Verbinde mit der Druckbrücke...",
+    "Connecting to the print bridge...",
+    "Connexion au pont..." },  // STR_PRN_PH_BRIDGE
+  { "Druckbrücke nicht erreichbar. Ist sie eingeschaltet und im WLAN?",
+    "Print bridge not reachable. Is it on and in the Wi-Fi?",
+    "Pont injoignable. Allumé et sur le Wi-Fi ?" },  // STR_PRN_ERR_BRIDGE_UNREACH
+  { "Druckbrücke: kein Drucker gewählt.",
+    "Print bridge: no printer chosen.",
+    "Pont : aucune imprimante choisie." },  // STR_PRN_ERR_BRIDGE_NO_PRN
+  { "Druckbrücke: Drucker nicht erreichbar. Ist er eingeschaltet?",
+    "Print bridge: printer not reachable. Is it on?",
+    "Pont : imprimante injoignable. Allumée ?" },  // STR_PRN_ERR_BRIDGE_PRN
+  { "Druckbrücke: API-Schlüssel falsch.",
+    "Print bridge: wrong API key.",
+    "Pont : clé API erronée." },  // STR_PRN_ERR_BRIDGE_AUTH
+  { "Druckbrücke beschäftigt. Gleich noch einmal versuchen.",
+    "Print bridge busy. Try again in a moment.",
+    "Pont occupé. Réessayez dans un instant." },  // STR_PRN_ERR_BRIDGE_BUSY
+  { "Die Druckbrücke hat den Auftrag abgelehnt.",
+    "The print bridge refused the job.",
+    "Le pont a refusé le travail." },  // STR_PRN_ERR_BRIDGE_REFUSED
+  { "über die Druckbrücke (WLAN)",
+    "through the print bridge (Wi-Fi)",
+    "par le pont (Wi-Fi)" },  // STR_W_P_VIA_BRIDGE
+  { "Der PM240 druckt nicht über Bluetooth LE, nur über klassisches Bluetooth. Für ihn den Eintrag mit WLAN-Brücke wählen.",
+    "The PM240 does not print over Bluetooth LE, only over classic Bluetooth. Pick the Wi-Fi bridge entry for it.",
+    "La PM240 n'imprime pas en Bluetooth LE, seulement en Bluetooth classique. Choisir l'entrée pont Wi-Fi." },  // STR_W_P_PM240_HINT
+  { "Adresse der Druckbrücke",
+    "Print bridge address",
+    "Adresse du pont" },  // STR_W_P_BRIDGE_HOST
+  { "printbridge.local oder eine IP-Adresse, wahlweise mit :Port. Die Brücke selbst wird auf ihrer eigenen Seite eingerichtet.",
+    "printbridge.local or an IP address, optionally with :port. The bridge itself is set up on its own page.",
+    "printbridge.local ou une adresse IP, avec :port au besoin. Le pont se règle sur sa propre page." },  // STR_W_P_BRIDGE_HOST_HINT
+  { "API-Schlüssel der Druckbrücke",
+    "Print bridge API key",
+    "Clé API du pont" },  // STR_W_P_BRIDGE_KEY
+  { "Nur nötig, wenn auf der Brücke einer gesetzt ist. Leer gelassen bleibt der gespeicherte; geleert und gespeichert wird er entfernt. Geprüft wird er erst beim Drucken.",
+    "Only needed when one is set on the bridge. Left alone, the stored one stays; cleared and saved, it is removed. It is checked when printing.",
+    "Seulement si le pont en a une. Champ intact : la clé gardée reste ; vidé puis enregistré : elle est retirée. Vérifiée à l'impression." },  // STR_W_P_BRIDGE_KEY_HINT
+  { "Verbindung prüfen",
+    "Check connection",
+    "Tester la connexion" },  // STR_W_P_BRIDGE_CHECK
+  { "gespeichert",
+    "stored",
+    "enregistrée" },  // STR_W_P_BRIDGE_KEY_SET
+  { "Druckbrücke wird gefragt...",
+    "Asking the print bridge...",
+    "Interrogation du pont..." },  // STR_W_P_BRIDGE_CHECKING
+  { "Nur ein Name oder eine IP-Adresse, wahlweise mit :Port.",
+    "Only a name or an IP address, optionally with :port.",
+    "Un nom ou une adresse IP seulement, avec :port au besoin." },  // STR_W_P_BRIDGE_HOST_BAD
+  { "Der Schlüssel darf keine Leer- oder Sonderzeichen enthalten.",
+    "The key may not contain spaces or special characters.",
+    "La clé ne doit contenir ni espace ni caractère spécial." },  // STR_W_P_BRIDGE_KEY_BAD
+  { "Die Waage ist gerade beschäftigt. Gleich noch einmal versuchen.",
+    "The scale is busy right now. Try again in a moment.",
+    "La balance est occupée. Réessayez dans un instant." },  // STR_W_P_BRIDGE_JOB_BUSY
+  { "Unter dieser Adresse antwortet keine Druckbrücke.",
+    "No print bridge answers at this address.",
+    "Aucun pont ne répond à cette adresse." },  // STR_W_P_BRIDGE_NOT_ONE
+  { "Druckbrücke erreichbar",
+    "Print bridge reachable",
+    "Pont joignable" },  // STR_W_P_BRIDGE_REACH
+  { "Akku %d %%",
+    "battery %d %%",
+    "batterie %d %%" },  // STR_W_P_BRIDGE_BATTERY
 };
 
 StringID tagWriteResultString(uint8_t code) {
