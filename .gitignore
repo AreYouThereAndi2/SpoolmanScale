@@ -50,3 +50,8 @@ images/images_not_for_github/
 !WERKBANK.md
 !werkbank/
 !werkbank/**
+# The print bridge (Druckbruecke): a firmware of its own for an ESP32 near
+# the label printer. Its build output stays out like the scale's.
+!bridge/
+!bridge/**
+bridge/.pio/
