@@ -28,6 +28,7 @@
 #include "services/time_service.h"
 #include "services/update_check.h"
 #include "services/wifi_manager.h"
+#include "services/wifi_known.h"
 #include "ui/gestures.h"
 #include "ui/header_status.h"
 #include "ui/main_screen.h"
@@ -166,6 +167,8 @@ void appSetup() {
   // so the line lands in the log, and well before the first backend_api call
   // in wifiConnect(). Logs only whether tokens are present, never their values.
   backendLoadSettings();
+  // The remembered networks, read beside the stored one; after initSD() as well.
+  wifiKnownBoot();
 
   displayHardwareBegin(resetActivityTimer);
   displaySetTouchObserver(gesturesTouch);

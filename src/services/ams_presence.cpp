@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "app/app_state.h"
+#include "hardware/psram_new.h"
 #include "hardware/sd_logger.h"
 #include "services/ams_slots.h"
 #include "services/backend_api.h"
@@ -18,10 +19,11 @@ bool          s_has_ams    = false;
 int           s_printer_id = 0;
 unsigned long s_last_ms    = 0;
 
-// In BSS, not on the loop task's stack: together they are close to two
-// kilobytes, and ams_slots.h asks for exactly this.
+// Not on the loop task's stack, as ams_slots.h asks. The printer list stays
+// in BSS; the AMS state is taken in PSRAM on the first check and kept
+// (hardware/psram_new.h), so internal RAM keeps its 1.7 kB.
 AmsPrinterList s_printers;
-AmsSlotState   s_state;
+AmsSlotState*  s_state = nullptr;
 
 }  // namespace
 
@@ -67,7 +69,12 @@ void amsPresenceTick() {
     s_printer_id = s_printers.p[0].id;
   }
 
-  AmsSlotState& st = s_state;
+  if (!s_state) s_state = psramNew<AmsSlotState>();
+  if (!s_state) {
+    logSD("AMS: no memory for the presence check");
+    return;
+  }
+  AmsSlotState& st = *s_state;
   const int code = backendGetAmsState(s_printer_id, st, 5000);
   if (code != 200) {
     logSDf("[verbose] AMS: presence check failed, HTTP %d", code);

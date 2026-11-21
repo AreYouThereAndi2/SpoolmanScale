@@ -1688,6 +1688,19 @@ enum StringID {
   STR_W_P_BRIDGE_REACH,
   STR_W_P_BRIDGE_BATTERY,
 
+  // The remembered WiFi networks (services/wifi_known.h): the scan list's
+  // mark, the WiFi menu's row and the saved networks screen
+  STR_WIFI_KNOWN_WORD,
+  STR_WIFI_SAVED_TITLE,
+  STR_WIFI_SAVED_COUNT,
+  STR_WIFI_ST_CONN_PREF,
+  STR_WIFI_ST_PREFERRED,
+  STR_WIFI_ST_SAVED,
+  STR_WIFI_CONNECT_NOW,
+  STR_WIFI_FORGET,
+  STR_WIFI_PREF_KEEP,
+  STR_WIFI_SAVED_NONE,
+
   STR_COUNT
 };
 

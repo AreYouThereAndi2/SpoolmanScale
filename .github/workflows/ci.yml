@@ -9,6 +9,9 @@ on:
     paths-ignore: ['manifest.json', 'index.html', 'version.json', 'webflasher/**', 'images/**', '*.md']
   pull_request:
     paths-ignore: ['manifest.json', 'index.html', 'version.json', 'webflasher/**', 'images/**', '*.md']
+  # By hand from the Actions tab, e.g. for a branch whose push came while
+  # Actions was switched off for the repository (21.11.2026).
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -55,6 +58,16 @@ jobs:
         run: python3 test/test_spool_temp.py
       - name: Test tag writes stay inside the user memory
         run: python3 test/test_ntag_pages.py
+      - name: Test host lookup rules
+        run: python3 test/test_host_lookup_rules.py
+      - name: Test tag format in the tag relation
+        run: python3 test/test_tag_format_rules.py
+      - name: Test AMS fill level without a chip
+        run: python3 test/test_ams_printer_remain.py
+      - name: Test AMS unit room for the external holder
+        run: python3 test/test_ams_unit_room.py
+      - name: Test remembered WiFi networks
+        run: python3 test/test_wifi_known_rules.py
 
   build:
     name: Build ${{ matrix.env }}

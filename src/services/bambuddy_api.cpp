@@ -1158,11 +1158,11 @@ static void fillTray(JsonObjectConst t, AmsSlotTray& out, uint8_t tray_id) {
 
   parseTrayColor(t["tray_color"] | "", out.type, &out.color);
 
-  // Bambu itself sends -1 for "no idea", and anything outside 0..100 is a
-  // value we would only misdraw.
-  int remain = t["remain"] | AMS_REMAIN_NA;
-  if (remain < 0 || remain > 100) remain = AMS_REMAIN_NA;
-  out.remain = (int8_t)remain;
+  // The printer's own reading, which is one only for a spool with a chip:
+  // a spool entered in Bambu Studio by hand reports 0 and is not empty.
+  // Anything outside 0..100 is a value we would only misdraw.
+  const bool chip = amsChipIdReal(t["tray_uuid"] | "") || amsChipIdReal(t["tag_uid"] | "");
+  out.remain = amsPrinterRemain(t["remain"] | AMS_REMAIN_NA, chip);
 
   // exists is the authority when the field is there. When it is missing,
   // a bay that names a material is holding one - that is how BamBuddy's own
@@ -1203,6 +1203,9 @@ int bbGetAmsState(const char* base_url, const char* api_key, int printer_id,
   ft["tray_type"]       = true;
   ft["tray_sub_brands"] = true;
   ft["remain"]          = true;
+  // Whether the spool carries a chip, which decides if remain is a reading.
+  ft["tray_uuid"]       = true;
+  ft["tag_uid"]         = true;
   ft["exists"]          = true;
 
   // Which bay the printer feeds from. Bambu numbers it globally as
@@ -1217,6 +1220,8 @@ int bbGetAmsState(const char* base_url, const char* api_key, int printer_id,
   fv["tray_type"]       = true;
   fv["tray_sub_brands"] = true;
   fv["remain"]          = true;
+  fv["tray_uuid"]       = true;
+  fv["tag_uid"]         = true;
   fv["exists"]          = true;
 
   // No PSRAM allocator: what survives the filter is a couple of kilobytes
@@ -1240,12 +1245,12 @@ int bbGetAmsState(const char* base_url, const char* api_key, int printer_id,
   // 255 is Bambu's "nothing loaded", and so is a missing field.
   const int tray_now = doc["tray_now"] | 255;
 
+  int left_out = 0;
   for (JsonVariantConst uv : doc["ams"].as<JsonArrayConst>()) {
     JsonObjectConst u = uv.as<JsonObjectConst>();
-    if (out.unit_count >= AMS_MAX_UNITS) {
-      logSDf("BamBuddy: printer %d reports more than %d AMS units, rest ignored",
-             printer_id, AMS_MAX_UNITS);
-      break;
+    if (!amsUnitHasRoom(out, false)) {
+      left_out++;
+      continue;
     }
     AmsSlotUnit& dst = out.unit[out.unit_count];
     dst = AmsSlotUnit{};
@@ -1304,12 +1309,16 @@ int bbGetAmsState(const char* base_url, const char* api_key, int printer_id,
     }
     out.unit_count++;
   }
+  if (left_out > 0) {
+    logSDf("BamBuddy: printer %d has %d AMS unit(s) beyond the %d shown, left out",
+           printer_id, left_out, AMS_MAX_UNITS);
+  }
 
   // The external holder is one unit carrying its bays, not one unit per bay:
   // a dual nozzle H2D has two of them side by side, and they belong together
   // on the screen the way the bays of an AMS do.
   JsonArrayConst vt = doc["vt_tray"].as<JsonArrayConst>();
-  if (!vt.isNull() && vt.size() > 0 && out.unit_count < AMS_UNITS_TOTAL) {
+  if (!vt.isNull() && vt.size() > 0 && amsUnitHasRoom(out, true)) {
     AmsSlotUnit& dst = out.unit[out.unit_count];
     dst = AmsSlotUnit{};
     dst.ams_id   = AMS_EXT_AMS_ID;

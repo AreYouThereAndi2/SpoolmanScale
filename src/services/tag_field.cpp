@@ -11,6 +11,7 @@
 #include "hardware/sd_logger.h"
 #include "lang.h"
 #include "services/prefs_store.h"
+#include "services/tag_format_rules.h"
 #include "services/tag_uid.h"
 #include "services/user_options.h"
 
@@ -224,5 +225,7 @@ const char* tagNativeUid(const char* scanned) {
 }
 
 const char* tagFormatName(const char* scanned) {
-  return tagIsBambu(scanned) ? "bambu" : "ntag";
+  char hex[40];
+  tagUidNormalize(scanned ? scanned : "", hex, sizeof(hex));
+  return tagFormatFor(strlen(hex));
 }

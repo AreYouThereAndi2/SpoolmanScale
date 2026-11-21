@@ -29,6 +29,9 @@ static bool inList(const char *key, const char *const *list, size_t n) {
   return false;
 }
 static bool isSecret(const char *k) {
+  // The passwords of the remembered networks, "wk_p0" to "wk_p4"
+  // (services/wifi_known.cpp), go with wifi_pass or not at all.
+  if (!strncmp(k, "wk_p", 4)) return true;
   return inList(k, SECRET_KEYS, sizeof(SECRET_KEYS) / sizeof(SECRET_KEYS[0]));
 }
 static bool isDevice(const char *k) {
