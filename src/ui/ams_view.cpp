@@ -7,6 +7,7 @@
 #include "app_config.h"
 #include "app/app_state.h"
 #include "app/deferred_actions.h"
+#include "hardware/psram_new.h"
 #include "hardware/sd_logger.h"
 #include "services/ams_weights.h"
 #include "services/backend.h"
@@ -120,7 +121,10 @@ static int          s_body_h   = 0;
 static AmsViewMode  s_mode      = AMS_VIEW_BROWSE;
 static AmsPickCb    s_cb        = nullptr;
 static char         s_headline[AMSV_HEADLINE_MAX] = "";
-static AmsSlotState s_state;
+// The printer's answer the page is drawn from. In PSRAM, taken when the page
+// is first built and kept (hardware/psram_new.h): with the presence check's
+// copy that was 3.5 kB of BSS held for good.
+static AmsSlotState* s_state = nullptr;
 
 static bool s_build_pending = false;
 static bool s_fetch_pending = false;
@@ -323,8 +327,9 @@ static void setStatusFmt(int str_id, int value) {
 // refresh can reorder the grid between the tap and the answer.
 static const AmsSlotTray* findTray(int ams_id, int tray_id,
                                    const AmsSlotUnit** out_unit) {
-  for (uint8_t u = 0; u < s_state.unit_count; u++) {
-    const AmsSlotUnit& unit = s_state.unit[u];
+  if (!s_state) return nullptr;
+  for (uint8_t u = 0; u < s_state->unit_count; u++) {
+    const AmsSlotUnit& unit = s_state->unit[u];
     if (unit.ams_id != (uint8_t)ams_id) continue;
     for (uint8_t t = 0; t < unit.tray_count; t++) {
       if (unit.tray[t].tray_id != (uint8_t)tray_id) continue;
@@ -341,8 +346,9 @@ static bool trayExists(int ams_id, int tray_id) {
 }
 
 static bool unitIsExt(int ams_id) {
-  for (uint8_t u = 0; u < s_state.unit_count; u++) {
-    if (s_state.unit[u].ams_id == (uint8_t)ams_id) return s_state.unit[u].is_ext;
+  if (!s_state) return false;
+  for (uint8_t u = 0; u < s_state->unit_count; u++) {
+    if (s_state->unit[u].ams_id == (uint8_t)ams_id) return s_state->unit[u].is_ext;
   }
   return false;
 }
@@ -628,7 +634,7 @@ static void redrawGrid() {
   if (!s_body) return;
   const lv_coord_t scroll_y = lv_obj_get_scroll_y(s_body);
   lv_obj_clean(s_body);
-  layoutGrid(s_state);
+  layoutGrid(*s_state);
   lv_obj_update_layout(s_body);
   lv_obj_scroll_to_y(s_body, scroll_y, LV_ANIM_OFF);
 }
@@ -789,6 +795,11 @@ static void nextPrinterCb(lv_event_t* e) {
 
 static void buildScreen() {
   closeAmsView();
+  if (!s_state) s_state = psramNew<AmsSlotState>();
+  if (!s_state) {
+    logSD("AMSVIEW: no memory for the printer state, page not built");
+    return;
+  }
   s_scr = buildOverlayScreen();
   if (!s_scr) return;
 
@@ -1007,7 +1018,7 @@ static void fetchAndDraw() {
     s_printer_id = s_printers.p[s_printer_idx].id;
   }
 
-  int code = serverReachNote(backendGetAmsState(s_printer_id, s_state, 8000), true);
+  int code = serverReachNote(backendGetAmsState(s_printer_id, *s_state, 8000), true);
   if (!s_scr) return;
   if (code != 200) {
     setStatusFmt(STR_AMSV_ERR_HTTP, code);
@@ -1018,7 +1029,7 @@ static void fetchAndDraw() {
   // tiles, and clean() is the only way that also frees them.
   if (s_body) lv_obj_clean(s_body);
 
-  if (s_state.unit_count == 0) {
+  if (s_state->unit_count == 0) {
     setStatus(T(STR_AMSV_NO_AMS));
     return;
   }
@@ -1030,15 +1041,15 @@ static void fetchAndDraw() {
     // What the printer is doing, without its name: offline, a job, a state,
     // or nothing at all.
     char what[48] = "";
-    const PrinterActivity act = printerActivity(s_state.state);
-    if (!s_state.connected) {
+    const PrinterActivity act = printerActivity(s_state->state);
+    if (!s_state->connected) {
       // An offline printer still has a last known state worth showing, so
       // this is a note next to the grid rather than a refusal to draw it.
       // A backend that never said either way gets its own wording: blaming
       // the printer for a driver that has not reported sends the user to
       // the wrong machine.
-      copyT(what, sizeof(what), s_state.conn_known ? STR_AMSV_OFFLINE : STR_AMSV_UNKNOWN);
-    } else if (s_state.job_percent >= 0 &&
+      copyT(what, sizeof(what), s_state->conn_known ? STR_AMSV_OFFLINE : STR_AMSV_UNKNOWN);
+    } else if (s_state->job_percent >= 0 &&
                (act == PRINTER_PRINTING || act == PRINTER_PAUSED)) {
       // The percentage only while it means something. Bambu reports the
       // finished job and its 100 % until the next print starts, and FilaMan
@@ -1046,7 +1057,7 @@ static void fetchAndDraw() {
       // "printing 100%" the whole time.
       char fmt[24];
       copyT(fmt, sizeof(fmt), act == PRINTER_PAUSED ? STR_AMSV_JOB_PAUSED : STR_AMSV_JOB);
-      snprintf(what, sizeof(what), fmt, (int)s_state.job_percent);
+      snprintf(what, sizeof(what), fmt, (int)s_state->job_percent);
     } else if (act == PRINTER_FINISHED) {
       copyT(what, sizeof(what), STR_AMSV_STATE_FINISH);
     } else if (act == PRINTER_FAILED) {
@@ -1055,10 +1066,10 @@ static void fetchAndDraw() {
       copyT(what, sizeof(what), STR_AMSV_STATE_IDLE);
     } else if (act == PRINTER_PREPARING) {
       copyT(what, sizeof(what), STR_AMSV_STATE_PREPARE);
-    } else if (s_state.state[0]) {
+    } else if (s_state->state[0]) {
       // A state this list does not know is shown as the server wrote it,
       // rather than hidden.
-      snprintf(what, sizeof(what), "%s", s_state.state);
+      snprintf(what, sizeof(what), "%s", s_state->state);
     }
 
     // With two or more printers the name is the switch, and looks like one:
@@ -1072,7 +1083,7 @@ static void fetchAndDraw() {
       char fmt[12], n[12], name[48];
       copyT(fmt, sizeof(fmt), STR_AMSV_PRN_OF);
       snprintf(n, sizeof(n), fmt, (int)s_printer_idx + 1, (int)s_printers.count);
-      snprintf(name, sizeof(name), "%s  %s", n, s_state.printer);
+      snprintf(name, sizeof(name), "%s  %s", n, s_state->printer);
       lv_label_set_text(s_printer_lbl, name);
       // Sized to the name. A name of the user's choosing can be long; the chip
       // stops where the status would have no room left, and the label inside
@@ -1093,13 +1104,13 @@ static void fetchAndDraw() {
       lv_obj_clear_flag(s_status, LV_OBJ_FLAG_HIDDEN);
     } else {
       char line[80];
-      if (what[0]) snprintf(line, sizeof(line), "%s - %s", s_state.printer, what);
-      else         snprintf(line, sizeof(line), "%s", s_state.printer);
+      if (what[0]) snprintf(line, sizeof(line), "%s - %s", s_state->printer, what);
+      else         snprintf(line, sizeof(line), "%s", s_state->printer);
       setStatus(line);
     }
   }
 
-  layoutGrid(s_state);
+  layoutGrid(*s_state);
 
   // The grams the grid could not show. BamBuddy's answer carries the
   // printer's percentage, the weighed figure sits in the inventory, and
@@ -1111,12 +1122,12 @@ static void fetchAndDraw() {
 // Takes what the weight fetch found into the state the grid draws from, and
 // says whether anything changed.
 static bool applyWeights(const AmsWeightsResult& r) {
-  if (r.printer_id != s_printer_id) return false;   // the user switched printers
+  if (!s_state || r.printer_id != s_printer_id) return false;   // the user switched printers
   bool changed = false;
   for (uint8_t i = 0; i < r.count; i++) {
     if (r.item[i].grams < 0) continue;
-    for (uint8_t u = 0; u < s_state.unit_count; u++) {
-      AmsSlotUnit& unit = s_state.unit[u];
+    for (uint8_t u = 0; u < s_state->unit_count; u++) {
+      AmsSlotUnit& unit = s_state->unit[u];
       if (unit.ams_id != r.item[i].ams_id) continue;
       for (uint8_t t = 0; t < unit.tray_count; t++) {
         AmsSlotTray& tray = unit.tray[t];
@@ -1152,7 +1163,7 @@ static void collectWeights() {
 static bool startWeights() {
   collectWeights();
   const bool busy = amsWeightsBusy();
-  if (amsWeightsStart(s_printer_id, s_state)) {
+  if (amsWeightsStart(s_printer_id, *s_state)) {
     s_weights_owed = false;
     return true;
   }
@@ -1400,7 +1411,7 @@ void handleAmsViewDeferredActions() {
   // The start a switch could not make because the task was busy (startWeights()),
   // made up behind the fetch branch, so for a printer that is drawn. The flag is
   // void on every fetch and when the page closes; the checks guard the same.
-  if (s_weights_owed && s_scr && s_state.valid && s_state.printer_id == s_printer_id &&
+  if (s_weights_owed && s_scr && s_state && s_state->valid && s_state->printer_id == s_printer_id &&
       amsWeightsState() == AWS_IDLE) {
     if (startWeights()) {
       logSDf("AMSWEIGHTS: start for printer %d made up after a busy task", s_printer_id);

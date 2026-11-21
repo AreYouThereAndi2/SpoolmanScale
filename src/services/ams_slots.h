@@ -176,6 +176,25 @@ static inline AmsModel amsModelFromModuleType(const char* s) {
   return AMS_MODEL_UNKNOWN;
 }
 
+// A fill level the printer reports, as the bay shows it. Bambu measures only
+// a spool with an RFID chip; for one entered by hand in Bambu Studio it sends
+// 0 on the external holder and -1 in an AMS, and both mean "unknown", not
+// "empty". So 0 counts only when a chip stands behind it. A chip id of zeros
+// is no chip: that is what Bambu sends for a spool without one.
+static inline bool amsChipIdReal(const char* id) {
+  if (!id || !id[0]) return false;
+  for (const char* c = id; *c; c++) {
+    if (*c != '0') return true;
+  }
+  return false;
+}
+
+static inline int8_t amsPrinterRemain(int remain, bool has_chip) {
+  if (remain < 0 || remain > 100) return AMS_REMAIN_NA;
+  if (remain == 0 && !has_chip) return AMS_REMAIN_NA;
+  return (int8_t)remain;
+}
+
 // Whether a bay's card may offer to record a drying for the whole unit. Only
 // an AMS 2 Pro dries four spools at once; an AMS HT holds one, and on the
 // first generation the spools in one unit have nothing in common.
@@ -225,6 +244,22 @@ struct AmsSlotState {
 // RAM free - so this is a tripwire against sprawl, not a hardware limit.
 static_assert(sizeof(AmsSlotState) <= 1800,
               "AmsSlotState outgrew its budget, check where it is stored");
+
+// Whether a unit a backend reports still gets a place. AMS and AMS HT units
+// share the AMS_MAX_UNITS places; the external holder has the one place after
+// them to itself. An H2D takes four AMS and up to eight AMS HT, so a printer
+// can report more units than the screen keeps, and the external holder must
+// never be the one that falls off: FilaMan sends it last.
+inline bool amsUnitHasRoom(const AmsSlotState& s, bool is_ext) {
+  if (s.unit_count >= AMS_UNITS_TOTAL) return false;
+  uint8_t ams_units = 0;
+  bool    ext_taken = false;
+  for (int u = 0; u < s.unit_count; u++) {
+    if (s.unit[u].is_ext) ext_taken = true;
+    else                  ams_units++;
+  }
+  return is_ext ? !ext_taken : ams_units < AMS_MAX_UNITS;
+}
 
 struct AmsPrinter {
   int  id;

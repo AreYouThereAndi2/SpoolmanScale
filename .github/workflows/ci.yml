@@ -57,6 +57,10 @@ jobs:
         run: python3 test/test_ntag_pages.py
       - name: Test host lookup rules
         run: python3 test/test_host_lookup_rules.py
+      - name: Test AMS fill level without a chip
+        run: python3 test/test_ams_printer_remain.py
+      - name: Test AMS unit room for the external holder
+        run: python3 test/test_ams_unit_room.py
 
   build:
     name: Build ${{ matrix.env }}

@@ -1750,6 +1750,8 @@ static void buildDisplayFilter(JsonDocument& filter, bool with_slots) {
   sl["material"]          = true;
   sl["spool_id"]          = true;
   sl["remaining_percent"] = true;
+  // "printer" or "filaman": a 0 the printer guessed is not an empty spool.
+  sl["remaining_source"]  = true;
   sl["remaining_grams"]   = true;
   sl["backup_of"]         = true;
   // The nozzle range of whatever sits in the bay. Two more numbers in an
@@ -1828,19 +1830,22 @@ int filamanGetAmsState(const char* base_url, const char* api_key, int printer_id
   out.conn_known = !conn.isNull();
   out.connected  = conn | false;
 
+  int left_out = 0;
   for (JsonVariantConst uv : pr["ams"].as<JsonArrayConst>()) {
     JsonObjectConst u = uv.as<JsonObjectConst>();
-    if (out.unit_count >= AMS_UNITS_TOTAL) {
-      logSDf("FilaMan: printer %d has more units than %d, rest ignored",
-             printer_id, AMS_UNITS_TOTAL);
-      break;
+    const char* kind = u["kind"] | "ams";
+    const bool  is_ext = (strcmp(kind, "external") == 0);
+    // Not a break: the external holder comes after the units that did not
+    // fit, and it has a place of its own.
+    if (!amsUnitHasRoom(out, is_ext)) {
+      left_out++;
+      continue;
     }
     AmsSlotUnit& dst = out.unit[out.unit_count];
     dst = AmsSlotUnit{};
 
-    const char* kind = u["kind"] | "ams";
     dst.ams_id = (uint8_t)(u["ams_id"] | 0);
-    dst.is_ext = (strcmp(kind, "external") == 0);
+    dst.is_ext = is_ext;
     dst.is_ht  = (strcmp(kind, "ams_ht") == 0);
     // The model where the display API names it. Up to FilaMan 1.3.7 it does
     // not, and then the kind is all there is: it tells an AMS HT apart, while
@@ -1941,9 +1946,12 @@ int filamanGetAmsState(const char* base_url, const char* api_key, int printer_id
       // the alpha is gone before it leaves the server.
       if (t.exists) spoolColorParse(sl["color"] | "", &t.color);
 
-      int pct = sl["remaining_percent"] | AMS_REMAIN_NA;
-      if (pct < 0 || pct > 100) pct = AMS_REMAIN_NA;
-      t.remain = (int8_t)pct;
+      // A percentage FilaMan took from the printer is a reading only for a
+      // spool with a chip, and FilaMan's own rfid flag cannot tell: it counts
+      // the 32 zeros Bambu sends for a spool without one as a chip. So a 0
+      // from the printer is "unknown" here; a 0 FilaMan weighed itself stays.
+      const bool from_printer = strcmp(sl["remaining_source"] | "", "printer") == 0;
+      t.remain = amsPrinterRemain(sl["remaining_percent"] | AMS_REMAIN_NA, !from_printer);
 
       int grams = sl["remaining_grams"] | AMS_REMAIN_NA;
       if (grams < 0 || grams > INT16_MAX) grams = AMS_REMAIN_NA;
@@ -1963,6 +1971,10 @@ int filamanGetAmsState(const char* base_url, const char* api_key, int printer_id
     out.unit_count++;
   }
 
+  if (left_out > 0) {
+    logSDf("FilaMan: printer %d has %d AMS unit(s) beyond the %d shown, left out",
+           printer_id, left_out, AMS_MAX_UNITS);
+  }
   out.ams_exists = (out.unit_count > 0);
   out.valid = true;
   logSDf("FilaMan: AMS of printer %d, %d unit(s), connected=%d",
