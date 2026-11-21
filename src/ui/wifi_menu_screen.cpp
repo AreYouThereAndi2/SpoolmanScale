@@ -11,6 +11,8 @@
 #include "ui_common.h"
 #include "wifi_info.h"
 #include "wifi_setup_screen.h"
+#include "wifi_saved_screen.h"
+#include "services/wifi_known.h"
 
 // The address is read when the row is built. The menu is rebuilt on every
 // entry and the status screen behind it refreshes itself, so no timer here;
@@ -62,5 +64,14 @@ void buildWifiMenuScreen() {
     lv_obj_add_event_cb(btn, [](lv_event_t *e){
       logSD("BTN: WifiMenu -> WiFi Status");
       showWifiStatusScreen();
+    }, LV_EVENT_CLICKED, NULL); }
+
+  { char buf_t[40]; copyT(buf_t, sizeof(buf_t), STR_WIFI_SAVED_TITLE);
+    char buf_s[40];
+    snprintf(buf_s, sizeof(buf_s), T(STR_WIFI_SAVED_COUNT), wifiKnownList().n);
+    lv_obj_t *btn = makeListBtn(list, LV_SYMBOL_LIST, buf_t, buf_s);
+    lv_obj_add_event_cb(btn, [](lv_event_t *e){
+      logSD("BTN: WifiMenu -> Saved networks");
+      showWifiSavedScreen();
     }, LV_EVENT_CLICKED, NULL); }
 }

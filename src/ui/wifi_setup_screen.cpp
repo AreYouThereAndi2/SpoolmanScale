@@ -13,6 +13,7 @@
 #include "services/app_settings.h"
 #include "services/time_service.h"
 #include "services/wifi_manager.h"
+#include "services/wifi_known.h"
 #include "services/improv_serial.h"
 #include "services/setup_portal.h"
 #include "setup_welcome_screen.h"
@@ -30,6 +31,8 @@
 // Entries the RSSI sort covers. Networks beyond this stay in scan order, which
 // only matters in places dense enough to see more than this many APs at once.
 #define WIFI_SCAN_SORT_MAX  64
+// Between the tick or "saved" and the signal in a scan row.
+#define WIFI_MARK_GAP        8
 // WPA2 allows 63 characters, or 64 as hex. The textarea stops there, so a
 // longer entry is visibly refused instead of silently cut on the copy.
 #define WIFI_PASS_MAX_LEN   64
@@ -387,19 +390,29 @@ static void finishWifiScan(int n) {
   snprintf(status_buf, sizeof(status_buf), T(STR_WIFI_NETWORKS_FOUND), n);
   lv_label_set_text(lbl_wifi_setup_status, status_buf);
 
-  // Sort strongest first. The body of this loop used to be empty - only
-  // comments - so the list came out in scan order. Sorting an index array keeps
-  // the scan results themselves untouched, so the accessors below still work.
+  // Known networks first (services/wifi_known.h), then strongest first. The
+  // body of this loop used to be empty - only comments - so the list came out
+  // in scan order. Sorting an index array keeps the scan results themselves
+  // untouched, so the accessors below still work.
   int sort_n = n < WIFI_SCAN_SORT_MAX ? n : WIFI_SCAN_SORT_MAX;
   static int idx[WIFI_SCAN_SORT_MAX];
-  for (int i = 0; i < sort_n; i++) idx[i] = i;
+  static bool known_at[WIFI_SCAN_SORT_MAX];
+  const WifiKnownList &known = wifiKnownList();
+  for (int i = 0; i < sort_n; i++) {
+    idx[i] = i;
+    known_at[i] = wifiKnownFind(known, wifiManagerScannedSSID(i).c_str()) >= 0;
+  }
   for (int i = 0; i < sort_n - 1; i++) {
     for (int j = 0; j < sort_n - i - 1; j++) {
-      if (wifiManagerScannedRSSI(idx[j]) < wifiManagerScannedRSSI(idx[j + 1])) {
-        int tmp = idx[j]; idx[j] = idx[j + 1]; idx[j + 1] = tmp;
-      }
+      const int a = idx[j], b = idx[j + 1];
+      const bool later = known_at[a] != known_at[b]
+        ? known_at[b]
+        : wifiManagerScannedRSSI(a) < wifiManagerScannedRSSI(b);
+      if (later) { idx[j] = b; idx[j + 1] = a; }
     }
   }
+  char on[33];
+  wifiManagerCurrentSsid(on, sizeof(on));
 
   // Full SSID per rendered row. The label is LV_LABEL_LONG_DOT at 300 px, so
   // reading the SSID back out of it returned "LongNetworkNam..." and the
@@ -435,15 +448,6 @@ static void finishWifiScan(int n) {
     lv_obj_set_style_pad_all(row, 0, 0);
     lv_obj_set_user_data(row, row_ssid[slot]);
 
-    // SSID Label
-    lv_obj_t *lbl_ssid = lv_label_create(row);
-    lv_label_set_text(lbl_ssid, ssid.c_str());
-    lv_obj_set_style_text_color(lbl_ssid, lv_color_hex(UI_COL_INK), 0);
-    lv_obj_set_style_text_font(lbl_ssid, &lv_font_montserrat_ext_16, 0);
-    lv_obj_align(lbl_ssid, LV_ALIGN_LEFT_MID, 12, 0);
-    lv_label_set_long_mode(lbl_ssid, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(lbl_ssid, 300);
-
     // RSSI Label
     char rssi_buf[16];
     snprintf(rssi_buf, sizeof(rssi_buf), "%d dBm", rssi);
@@ -453,11 +457,43 @@ static void finishWifiScan(int n) {
     lv_obj_set_style_text_font(lbl_rssi, &lv_font_montserrat_ext_12, 0);
     lv_obj_align(lbl_rssi, LV_ALIGN_RIGHT_MID, -8, 0);
 
-    // Click: store SSID → password screen
+    // A tick for the network the scale is on, "saved" for one it knows, left
+    // of the signal so the signal stays in its column. The name gives way.
+    int ssid_w = 300;
+    const bool connected = strcmp(on, ssid.c_str()) == 0;
+    if (connected || known_at[i]) {
+      lv_obj_t *mark = lv_label_create(row);
+      lv_label_set_text(mark, connected ? LV_SYMBOL_OK : T(STR_WIFI_KNOWN_WORD));
+      lv_obj_set_style_text_font(mark, connected ? &lv_font_montserrat_ext_16 : &lv_font_montserrat_ext_12, 0);
+      lv_obj_set_style_text_color(mark, lv_color_hex(connected ? UI_COL_ACCENT : UI_COL_CAPTION), 0);
+      lv_obj_align_to(mark, lbl_rssi, LV_ALIGN_OUT_LEFT_MID, -WIFI_MARK_GAP, 0);
+      lv_obj_update_layout(mark);
+      const int room = lv_obj_get_x(mark) - 12 - WIFI_MARK_GAP;
+      if (room < ssid_w) ssid_w = room;
+    }
+
+    // SSID Label
+    lv_obj_t *lbl_ssid = lv_label_create(row);
+    lv_label_set_text(lbl_ssid, ssid.c_str());
+    lv_obj_set_style_text_color(lbl_ssid, lv_color_hex(UI_COL_INK), 0);
+    lv_obj_set_style_text_font(lbl_ssid, &lv_font_montserrat_ext_16, 0);
+    lv_obj_align(lbl_ssid, LV_ALIGN_LEFT_MID, 12, 0);
+    lv_label_set_long_mode(lbl_ssid, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_ssid, ssid_w);
+
+    // Click: a known network connects with its stored password (upstream
+    // ccb1f53), any other one goes to the password screen.
     lv_obj_add_event_cb(row, [](lv_event_t *e) {
       lv_obj_t *btn = (lv_obj_t*)lv_event_get_target(e);
       const char* ssid_str = (const char*)lv_obj_get_user_data(btn);
       if (!ssid_str) return;
+      const WifiKnownList &kl = wifiKnownList();
+      const int at = wifiKnownFind(kl, ssid_str);
+      if (at >= 0) {
+        logSDf("BTN: WifiSetup -> known network %s, no password asked", ssid_str);
+        wifiSetupConnectWith(ssid_str, kl.e[at].pass);
+        return;
+      }
       strncpy(wifi_setup_ssid, ssid_str, sizeof(wifi_setup_ssid)-1);
       wifi_setup_ssid[sizeof(wifi_setup_ssid)-1] = '\0';
       showWifiPassScreen();
